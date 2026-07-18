@@ -22,6 +22,17 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
 {
     private readonly ILogger _logger = logger ?? NullLogger<VssSnapshotProvider>.Instance;
 
+    /// <summary>
+    /// 섀도 저장소(diff 영역)를 둘 볼륨. null이면 스냅샷 대상 볼륨 자신에 둡니다.
+    /// </summary>
+    /// <remarks>
+    /// diff 영역을 스냅샷 대상 볼륨 자신에 두면, VSS가 그 diff 영역을 스냅샷에서 제외하므로
+    /// diff 영역이 차지한 블록을 스냅샷에서 읽을 때 시간에 따라 값이 바뀝니다(드리프트).
+    /// diff 영역을 다른 볼륨에 두면 이 문제가 사라집니다. 실행 중 시스템 디스크를 복제할 때
+    /// 여유 있는 다른 디스크의 볼륨 경로를 지정하십시오.
+    /// </remarks>
+    public string? DiffAreaVolumeOverride { get; set; }
+
     public bool IsAvailable
     {
         get
@@ -207,27 +218,31 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
             {
                 string normalized = volume.EndsWith('\\') ? volume : volume + '\\';
 
+                // diff 영역을 둘 볼륨: 지정이 있으면 그쪽, 없으면 대상 볼륨 자신.
+                string diffVolume = DiffAreaVolumeOverride is { } ov
+                    ? (ov.EndsWith('\\') ? ov : ov + '\\')
+                    : normalized;
+
                 long desired = ComputeDesiredDiffArea(normalized);
 
                 try
                 {
-                    // 이 볼륨의 diff 영역을 같은 볼륨 위에 두고, 최대 크기를 desired로 올립니다.
-                    // 이미 더 큰 연결이 있으면 VSS가 알아서 유지합니다.
-                    // 세 번째 인자가 최대 크기(바이트), isVolumeSnapshotted=false로 새로 만들거나 변경.
-                    diffMgmt.ChangeDiffAreaMaximumSize(normalized, normalized, desired);
+                    // 이 볼륨의 diff 영역을 diffVolume 위에 두고, 최대 크기를 desired로 올립니다.
+                    // 세 번째 인자가 최대 크기(바이트).
+                    diffMgmt.ChangeDiffAreaMaximumSize(normalized, diffVolume, desired);
                     _logger.LogInformation(
-                        "볼륨 {Volume}의 섀도 저장소 최대 크기를 {Size:N0}바이트로 요청했습니다.",
-                        normalized, desired);
+                        "볼륨 {Volume}의 섀도 저장소를 {DiffVol}에 최대 {Size:N0}바이트로 요청했습니다.",
+                        normalized, diffVolume, desired);
                 }
                 catch (Exception ex)
                 {
                     // AddDiffArea가 필요한 경우(아직 연결이 없는 볼륨)를 시도합니다.
                     try
                     {
-                        diffMgmt.AddDiffArea(normalized, normalized, desired);
+                        diffMgmt.AddDiffArea(normalized, diffVolume, desired);
                         _logger.LogInformation(
-                            "볼륨 {Volume}에 섀도 저장소 {Size:N0}바이트를 새로 연결 요청했습니다.",
-                            normalized, desired);
+                            "볼륨 {Volume}의 섀도 저장소 {Size:N0}바이트를 {DiffVol}에 새로 연결 요청했습니다.",
+                            normalized, desired, diffVolume);
                     }
                     catch (Exception ex2)
                     {

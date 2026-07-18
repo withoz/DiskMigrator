@@ -25,6 +25,78 @@ internal static class SnapshotStabilityProbe
 {
     private const int BlockSize = 16 * 1024 * 1024; // 16MB 블록 단위로 해시
 
+    /// <summary>
+    /// 스냅샷의 각 블록을 연달아 두 번 읽어, 즉시 재읽기가 일관적인지 확인합니다.
+    /// </summary>
+    /// <remarks>
+    /// "시간 드리프트"와 "읽기 방식 비일관성"을 가릅니다. 같은 블록을 back-to-back으로
+    /// 읽었는데 다르면, 시간과 무관하게 읽기 자체가 비결정적(내 읽기 방식 문제)입니다.
+    /// 즉시 두 읽기는 같은데 시간차만 다르면, 진짜 시간 드리프트입니다.
+    /// </remarks>
+    public static async Task<int> RunImmediateAsync(
+        WindowsDiskService diskService,
+        VssSnapshotProvider snapshotProvider,
+        int diskNumber,
+        int limitGb)
+    {
+        var disks = await diskService.EnumerateDisksAsync();
+        var disk = disks.FirstOrDefault(d => d.DeviceNumber == diskNumber);
+        if (disk is null) { Console.Error.WriteLine($"디스크 {diskNumber} 없음"); return 4; }
+
+        var vol = disk.Partitions.FirstOrDefault(p =>
+            p.VolumeGuidPath is not null &&
+            string.Equals(p.FileSystem, "NTFS", StringComparison.OrdinalIgnoreCase));
+        if (vol is null) { Console.Error.WriteLine("NTFS 볼륨 없음"); return 4; }
+
+        Console.WriteLine("=== 스냅샷 즉시 재읽기 일관성 테스트 (쓰기 없음) ===\n");
+        Console.WriteLine($"볼륨 {vol.DriveLetter}: 앞쪽 {limitGb}GB를 블록마다 연달아 2번 읽어 비교\n");
+
+        if (!snapshotProvider.IsAvailable) { Console.Error.WriteLine("VSS 불가"); return 3; }
+
+        using var snapshots = await snapshotProvider.CreateSnapshotSetAsync([vol.VolumeGuidPath!]);
+        using var device = snapshots.OpenSnapshotRead(vol.VolumeGuidPath!);
+
+        long limit = Math.Min((long)limitGb * 1024 * 1024 * 1024, device.Length);
+        limit -= limit % device.SectorSize;
+
+        using var bufA = new AlignedBuffer(BlockSize);
+        using var bufB = new AlignedBuffer(BlockSize);
+
+        int blocks = 0, immediateDiff = 0;
+        var diffOffsets = new List<long>();
+
+        for (long offset = 0; offset + device.SectorSize <= limit; offset += BlockSize)
+        {
+            int toRead = (int)Math.Min(BlockSize, limit - offset);
+            toRead -= toRead % device.SectorSize;
+            if (toRead == 0) break;
+
+            int r1 = device.Read(offset, bufA.SpanOf(toRead));
+            int r2 = device.Read(offset, bufB.SpanOf(toRead));   // 즉시 재읽기
+            blocks++;
+
+            if (r1 != r2 || !bufA.SpanOf(r1).SequenceEqual(bufB.SpanOf(r2)))
+            {
+                immediateDiff++;
+                if (diffOffsets.Count < 20) diffOffsets.Add(offset);
+            }
+        }
+
+        Console.WriteLine($"블록 {blocks}개 중 즉시 재읽기 불일치: {immediateDiff}개\n");
+        if (immediateDiff > 0)
+        {
+            Console.WriteLine("*** 읽기 자체가 비결정적입니다 — 시간 드리프트가 아니라 읽기 방식 문제 ***");
+            Console.WriteLine("불일치 오프셋(앞 20개):");
+            foreach (var o in diffOffsets) Console.WriteLine($"  {o:N0}");
+        }
+        else
+        {
+            Console.WriteLine("*** 즉시 재읽기는 완전히 일관적 — 앞서 관측된 변화는 진짜 시간 드리프트 ***");
+        }
+
+        return 0;
+    }
+
     public static async Task<int> RunAsync(
         WindowsDiskService diskService,
         VssSnapshotProvider snapshotProvider,

@@ -46,9 +46,23 @@ if (!diskService.IsElevated)
 // 스냅샷 안정성 측정 — 대상 없이 원본 디스크의 스냅샷만 두 번 읽어 비교. 쓰기 없음.
 if (snapStability)
 {
+    // --immediate: 즉시 재읽기 일관성 테스트 (읽기 방식 vs 시간 드리프트 구분)
+    if (args.Contains("--immediate"))
+    {
+        int limitGb = 64;
+        int li = Array.IndexOf(args, "--limit-gb");
+        if (li >= 0 && li + 1 < args.Length) int.TryParse(args[li + 1], out limitGb);
+        return await SnapshotStabilityProbe.RunImmediateAsync(
+            diskService, snapshotProvider, sourceNumber, limitGb);
+    }
+
     int waitSec = 60;
     int wi = Array.IndexOf(args, "--wait");
     if (wi >= 0 && wi + 1 < args.Length) int.TryParse(args[wi + 1], out waitSec);
+
+    // --diff-volume <경로>: 섀도 저장소를 다른 볼륨에 두고 테스트 (드리프트 원인 검증)
+    int dvi = Array.IndexOf(args, "--diff-volume");
+    if (dvi >= 0 && dvi + 1 < args.Length) snapshotProvider.DiffAreaVolumeOverride = args[dvi + 1];
 
     return await SnapshotStabilityProbe.RunAsync(
         diskService, snapshotProvider,
