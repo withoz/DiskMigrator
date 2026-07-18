@@ -58,7 +58,8 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                 _logger.LogInformation("구간 복사: {Region}", region);
             }
 
-            bytesCopied = CopyAll(plan, options, progress, pause, badSectors, stopwatch, ct);
+            var hashLog = new CopyHashLog();
+            bytesCopied = CopyAll(plan, options, progress, pause, badSectors, hashLog, stopwatch, ct);
 
             plan.Target.Flush();
 
@@ -67,8 +68,10 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
             if (options.VerifyAfterClone)
             {
-                var verification = Verifier.Verify(
-                    plan, options, progress, pause, badSectors, stopwatch, ct);
+                // 원본(드리프트 가능한 스냅샷)을 다시 읽지 않고, 복제 때 대상에 쓴 데이터의
+                // 해시와 대상을 비교합니다. 쓰기 오류만 정확히 잡고 스냅샷 드리프트엔 영향받지 않습니다.
+                var verification = Verifier.VerifyAgainstHashes(
+                    plan, options, hashLog, progress, pause, stopwatch, ct);
                 verificationPassed = verification.Passed;
                 mismatches = verification.Mismatches;
 
@@ -78,9 +81,8 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
                     _logger.LogError(
                         "검증 실패: 불일치 구간 {Count}개, 총 {Bytes:N0}바이트 " +
-                        "(전체의 {Percent:F6}%). 앞쪽 불일치 위치를 아래에 남깁니다 — " +
-                        "특정 영역(예: 페이지 파일)에 몰려 있으면 양성일 수 있고, 넓게 퍼져 있으면 " +
-                        "스냅샷 붕괴일 가능성이 높습니다.",
+                        "(전체의 {Percent:F6}%). 대상이 우리가 쓴 데이터를 그대로 보존하지 못했습니다 — " +
+                        "매체 불량이나 쓰기 오류일 가능성이 높습니다. 앞쪽 불일치 위치를 남깁니다.",
                         verification.Mismatches.Count, mismatchBytes,
                         plan.TotalBytes > 0 ? mismatchBytes * 100.0 / plan.TotalBytes : 0);
 
@@ -169,6 +171,7 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
         IProgress<CloneProgress>? progress,
         PauseController? pause,
         List<BadSectorRecord> badSectors,
+        CopyHashLog hashLog,
         Stopwatch stopwatch,
         CancellationToken ct)
     {
@@ -201,7 +204,15 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                         $"{region.Description}: 오프셋 {sourceOffset:N0}에서 읽은 바이트가 없습니다.");
                 }
 
-                plan.Target.Write(region.TargetOffset + position, span[..read]);
+                long targetOffset = region.TargetOffset + position;
+                plan.Target.Write(targetOffset, span[..read]);
+
+                // 검증용: 방금 대상에 쓴 데이터의 해시를 기록해 둡니다. 검증 때 원본(드리프트
+                // 가능한 스냅샷)을 다시 읽는 대신 이 해시와 대상을 비교합니다.
+                if (options.VerifyAfterClone)
+                {
+                    hashLog.Record(targetOffset, span[..read]);
+                }
 
                 position += read;
                 totalCopied += read;

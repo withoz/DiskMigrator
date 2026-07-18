@@ -283,6 +283,41 @@ public class CloneEngineTests
     }
 
     [Fact]
+    public async Task 복제_후_원본이_드리프트해도_검증은_통과한다()
+    {
+        // 이것이 해시 기반 검증의 핵심입니다. 실기에서 VSS 스냅샷은 복제 후 시간이 지나면
+        // (섀도 저장소 드리프트로) 값이 바뀝니다. 검증이 원본을 다시 읽으면 가짜 불일치가
+        // 나지만, 우리는 "복제 때 쓴 데이터"의 해시와 대상을 비교하므로 원본 드리프트에
+        // 영향받지 않아야 합니다.
+        var source = new DriftingBlockDevice(DeviceSize, Sector);
+        source.FillWithPattern();
+        var target = new FaultyBlockDevice(DeviceSize, Sector);
+
+        var plan = new ClonePlan
+        {
+            Target = target,
+            Regions =
+            [
+                new CopyRegion
+                {
+                    Source = source, SourceOffset = 0, TargetOffset = 0,
+                    Length = source.Length, Description = "스냅샷 흉내",
+                },
+            ],
+        };
+
+        // 복제가 끝난 뒤 원본을 바꾸도록 설정 (스냅샷 드리프트 시뮬레이션).
+        source.DriftAfterReads = source.Length / Sector; // 전체를 한 번 읽고 나면 드리프트
+
+        var result = await new CloneEngine().RunAsync(plan, Options(verify: true));
+
+        // 원본이 검증 시점에 달라졌어도, 대상은 복제 때 쓴 그대로이므로 검증은 통과해야 합니다.
+        Assert.Equal(CloneOutcome.Completed, result.Outcome);
+        Assert.True(result.VerificationPassed);
+        Assert.Empty(result.VerificationMismatches);
+    }
+
+    [Fact]
     public async Task 취소하면_Cancelled로_보고한다()
     {
         var source = new FaultyBlockDevice(DeviceSize, Sector).FillWithPattern();
@@ -420,6 +455,30 @@ public class CloneEngineTests
         var result = await task;
         Assert.Equal(CloneOutcome.Completed, result.Outcome);
         Assert.Equal(source.Data, target.Data);
+    }
+
+    /// <summary>
+    /// 일정 횟수만큼 읽힌 뒤부터는 다른 데이터를 반환하는 장치.
+    /// VSS 스냅샷이 복제 후 드리프트하는 상황을 흉내 냅니다.
+    /// </summary>
+    private sealed class DriftingBlockDevice(long length, int sectorSize)
+        : FaultyBlockDevice(length, sectorSize)
+    {
+        private long _reads;
+
+        /// <summary>이 횟수를 넘어선 읽기부터는 데이터를 뒤집어 반환합니다.</summary>
+        public long DriftAfterReads { get; set; } = long.MaxValue;
+
+        public override int Read(long offset, Span<byte> buffer)
+        {
+            int read = base.Read(offset, buffer);
+            if (_reads++ >= DriftAfterReads)
+            {
+                // 드리프트: 모든 바이트를 뒤집어, 복제 시점과 다른 값을 반환.
+                for (int i = 0; i < read; i++) buffer[i] ^= 0xFF;
+            }
+            return read;
+        }
     }
 
     /// <summary>쓴 내용을 몰래 바꿔서, 검증이 실제로 다시 읽어 비교하는지 확인합니다.</summary>

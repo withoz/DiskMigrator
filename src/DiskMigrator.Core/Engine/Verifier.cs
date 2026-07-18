@@ -25,6 +25,73 @@ public sealed record VerificationOutcome(
 /// </remarks>
 public static class Verifier
 {
+    /// <summary>
+    /// 대상을 다시 읽어, 복제 때 기록해 둔 해시와 비교합니다.
+    /// </summary>
+    /// <remarks>
+    /// 원본(스냅샷)을 다시 읽지 않습니다. 클라이언트 Windows에서 VSS 섀도 저장소가 스냅샷
+    /// 대상 볼륨 자신에 놓이면서 시간에 따라 스냅샷 값이 바뀌는(무해한) 드리프트가 생기는데,
+    /// 원본 재읽기 방식은 이를 가짜 불일치로 잡습니다. 대신 "우리가 실제로 쓴 데이터"의 해시와
+    /// 대상을 비교하면, 매체 불량이나 쓰기 오류만 정확히 잡고 드리프트엔 영향받지 않습니다.
+    /// </remarks>
+    internal static VerificationOutcome VerifyAgainstHashes(
+        ClonePlan plan,
+        CloneOptions options,
+        CopyHashLog hashLog,
+        IProgress<CloneProgress>? progress,
+        PauseController? pause,
+        Stopwatch stopwatch,
+        CancellationToken ct)
+    {
+        using var buffer = new AlignedBuffer(options.BufferSize);
+
+        var reporter = new ProgressReporter(progress, options.ProgressInterval, stopwatch, plan.TotalBytes);
+        var mismatches = new List<(long, long)>();
+        long verified = 0;
+        long processed = 0;
+
+        foreach (var block in hashLog.Blocks)
+        {
+            ct.ThrowIfCancellationRequested();
+            pause?.WaitIfPaused(ct);
+
+            var span = buffer.SpanOf(block.Length);
+            int read = CloneEngine.ReadWithRetry(plan.Target, block.TargetOffset, span, options, ct);
+
+            if (read != block.Length || !CopyHashLog.Matches(block, span[..read]))
+            {
+                // 블록 단위로 불일치. 인접 블록은 하나의 구간으로 합쳐 리포트를 읽기 쉽게 합니다.
+                if (mismatches.Count > 0)
+                {
+                    var (lastOffset, lastLength) = mismatches[^1];
+                    if (lastOffset + lastLength == block.TargetOffset)
+                    {
+                        mismatches[^1] = (lastOffset, lastLength + block.Length);
+                    }
+                    else
+                    {
+                        mismatches.Add((block.TargetOffset, block.Length));
+                    }
+                }
+                else
+                {
+                    mismatches.Add((block.TargetOffset, block.Length));
+                }
+            }
+            else
+            {
+                verified += block.Length;
+            }
+
+            processed += block.Length;
+            reporter.Report("검증", "대상 무결성 확인", processed, block.TargetOffset + block.Length, 0);
+        }
+
+        reporter.ReportFinal("검증", "대상 무결성 확인", processed, plan.Target.Length, 0);
+
+        return new VerificationOutcome(mismatches.Count == 0, mismatches, verified, 0);
+    }
+
     internal static VerificationOutcome Verify(
         ClonePlan plan,
         CloneOptions options,
