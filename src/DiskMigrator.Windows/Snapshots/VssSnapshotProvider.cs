@@ -216,7 +216,7 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
                     // 세 번째 인자가 최대 크기(바이트), isVolumeSnapshotted=false로 새로 만들거나 변경.
                     diffMgmt.ChangeDiffAreaMaximumSize(normalized, normalized, desired);
                     _logger.LogInformation(
-                        "볼륨 {Volume}의 섀도 저장소 최대 크기를 {Size:N0}바이트로 확보했습니다.",
+                        "볼륨 {Volume}의 섀도 저장소 최대 크기를 {Size:N0}바이트로 요청했습니다.",
                         normalized, desired);
                 }
                 catch (Exception ex)
@@ -226,7 +226,7 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
                     {
                         diffMgmt.AddDiffArea(normalized, normalized, desired);
                         _logger.LogInformation(
-                            "볼륨 {Volume}에 섀도 저장소 {Size:N0}바이트를 새로 연결했습니다.",
+                            "볼륨 {Volume}에 섀도 저장소 {Size:N0}바이트를 새로 연결 요청했습니다.",
                             normalized, desired);
                     }
                     catch (Exception ex2)
@@ -237,6 +237,21 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
                             normalized, ex.Message, ex2.Message);
                     }
                 }
+
+                // VSS가 실제로 확보한 diff 영역 크기를 되물어 로그에 남깁니다. 요청값과 실제가
+                // 다를 수 있고(볼륨이 작으면 캡됨), 이 값이 클론 중 쓰기량보다 작으면 스냅샷이
+                // 붕괴합니다. 진단에 핵심 정보라 실패해도 무시하고 남깁니다.
+                try
+                {
+                    foreach (var area in diffMgmt.QueryDiffAreasForVolume(normalized))
+                    {
+                        _logger.LogInformation(
+                            "  실제 섀도 저장소: 볼륨 {Vol} / 저장위치 {Store} / 최대 {Max:N0} / 할당 {Alloc:N0} / 사용 {Used:N0}바이트",
+                            area.VolumeName, area.DiffAreaVolumeName,
+                            area.MaximumDiffSpace, area.AllocatedDiffSpace, area.UsedDiffSpace);
+                    }
+                }
+                catch { /* 진단용이므로 실패는 무시 */ }
             }
         }
         catch (Exception ex)

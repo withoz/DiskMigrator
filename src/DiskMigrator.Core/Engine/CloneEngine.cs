@@ -74,7 +74,26 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
                 if (!verification.Passed)
                 {
-                    _logger.LogError("검증 실패: 불일치 구간 {Count}개", verification.Mismatches.Count);
+                    long mismatchBytes = verification.Mismatches.Sum(m => m.Length);
+
+                    _logger.LogError(
+                        "검증 실패: 불일치 구간 {Count}개, 총 {Bytes:N0}바이트 " +
+                        "(전체의 {Percent:F6}%). 앞쪽 불일치 위치를 아래에 남깁니다 — " +
+                        "특정 영역(예: 페이지 파일)에 몰려 있으면 양성일 수 있고, 넓게 퍼져 있으면 " +
+                        "스냅샷 붕괴일 가능성이 높습니다.",
+                        verification.Mismatches.Count, mismatchBytes,
+                        plan.TotalBytes > 0 ? mismatchBytes * 100.0 / plan.TotalBytes : 0);
+
+                    // 앞쪽 40개의 대상 오프셋을, 그 오프셋이 속한 구간(파티션) 설명과 함께 남깁니다.
+                    foreach (var (offset, length) in verification.Mismatches.Take(40))
+                    {
+                        var region = plan.Regions.FirstOrDefault(
+                            r => offset >= r.TargetOffset && offset < r.TargetOffset + r.Length);
+                        string where = region is null ? "구간 밖" : region.Description;
+                        _logger.LogError(
+                            "  불일치: 대상 오프셋 {Offset:N0} 길이 {Length:N0} — {Where}",
+                            offset, length, where);
+                    }
                 }
             }
 
