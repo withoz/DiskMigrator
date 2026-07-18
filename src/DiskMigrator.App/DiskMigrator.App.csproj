@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>DiskMigrator.App</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>DiskMigrator</AssemblyTitle>
+  </PropertyGroup>
+
+  <!-- GitHub Releases 배포용: 런타임 미설치 PC에서도 실행되는 단일 exe -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+
+    <!--
+      AlphaVSS.x64.dll은 혼합 모드(C++/CLI) 어셈블리라 단일 exe 안에서 메모리로 로드할 수
+      없고, 반드시 디스크에 풀린 상태여야 합니다. 게다가 AlphaVSS의 자체 어셈블리 리졸버는
+      실행 폴더에서 "AlphaVSS.x64.dll"과 "Ijwhost.dll"을 파일로 찾습니다.
+
+      IncludeNativeLibrariesForSelfExtract 만으로는 이 혼합 어셈블리가 리졸버가 찾는 위치에
+      풀리지 않아, 실기에서 "Failed to find assembly AlphaVSS.x64" 오류로 VSS가 로드되지
+      않았습니다. 그 결과 스냅샷 없이 라이브 시스템 디스크가 복제되어 불일치가 생겼습니다.
+
+      IncludeAllContentForSelfExtract=true 로 바꾸면 모든 콘텐츠(관리·네이티브·혼합)를
+      시작 시 임시 폴더로 풀고 그 폴더에서 실행하므로, 일반 폴더 배포와 동일한 레이아웃이
+      되어 AlphaVSS 리졸버가 파일을 찾습니다. 첫 실행이 몇 초 느려지는 대신 확실합니다.
+    -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
+    <!-- 혼합 모드 어셈블리는 압축 시 추출 로드가 불안정할 수 있어 압축을 끕니다. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+
+    <!-- AlphaVSS는 런타임에 OS 버전별 네이티브 인터롭 어셈블리를 리플렉션으로 로드하므로 트리밍 금지 -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DiskMigrator.Core\DiskMigrator.Core.csproj" />
+    <ProjectReference Include="..\DiskMigrator.Windows\DiskMigrator.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>
