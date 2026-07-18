@@ -26,6 +26,7 @@ bool verify = !args.Contains("--no-verify");
 bool planOnly = args.Contains("--plan-only");
 bool snapStability = args.Contains("--snapshot-stability");
 bool bootCheckOnly = args.Contains("--boot-check");
+bool fixBootOnly = args.Contains("--fix-boot");
 bool runBootCheck = !args.Contains("--no-boot-check");
 
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
@@ -36,6 +37,8 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
         "      가상 디스크(VHD) 대상으로 실제 클론을 실행하고, 성공 시 부팅 구성을 정적 검사합니다.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --boot-check\n" +
         "      실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성만 점검합니다 (읽기 전용).\n" +
+        "  DiskMigrator.VhdTest <디스크번호> --fix-boot\n" +
+        "      클론의 BCD 장치 참조를 현재 파티션으로 복구합니다 (0xc000000e 해결, ESP에만 씀).\n" +
         "  DiskMigrator.VhdTest <원본디스크번호> --plan-only [--snapshot]\n" +
         "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --snapshot-stability [--wait <초>]\n" +
@@ -68,6 +71,34 @@ if (bootCheckOnly)
         return 4;
     }
     return BootCheck.Run(disk);
+}
+
+// 부팅 복구 — 클론 디스크의 BCD 장치 참조를 현재 파티션으로 다시 써서 0xc000000e를 고칩니다.
+// ESP에만 씁니다(원시 섹터 아님). 클론(실물/가상 무관)에 사용합니다.
+if (fixBootOnly)
+{
+    var allDisks = await diskService.EnumerateDisksAsync();
+    var disk = allDisks.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
+    if (disk is null)
+    {
+        Console.Error.WriteLine($"오류: 디스크 {sourceNumber}를 찾을 수 없습니다.");
+        return 4;
+    }
+
+    Console.WriteLine($"=== 부팅 복구: [{disk.DeviceNumber}] {disk.Model} ===\n");
+    var repair = new BootRepair(loggerFactory.CreateLogger<BootRepair>());
+    var result = repair.Repair(disk);
+    foreach (var step in result.Steps) Console.WriteLine($"  {step}");
+    Console.WriteLine($"\n{(result.Success ? "*** 복구 성공 ***" : "*** 복구 실패 ***")}  {result.Message}");
+
+    if (result.Success)
+    {
+        // 복구 후 재검사로 확인.
+        var refreshed = await diskService.EnumerateDisksAsync();
+        var fresh = refreshed.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
+        if (fresh is not null) BootCheck.Run(fresh);
+    }
+    return result.Success ? 0 : 1;
 }
 
 // 스냅샷 안정성 측정 — 대상 없이 원본 디스크의 스냅샷만 두 번 읽어 비교. 쓰기 없음.

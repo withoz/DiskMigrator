@@ -336,6 +336,35 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                             </Border>
+
+                            <!-- 부팅 복구 (BCD 장치 참조 문제 시) -->
+                            <StackPanel Margin="0,12,0,0"
+                                        Visibility="{Binding BootRepairAvailable, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="부팅 복구" Command="{Binding RepairBootCommand}"
+                                            MinWidth="120" Padding="14,7" />
+                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11"
+                                               Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="420"
+                                               Text="BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다." />
+                                </StackPanel>
+                                <TextBlock Text="복구 중..." Margin="0,6,0,0" FontSize="12"
+                                           Foreground="{StaticResource Muted}"
+                                           Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"
+                                       Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </StackPanel>
 

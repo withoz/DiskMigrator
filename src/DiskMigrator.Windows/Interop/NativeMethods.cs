@@ -129,4 +129,14 @@ internal static partial class NativeMethods
         uint nOutBufferSize,
         out uint lpBytesReturned,
         nint lpOverlapped);
+
+    /// <summary>볼륨에 드라이브 문자/폴더 마운트 지점을 지정합니다. mountPoint는 "S:\\", volumeName은 "\\?\Volume{GUID}\\".</summary>
+    [LibraryImport(Kernel32, EntryPoint = "SetVolumeMountPointW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetVolumeMountPoint(string lpszVolumeMountPoint, string lpszVolumeName);
+
+    /// <summary>마운트 지점을 제거합니다. mountPoint는 "S:\\".</summary>
+    [LibraryImport(Kernel32, EntryPoint = "DeleteVolumeMountPointW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool DeleteVolumeMountPoint(string lpszVolumeMountPoint);
 }

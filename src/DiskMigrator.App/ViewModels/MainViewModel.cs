@@ -177,6 +177,21 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>판정이 긍정(부팅 준비/가능)이면 true — 색 구분용.</summary>
     [ObservableProperty] private bool _bootCheckVerdictIsGood;
 
+    // --- 부팅 복구 (BCD 장치 참조 수정) ------------------------------------
+
+    /// <summary>검사에서 BCD 장치 참조 문제가 잡혀 복구 버튼을 보여줄지.</summary>
+    [ObservableProperty] private bool _bootRepairAvailable;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RepairBootCommand))]
+    private bool _isRepairingBoot;
+
+    public bool CanRepairBoot => !IsRepairingBoot;
+
+    [ObservableProperty] private bool _bootRepairRan;
+    [ObservableProperty] private string _bootRepairMessage = "";
+    [ObservableProperty] private bool _bootRepairSuccess;
+
     // --- 명령 --------------------------------------------------------------
 
     [RelayCommand]
@@ -316,6 +331,9 @@ public sealed partial class MainViewModel : ObservableObject
         BootCheckRan = false;
         BootCheckVerdict = "";
         BootCheckVerdictIsGood = false;
+        BootRepairAvailable = false;
+        BootRepairRan = false;
+        BootRepairMessage = "";
     }
 
     /// <summary>
@@ -369,6 +387,10 @@ public sealed partial class MainViewModel : ObservableObject
                     _ => ("판정 불가 — 치명 항목을 확인하지 못했습니다 (대상이 온라인·마운트 상태인지 확인)", false),
                 };
 
+            // BCD 장치 참조가 이 디스크와 불일치(0xc000000e)면 복구 버튼을 제안합니다.
+            BootRepairAvailable = report.Items.Any(i =>
+                i.Passed == false && i.Name.Contains("장치 참조"));
+
             BootCheckRan = true;
             _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
         }
@@ -382,6 +404,58 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             IsBootChecking = false;
+        }
+    }
+
+    /// <summary>
+    /// 클론의 BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRepairBoot))]
+    private async Task RepairBootAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsRepairingBoot = true;
+        BootRepairRan = false;
+        try
+        {
+            var previousTarget = SelectedTarget.Disk;
+            var disks = await _diskService.EnumerateDisksAsync();
+            var target = disks.FirstOrDefault(d =>
+                             d.SizeBytes == previousTarget.SizeBytes &&
+                             string.Equals(d.Model, previousTarget.Model, StringComparison.OrdinalIgnoreCase) &&
+                             string.Equals(d.SerialNumber ?? "", previousTarget.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase))
+                         ?? disks.FirstOrDefault(d => d.DeviceNumber == previousTarget.DeviceNumber);
+
+            if (target is null)
+            {
+                BootRepairMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                BootRepairSuccess = false;
+                BootRepairRan = true;
+                return;
+            }
+
+            var repair = new BootRepair(_loggerFactory.CreateLogger<BootRepair>());
+            var result = await Task.Run(() => repair.Repair(target));
+
+            BootRepairMessage = result.Message;
+            BootRepairSuccess = result.Success;
+            BootRepairRan = true;
+            _logger.LogInformation("부팅 복구: 성공={Success} {Message}", result.Success, result.Message);
+
+            // 복구 성공 시 자동으로 다시 검사해 결과를 갱신합니다.
+            if (result.Success) await BootCheckAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "부팅 복구에 실패했습니다.");
+            BootRepairMessage = $"복구에 실패했습니다: {ex.Message}";
+            BootRepairSuccess = false;
+            BootRepairRan = true;
+        }
+        finally
+        {
+            IsRepairingBoot = false;
         }
     }
 
