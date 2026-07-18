@@ -19,7 +19,9 @@
 param(
     [string]$WorkDir = "$env:TEMP\DiskMigratorVhdTest",
     [switch]$UseSnapshot,
-    [switch]$KeepVhds
+    [switch]$KeepVhds,
+    # 검증할 실행파일. 단일 exe의 VSS 경로를 확인하려면 게시된 단일 exe를 지정합니다.
+    [string]$ExePath = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -169,7 +171,8 @@ attach vdisk
     # --- 클론 실행 -------------------------------------------------------
     Write-Step "클론 실행 (DiskMigrator.VhdTest)"
 
-    $exe = Join-Path $PSScriptRoot 'DiskMigrator.VhdTest\bin\Release\net8.0-windows\DiskMigrator.VhdTest.exe'
+    $exe = if ($ExePath) { $ExePath } else { Join-Path $PSScriptRoot 'DiskMigrator.VhdTest\bin\Release\net8.0-windows\DiskMigrator.VhdTest.exe' }
+    Write-Info "사용 실행파일: $exe"
     if (-not (Test-Path $exe)) { throw "빌드된 도구를 찾지 못했습니다: $exe" }
 
     $cloneArgs = @($sourceNum, $targetNum)
@@ -198,7 +201,19 @@ attach vdisk
     Write-Info "원본 VHD 분리 (GUID 충돌 방지)"
     Start-Sleep -Milliseconds 1000
 
+    # 원본을 뗀 뒤 대상의 클론 볼륨(원본과 같은 NTFS 시리얼)이 표면화되려면 재검색이 필요합니다.
+    Invoke-Diskpart "rescan" | Out-Null
+    Start-Sleep -Milliseconds 1500
+
     $targetNum = Get-VhdDiskNumber $script:TargetVhd
+
+    # 클론 디스크가 서명 충돌로 오프라인일 수 있으니 온라인 + 쓰기 가능으로 만듭니다.
+    $td = Get-Disk -Number $targetNum
+    if ($td.IsOffline) { Set-Disk -Number $targetNum -IsOffline $false; Start-Sleep -Milliseconds 500 }
+    if ($td.IsReadOnly) { Set-Disk -Number $targetNum -IsReadOnly $false; Start-Sleep -Milliseconds 500 }
+    Invoke-Diskpart "rescan" | Out-Null
+    Start-Sleep -Milliseconds 1000
+
     $targetDisk = Get-Disk -Number $targetNum
 
     Write-Info "대상 디스크 상태: $($targetDisk.OperationalStatus) / $($targetDisk.HealthStatus) / $($targetDisk.PartitionStyle)"
@@ -228,19 +243,39 @@ attach vdisk
     }
 
     # 5) 볼륨이 마운트되고 파일이 읽히는가
-    $targetPart = Get-Partition -DiskNumber $targetNum | Where-Object { $_.Type -ne 'Reserved' } | Select-Object -First 1
-    if (-not $targetPart.DriveLetter -or $targetPart.DriveLetter -eq "`0") {
-        $targetPart = $targetPart | Add-PartitionAccessPath -AssignDriveLetter -PassThru
-        Start-Sleep -Milliseconds 500
-        $targetPart = Get-Partition -DiskNumber $targetNum -PartitionNumber $targetPart.PartitionNumber
+    #    클론된 GPT 디스크에는 작은 RAW 파티션과 NTFS 데이터 파티션이 함께 있으므로,
+    #    "첫 비예약 파티션"이 아니라 실제 NTFS 볼륨을 정확히 찾아야 합니다.
+    $targetVol = $null
+    # 볼륨이 마운트될 때까지 몇 번 재시도 (재검색 직후엔 지연이 있을 수 있음).
+    for ($attempt = 0; $attempt -lt 5 -and -not $targetVol; $attempt++) {
+        foreach ($p in (Get-Partition -DiskNumber $targetNum -ErrorAction SilentlyContinue | Sort-Object Size -Descending)) {
+            $v = Get-Volume -Partition $p -ErrorAction SilentlyContinue
+            if ($v -and $v.FileSystem -eq 'NTFS') { $targetVol = $v; $targetPart = $p; break }
+            # 문자가 없으면 붙여서 다시 시도
+            if (-not $v -or -not $v.FileSystem) {
+                $p | Add-PartitionAccessPath -AssignDriveLetter -ErrorAction SilentlyContinue | Out-Null
+            }
+        }
+        if (-not $targetVol) { Start-Sleep -Milliseconds 1000 }
     }
 
-    $dstLetter = $targetPart.DriveLetter
-    Write-Info "대상 볼륨: ${dstLetter}:"
+    if (-not $targetVol) {
+        Write-Fail "클론된 디스크에서 NTFS 볼륨을 찾지 못했습니다."
+        $failures++
+    } else {
+        # 드라이브 문자를 볼륨에서 직접 얻습니다 (파티션 객체의 문자는 갱신이 늦을 수 있음).
+        $dstLetter = $targetVol.DriveLetter
+        if (-not $dstLetter) {
+            $targetPart | Add-PartitionAccessPath -AssignDriveLetter -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 800
+            $targetVol = Get-Volume -Partition (Get-Partition -DiskNumber $targetNum -PartitionNumber $targetPart.PartitionNumber)
+            $dstLetter = $targetVol.DriveLetter
+        }
+        Write-Info "대상 볼륨: ${dstLetter}: (레이블 '$($targetVol.FileSystemLabel)')"
 
-    $targetVol = Get-Volume -DriveLetter $dstLetter
-    if ($targetVol.FileSystemLabel -eq 'CLONESRC') { Write-Ok "볼륨 레이블이 원본과 일치 (CLONESRC)" }
-    else { Write-Fail "볼륨 레이블이 '$($targetVol.FileSystemLabel)' 입니다"; $failures++ }
+        if ($targetVol.FileSystemLabel -eq 'CLONESRC') { Write-Ok "볼륨 레이블이 원본과 일치 (CLONESRC)" }
+        else { Write-Fail "볼륨 레이블이 '$($targetVol.FileSystemLabel)' 입니다"; $failures++ }
+    }
 
     # 6) 파일 내용 해시 대조 — 클론이 실제로 데이터를 옮겼는지 최종 확인
     $mismatches = 0
