@@ -176,15 +176,31 @@ public class SafetyGuardTests
     }
 
     [Fact]
-    public void 실행중_시스템_디스크를_스냅샷_없이_복제하면_경고한다()
+    public void 실행중_시스템_디스크를_스냅샷_없이_복제하면_차단한다()
     {
+        // 실기에서 이 조합(VSS 미로드 → 스냅샷 없이 라이브 시스템 복제)이 불일치 2097건의
+        // 깨진 클론을 만들었습니다. 예측 가능하게 나쁜 결과이므로 경고가 아니라 차단합니다.
         var report = SafetyGuard.Evaluate(
             Disk(0, serial: "A1", isSystem: true),
             Disk(1, serial: "B2"),
             isElevated: true,
             useSnapshot: false);
 
-        Assert.Contains(report.Warnings, i => i.Code == SafetyGuard.CodeSourceIsLiveSystem);
+        Assert.False(report.CanProceed);
+        Assert.Contains(report.Blockers, i => i.Code == SafetyGuard.CodeSourceIsLiveSystem);
+    }
+
+    [Fact]
+    public void 스냅샷을_쓰면_실행중_시스템_디스크도_진행할_수_있다()
+    {
+        var report = SafetyGuard.Evaluate(
+            Disk(0, serial: "A1", isSystem: true),
+            Disk(1, serial: "B2"),
+            isElevated: true,
+            useSnapshot: true);
+
+        Assert.DoesNotContain(report.Blockers, i => i.Code == SafetyGuard.CodeSourceIsLiveSystem);
+        Assert.True(report.CanProceed);
     }
 
     [Fact]
