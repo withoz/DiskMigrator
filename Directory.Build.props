@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0</Version>
+    <Product>DiskMigrator</Product>
+    <Company>DiskMigrator contributors</Company>
+    <Copyright>Copyright (c) DiskMigrator contributors</Copyright>
+    <NeutralLanguage>ko-KR</NeutralLanguage>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+</Project>

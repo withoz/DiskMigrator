@@ -1,0 +1,128 @@
+<Application x:Class="DiskMigrator.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:DiskMigrator.App.Converters">
+    <Application.Resources>
+
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <conv:StageToVisibilityConverter x:Key="StageToVisibility" />
+        <conv:SeverityToBrushConverter x:Key="SeverityToBrush" />
+        <conv:SeverityToLabelConverter x:Key="SeverityToLabel" />
+        <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+
+        <!-- 팔레트: 위험한 도구인 만큼 경고색을 아껴 써서, 진짜 위험할 때 눈에 띄게 합니다. -->
+        <SolidColorBrush x:Key="Accent" Color="#2563EB" />
+        <SolidColorBrush x:Key="Danger" Color="#DC2626" />
+        <SolidColorBrush x:Key="Warning" Color="#D97706" />
+        <SolidColorBrush x:Key="Success" Color="#059669" />
+        <SolidColorBrush x:Key="Muted" Color="#6B7280" />
+        <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="SurfaceAlt" Color="#F9FAFB" />
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="#E5E7EB" />
+        <SolidColorBrush x:Key="TextBrush" Color="#111827" />
+
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <Style x:Key="Heading" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <Style x:Key="SubHeading" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="MinWidth" Value="90" />
+            <Setter Property="Background" Value="{StaticResource Surface}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Danger}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Danger}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- 디스크 목록 항목: 어떤 디스크인지 한눈에 알아보지 못하면 사용자가 잘못 고릅니다. -->
+        <DataTemplate x:Key="DiskItemTemplate">
+            <Border Padding="10,8" Background="Transparent">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Model}" FontWeight="SemiBold" FontSize="13"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                        <TextBlock Text="{Binding SizeText}" Margin="8,0,0,0" FontSize="13"
+                                   Foreground="{StaticResource Accent}" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding DetailText}" FontSize="11"
+                               Foreground="{StaticResource Muted}" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <Border Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
+                            CornerRadius="3" Padding="5,1" Margin="0,4,0,0" HorizontalAlignment="Left"
+                            Visibility="{Binding HasBadges, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding BadgeText}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Danger}" />
+                    </Border>
+
+                    <TextBlock Text="{Binding PartitionSummary}" FontSize="10"
+                               Foreground="{StaticResource Muted}" Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <Style x:Key="DiskListStyle" TargetType="ListBox">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{StaticResource Surface}" />
+            <Setter Property="ItemTemplate" Value="{StaticResource DiskItemTemplate}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+
+    </Application.Resources>
+</Application>

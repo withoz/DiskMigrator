@@ -1,0 +1,39 @@
+## 빌드 산출물
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+publish/
+*.user
+*.suo
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.userprefs
+
+## 테스트 결과
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+*.trx
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+
+## 로그와 디스크 이미지
+*.log
+logs/
+*.img
+*.vhd
+*.vhdx
+
+## OS
+Thumbs.db
+.DS_Store
+desktop.ini
