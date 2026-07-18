@@ -7,6 +7,15 @@ using DiskMigrator.Windows.Jobs;
 using DiskMigrator.Windows.Snapshots;
 using Microsoft.Extensions.Logging;
 
+// 하이브 편집(Universal Restore) 진단 — 인자를 미리 처리 (디스크 열거 불필요).
+if (args.Length >= 2 && args[0] == "--hive-read")
+    return DiskMigrator.VhdTest.HiveTool.Read(args[1]);
+if (args.Length >= 2 && args[0] == "--hive-fix")
+{
+    using var lf0 = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    return DiskMigrator.VhdTest.HiveTool.Fix(args[1], lf0.CreateLogger("HiveFix"));
+}
+
 // 가상 디스크(VHD)를 대상으로 클론 전체 경로를 실제로 실행해 보는 통합 테스트 도구입니다.
 // 쓰기 경로 · 볼륨 잠금 · VSS 스냅샷 · GPT 보정은 단위 테스트로는 확인할 수 없습니다.
 
