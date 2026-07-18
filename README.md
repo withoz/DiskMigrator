@@ -270,4 +270,16 @@ dotnet run --project tools/DiskMigrator.Probe
 
 ## 라이선스
 
-[MIT](LICENSE). 사용 라이브러리: AlphaVSS (MIT), CommunityToolkit.Mvvm (MIT), Serilog (Apache-2.0).
+이 프로젝트는 [MIT](LICENSE)로 배포합니다.
+
+사용하는 오픈소스 라이브러리는 모두 허용적 라이선스(MIT 또는 Apache-2.0)이며 MIT 배포와 호환됩니다:
+
+| 라이브러리 | 라이선스 |
+|-----------|---------|
+| CommunityToolkit.Mvvm | MIT |
+| System.Management, System.CodeDom, Microsoft.Extensions.* | MIT |
+| Serilog (및 Sinks) | Apache-2.0 |
+| AlphaVSS, AlphaVSS.Native.NetCore | Apache-2.0 |
+| .NET 8 런타임 (self-contained exe에 내장) | MIT |
+
+전체 고지는 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)를 참조하십시오. Apache-2.0 라이선스 구성요소의 저작권 고지가 포함되어 있습니다.
