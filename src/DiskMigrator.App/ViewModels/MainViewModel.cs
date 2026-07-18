@@ -85,6 +85,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private bool _verifyAfterClone = true;
 
+    /// <summary>
+    /// 클론 후 대상 Windows를 하드웨어 독립화(Universal Restore)할지. 시스템 디스크를
+    /// 다른 PC로 옮길 때 켭니다. 표준 저장소 드라이버를 부팅 시작으로 설정해 0x7B를 예방합니다.
+    /// </summary>
+    [ObservableProperty] private bool _universalRestore;
+
     // --- 안전 점검 ---------------------------------------------------------
 
     public ObservableCollection<SafetyIssue> SafetyIssues { get; } = [];
@@ -318,7 +324,8 @@ public sealed partial class MainViewModel : ObservableObject
             var orchestrator = new CloneOrchestrator(_diskService, _snapshotProvider, _loggerFactory);
 
             var report = await orchestrator.RunAsync(
-                source, target, UseSnapshot, options, progress, _pause, _cts.Token);
+                source, target, UseSnapshot, options, UniversalRestore,
+                progress, _pause, _cts.Token);
 
             ShowResult(report);
         }
@@ -398,6 +405,11 @@ public sealed partial class MainViewModel : ObservableObject
         if (report.GptRepair is { } gpt)
         {
             details.Add($"GPT: {gpt.Description}");
+        }
+
+        if (report.UniversalRestore is { } ur)
+        {
+            details.Add($"새 하드웨어 대비: {ur.Message}");
         }
 
         ResultDetails = string.Join("\n", details);

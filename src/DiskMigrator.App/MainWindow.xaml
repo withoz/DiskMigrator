@@ -114,10 +114,19 @@
                         </CheckBox>
 
                         <CheckBox IsChecked="{Binding ZeroFillBadSectors}" VerticalContentAlignment="Center"
-                                  Margin="0,0,0,4">
+                                  Margin="0,0,20,4">
                             <TextBlock>
                                 <Run Text="불량 섹터 건너뛰기" FontWeight="SemiBold" />
                                 <Run Text=" — 읽지 못한 섹터를 0으로 채우고 계속합니다"
+                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                            </TextBlock>
+                        </CheckBox>
+
+                        <CheckBox IsChecked="{Binding UniversalRestore}" VerticalContentAlignment="Center"
+                                  Margin="0,0,0,4">
+                            <TextBlock>
+                                <Run Text="새 하드웨어 대비 (Universal Restore)" FontWeight="SemiBold" />
+                                <Run Text=" — 클론한 시스템을 다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화"
                                      Foreground="{StaticResource Muted}" FontSize="11" />
                             </TextBlock>
                         </CheckBox>

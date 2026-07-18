@@ -167,7 +167,8 @@ var progress = new Progress<CloneProgress>(p =>
 try
 {
     var orchestrator = new CloneOrchestrator(diskService, snapshotProvider, loggerFactory);
-    var report = await orchestrator.RunAsync(source, target, useSnapshot, options, progress);
+    var report = await orchestrator.RunAsync(
+        source, target, useSnapshot, options, universalRestore: false, progress);
 
     Console.WriteLine("\n=== 결과 ===\n");
     Console.WriteLine($"  상태        : {report.Result.Outcome}");

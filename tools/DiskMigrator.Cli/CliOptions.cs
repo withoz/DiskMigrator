@@ -7,6 +7,7 @@ internal sealed class CliOptions
     public bool UseSnapshot { get; init; } = true;
     public bool Verify { get; init; } = true;
     public bool ZeroFillBadSectors { get; init; }
+    public bool UniversalRestore { get; init; }
     public string? ConfirmModel { get; init; }
     public int BufferSizeMb { get; init; } = 4;
     public int ProgressSeconds { get; init; } = 10;
@@ -28,6 +29,7 @@ internal sealed class CliOptions
             UseSnapshot = !args.Contains("--no-snapshot"),
             Verify = !args.Contains("--no-verify"),
             ZeroFillBadSectors = args.Contains("--skip-bad-sectors"),
+            UniversalRestore = args.Contains("--universal-restore"),
             ConfirmModel = GetValue(args, "--confirm"),
             BufferSizeMb = int.TryParse(GetValue(args, "--buffer-mb"), out int mb) ? mb : 4,
             ProgressSeconds = int.TryParse(GetValue(args, "--progress-seconds"), out int s) ? s : 10,
@@ -58,6 +60,8 @@ internal sealed class CliOptions
                                        삼는다면 결과물이 일관되지 않으므로 권장하지 않습니다.
               --no-verify              복제 후 검증을 생략합니다 (시간 절반, 정확성 미확인).
               --skip-bad-sectors       읽지 못한 섹터를 0으로 채우고 계속합니다.
+              --universal-restore      클론 후 대상 Windows를 하드웨어 독립화합니다.
+                                       (표준 저장소 드라이버를 부팅 시작으로 → 다른 PC에서도 부팅)
                                        기본값은 불량 섹터 발견 시 중단입니다.
               --buffer-mb <N>          I/O 버퍼 크기 (기본 4).
               --progress-seconds <N>   진행 표시 간격 (기본 10).

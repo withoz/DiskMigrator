@@ -17,6 +17,7 @@ public sealed class CloneJobReport
     public DateTime? SnapshotTimeUtc { get; init; }
     public IReadOnlyList<string> UnsnapshottedPartitions { get; init; } = [];
     public GptRepairResult? GptRepair { get; init; }
+    public UniversalRestoreReport? UniversalRestore { get; init; }
 }
 
 /// <summary>
@@ -34,11 +35,16 @@ public sealed class CloneOrchestrator(
 {
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
+    /// <param name="universalRestore">
+    /// true면 클론 후 대상 Windows의 SYSTEM 하이브를 손봐, 다른 하드웨어에서도 부팅되게 합니다
+    /// (표준 저장소 드라이버를 부팅 시작으로). 시스템 디스크를 다른 PC로 옮길 때 켭니다.
+    /// </param>
     public async Task<CloneJobReport> RunAsync(
         DiskInfo source,
         DiskInfo target,
         bool useSnapshot,
         CloneOptions options,
+        bool universalRestore = false,
         IProgress<CloneProgress>? progress = null,
         PauseController? pause = null,
         CancellationToken ct = default)
@@ -55,18 +61,46 @@ public sealed class CloneOrchestrator(
         var factory = new CloneSessionFactory(
             diskService, snapshotProvider, _loggerFactory.CreateLogger<CloneSessionFactory>());
 
-        using var session = await factory.CreateAsync(source, target, useSnapshot, ct);
+        var session = await factory.CreateAsync(source, target, useSnapshot, ct);
 
-        var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-        var result = await engine.RunAsync(session.Plan, options, progress, pause, ct);
-
+        CloneResult result;
         GptRepairResult? gptRepair = null;
-
-        // 복제가 성공했을 때만 GPT를 손댑니다. 실패했거나 취소된 디스크의 GPT를 고쳐 봤자
-        // 데이터가 불완전하므로 의미가 없고, 오히려 "쓸 수 있는 디스크"처럼 보이게 만듭니다.
-        if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+        try
         {
-            gptRepair = TryRepairGpt(session, target, logger);
+            var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
+            result = await engine.RunAsync(session.Plan, options, progress, pause, ct);
+
+            // 복제가 성공했을 때만 GPT를 손댑니다. 실패·취소된 디스크의 GPT를 고쳐 봤자
+            // 데이터가 불완전하므로 의미가 없고, 오히려 "쓸 수 있는 디스크"처럼 보이게 만듭니다.
+            if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+            {
+                gptRepair = TryRepairGpt(session, target, logger);
+            }
+        }
+        finally
+        {
+            // 세션 Dispose가 대상을 다시 온라인으로 올려 볼륨을 마운트시킵니다.
+            // Universal Restore는 반드시 이 뒤에 실행되어야 하이브 파일에 접근할 수 있습니다.
+            session.Dispose();
+        }
+
+        // 클론이 성공했고 요청받았으면, 대상 Windows를 하드웨어 독립화합니다.
+        UniversalRestoreReport? universalRestoreReport = null;
+        if (universalRestore &&
+            result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+        {
+            try
+            {
+                var svc = new UniversalRestoreService(
+                    diskService, _loggerFactory.CreateLogger<UniversalRestoreService>());
+                universalRestoreReport = await svc.ApplyAsync(target, ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Universal Restore 적용 중 오류. 클론 데이터는 정상입니다.");
+                universalRestoreReport = new UniversalRestoreReport(false, null, [],
+                    $"하드웨어 독립화 실패: {ex.Message}. 클론 데이터 자체는 정상입니다.");
+            }
         }
 
         logger.LogInformation("=== 클론 종료: {Outcome} ===", result.Outcome);
@@ -79,6 +113,7 @@ public sealed class CloneOrchestrator(
             SnapshotTimeUtc = session.SnapshotTimeUtc,
             UnsnapshottedPartitions = session.UnsnapshottedPartitions,
             GptRepair = gptRepair,
+            UniversalRestore = universalRestoreReport,
         };
     }
 

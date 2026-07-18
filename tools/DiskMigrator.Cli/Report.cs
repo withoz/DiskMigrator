@@ -82,6 +82,11 @@ internal static class Report
             Console.WriteLine($"  GPT 보정    : {gpt.Description}");
         }
 
+        if (report.UniversalRestore is { } ur)
+        {
+            Console.WriteLine($"  새 하드웨어  : {ur.Message}");
+        }
+
         if (r.VerificationMismatches.Count > 0)
         {
             Console.WriteLine($"\n  불일치 구간 {r.VerificationMismatches.Count}개:");

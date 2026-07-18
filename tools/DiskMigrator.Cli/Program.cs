@@ -112,7 +112,8 @@ try
     var orchestrator = new CloneOrchestrator(diskService, snapshotProvider, loggerFactory);
 
     var report = await orchestrator.RunAsync(
-        source, target, options.UseSnapshot, cloneOptions, progress, pause: null, cts.Token);
+        source, target, options.UseSnapshot, cloneOptions, options.UniversalRestore,
+        progress, pause: null, cts.Token);
 
     Console.WriteLine();
     Report.PrintResult(report);
