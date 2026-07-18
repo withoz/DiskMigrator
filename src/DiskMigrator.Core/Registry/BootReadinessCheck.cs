@@ -1,3 +1,5 @@
+using DiskMigrator.Core.Models;
+
 namespace DiskMigrator.Core.Registry;
 
 /// <summary>검사 항목의 심각도. 부팅 가능 여부 판정에 쓰입니다.</summary>
@@ -76,6 +78,62 @@ public static class BootReadinessCheck
         InspectWindowsPartition(input, items);
 
         return new BootReadinessReport(items);
+    }
+
+    /// <summary>디스크를 검사합니다 — 파티션에서 ESP/Windows 볼륨 경로를 해석해 검사합니다.</summary>
+    public static BootReadinessReport InspectDisk(DiskInfo disk) => Inspect(ResolveInput(disk));
+
+    /// <summary>
+    /// 디스크의 파티션 목록에서 부팅 검사 입력을 해석합니다(부팅 방식, ESP·Windows 볼륨 루트).
+    /// </summary>
+    /// <remarks>
+    /// 볼륨은 드라이브 문자가 없어도 볼륨 GUID 경로로 접근합니다(ESP는 대개 문자가 없음).
+    /// Windows 볼륨은 실제로 <c>\Windows\System32</c>가 있는 파티션으로 고릅니다.
+    /// </remarks>
+    public static BootCheckInput ResolveInput(DiskInfo disk)
+    {
+        bool uefi = disk.Partitions.Any(p => p.IsEfiSystemPartition);
+
+        PartitionInfo? systemPartition = uefi
+            ? disk.Partitions.FirstOrDefault(p => p.IsEfiSystemPartition)
+            : disk.Partitions.FirstOrDefault(p => p.IsActive) ?? disk.Partitions.FirstOrDefault();
+
+        PartitionInfo? windowsPartition = null;
+        foreach (var p in disk.Partitions)
+        {
+            string? root = RootOf(p);
+            if (root is null) continue;
+            try
+            {
+                if (Directory.Exists(Path.Combine(root, "Windows", "System32")))
+                {
+                    windowsPartition = p;
+                    break;
+                }
+            }
+            catch
+            {
+                // 접근 불가 볼륨은 건너뜁니다.
+            }
+        }
+
+        return new BootCheckInput
+        {
+            Uefi = uefi,
+            SystemRoot = RootOf(systemPartition),
+            WindowsRoot = RootOf(windowsPartition),
+        };
+    }
+
+    /// <summary>파일 접근에 쓸 볼륨 루트. 드라이브 문자가 없어도 볼륨 GUID 경로로 접근합니다.</summary>
+    private static string? RootOf(PartitionInfo? p)
+    {
+        if (p is null) return null;
+        if (p.VolumeGuidPath is { } guid)
+            return guid.EndsWith('\\') ? guid : guid + "\\";
+        if (p.DriveLetter is { } letter)
+            return $"{letter}:\\";
+        return null;
     }
 
     private static void InspectSystemPartition(BootCheckInput input, List<BootCheckItem> items)

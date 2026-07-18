@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Registry;
 using DiskMigrator.Core.Safety;
 using DiskMigrator.Core.Util;
 using DiskMigrator.Windows.Devices;
@@ -157,6 +158,25 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _resultDetails = "";
     [ObservableProperty] private string? _logFilePath;
 
+    // --- 부팅 구성 검사 (클론 후) ------------------------------------------
+
+    /// <summary>부팅 구성 검사 결과 항목들.</summary>
+    public ObservableCollection<BootCheckItemViewModel> BootCheckItems { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BootCheckCommand))]
+    private bool _isBootChecking;
+
+    public bool CanBootCheck => !IsBootChecking;
+
+    /// <summary>검사를 한 번이라도 실행해 결과 패널을 보여줄지.</summary>
+    [ObservableProperty] private bool _bootCheckRan;
+
+    [ObservableProperty] private string _bootCheckVerdict = "";
+
+    /// <summary>판정이 긍정(부팅 준비/가능)이면 true — 색 구분용.</summary>
+    [ObservableProperty] private bool _bootCheckVerdictIsGood;
+
     // --- 명령 --------------------------------------------------------------
 
     [RelayCommand]
@@ -286,7 +306,83 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Stage = AppStage.Selecting;
         ConfirmationText = "";
+        ResetBootCheck();
         _ = RefreshDisksAsync();
+    }
+
+    private void ResetBootCheck()
+    {
+        BootCheckItems.Clear();
+        BootCheckRan = false;
+        BootCheckVerdict = "";
+        BootCheckVerdictIsGood = false;
+    }
+
+    /// <summary>
+    /// 방금 클론한 대상 디스크의 부팅 구성을 정적으로 검사합니다(실제 부팅 없이).
+    /// </summary>
+    /// <remarks>
+    /// 클론이 끝나면 대상은 온라인·마운트 상태라 BCD·SYSTEM 하이브까지 온전히 읽을 수 있습니다.
+    /// 클론으로 파티션이 바뀌었으니 대상 디스크를 새로 열거해 최신 볼륨 경로를 얻습니다.
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanBootCheck))]
+    private async Task BootCheckAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsBootChecking = true;
+        ResetBootCheck();
+
+        try
+        {
+            var previousTarget = SelectedTarget.Disk;
+            var disks = await _diskService.EnumerateDisksAsync();
+            var target = disks.FirstOrDefault(d =>
+                             d.SizeBytes == previousTarget.SizeBytes &&
+                             string.Equals(d.Model, previousTarget.Model, StringComparison.OrdinalIgnoreCase) &&
+                             string.Equals(d.SerialNumber ?? "", previousTarget.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase))
+                         ?? disks.FirstOrDefault(d => d.DeviceNumber == previousTarget.DeviceNumber);
+
+            if (target is null)
+            {
+                BootCheckVerdict = "대상 디스크를 다시 찾지 못했습니다.";
+                BootCheckVerdictIsGood = false;
+                BootCheckRan = true;
+                return;
+            }
+
+            // 파일·레지스트리 I/O가 있으므로 UI 스레드를 막지 않게 백그라운드에서 실행합니다.
+            var report = await Task.Run(() => BootReadinessCheck.InspectDisk(target));
+
+            foreach (var item in report.Items)
+                BootCheckItems.Add(new BootCheckItemViewModel(item));
+
+            bool anyFatalFailed = report.Items.Any(i =>
+                i.Severity == BootCheckSeverity.Fatal && i.Passed == false);
+
+            (BootCheckVerdict, BootCheckVerdictIsGood) =
+                (report.WouldBoot, report.HasWarnings, anyFatalFailed) switch
+                {
+                    (true, false, _) => ("부팅 준비 완료 — 치명 항목 모두 통과", true),
+                    (true, true, _) => ("부팅 가능하나 경고 있음 — 아래 경고 항목을 확인하세요", true),
+                    (false, _, true) => ("부팅 불가 위험 — 치명 항목이 실패했습니다", false),
+                    _ => ("판정 불가 — 치명 항목을 확인하지 못했습니다 (대상이 온라인·마운트 상태인지 확인)", false),
+                };
+
+            BootCheckRan = true;
+            _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "부팅 구성 검사에 실패했습니다.");
+            BootCheckVerdict = $"검사에 실패했습니다: {ex.Message}";
+            BootCheckVerdictIsGood = false;
+            BootCheckRan = true;
+        }
+        finally
+        {
+            IsBootChecking = false;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanStart))]
@@ -302,6 +398,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         Stage = AppStage.Running;
         IsPaused = false;
+        ResetBootCheck();
         BadSectorCount = 0;
         ProgressPercent = 0;
         ProgressPhase = "준비 중";

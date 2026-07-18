@@ -272,6 +272,73 @@
                                    LineHeight="22" />
                     </Border>
 
+                    <!-- 부팅 구성 검사 (성공 시) -->
+                    <StackPanel Margin="0,20,0,0"
+                                Visibility="{Binding ResultIsSuccess, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="부팅 구성 검사" Command="{Binding BootCheckCommand}"
+                                    MinWidth="130" Padding="16,8" />
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11"
+                                       Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="440"
+                                       Text="실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다." />
+                        </StackPanel>
+
+                        <TextBlock Text="검사 중..." Margin="0,8,0,0" FontSize="12"
+                                   Foreground="{StaticResource Muted}"
+                                   Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
+
+                        <!-- 검사 결과 -->
+                        <StackPanel Margin="0,12,0,0"
+                                    Visibility="{Binding BootCheckRan, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding BootCheckVerdict}" TextWrapping="Wrap"
+                                       FontWeight="SemiBold" FontSize="13">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BootCheckVerdictIsGood}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                                    BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0">
+                                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding BootCheckItems}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,7">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="74" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Border Grid.Column="0" CornerRadius="3" Padding="5,1"
+                                                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                            Background="{Binding StatusBrush}">
+                                                        <TextBlock Text="{Binding Mark}" Foreground="White"
+                                                                   FontSize="10" FontWeight="SemiBold" />
+                                                    </Border>
+
+                                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                                                   FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Detail}" FontSize="11"
+                                                                   Foreground="{StaticResource Muted}"
+                                                                   TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
                     <Button Content="처음으로" Command="{Binding BackToSelectionCommand}"
                             Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
                             Margin="0,20,0,0" MinWidth="120" Padding="20,10" />

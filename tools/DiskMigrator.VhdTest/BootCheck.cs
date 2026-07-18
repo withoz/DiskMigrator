@@ -1,4 +1,3 @@
-using System.Text;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Registry;
 
@@ -14,7 +13,7 @@ internal static class BootCheck
     {
         Console.WriteLine($"\n=== 부팅 구성 정적 검사: [{disk.DeviceNumber}] {disk.Model} ===\n");
 
-        var input = Resolve(disk);
+        var input = BootReadinessCheck.ResolveInput(disk);
         Console.WriteLine($"  부팅 방식      : {(input.Uefi ? "UEFI (GPT/EFI 파티션)" : "BIOS (MBR/활성 파티션)")}");
         Console.WriteLine($"  시스템 파티션  : {input.SystemRoot ?? "(마운트 안 됨)"}");
         Console.WriteLine($"  Windows 파티션 : {input.WindowsRoot ?? "(찾지 못함)"}");
@@ -66,51 +65,5 @@ internal static class BootCheck
             Console.WriteLine($"  {mark} ({sev}) {item.Name}");
             Console.WriteLine($"          {item.Detail}");
         }
-    }
-
-    private static BootCheckInput Resolve(DiskInfo disk)
-    {
-        bool uefi = disk.Partitions.Any(p => p.IsEfiSystemPartition);
-
-        PartitionInfo? sysPart = uefi
-            ? disk.Partitions.FirstOrDefault(p => p.IsEfiSystemPartition)
-            : disk.Partitions.FirstOrDefault(p => p.IsActive) ?? disk.Partitions.FirstOrDefault();
-
-        // Windows 볼륨: 실제로 \Windows\System32 가 존재하는 파티션을 고릅니다.
-        PartitionInfo? winPart = null;
-        foreach (var p in disk.Partitions)
-        {
-            string? root = RootOf(p);
-            if (root is null) continue;
-            try
-            {
-                if (Directory.Exists(Path.Combine(root, "Windows", "System32")))
-                {
-                    winPart = p;
-                    break;
-                }
-            }
-            catch
-            {
-                // 접근 불가 볼륨은 건너뜁니다.
-            }
-        }
-
-        return new BootCheckInput
-        {
-            Uefi = uefi,
-            SystemRoot = sysPart is null ? null : RootOf(sysPart),
-            WindowsRoot = winPart is null ? null : RootOf(winPart),
-        };
-    }
-
-    /// <summary>파일 접근에 쓸 볼륨 루트. 드라이브 문자가 없어도 볼륨 GUID 경로로 접근합니다.</summary>
-    private static string? RootOf(PartitionInfo p)
-    {
-        if (p.VolumeGuidPath is { } guid)
-            return guid.EndsWith('\\') ? guid : guid + "\\";
-        if (p.DriveLetter is { } letter)
-            return $"{letter}:\\";
-        return null;
     }
 }

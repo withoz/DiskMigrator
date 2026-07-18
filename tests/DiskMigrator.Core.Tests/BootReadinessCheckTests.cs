@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Registry;
 
 namespace DiskMigrator.Core.Tests;
@@ -94,6 +95,64 @@ public class BootReadinessCheckTests
         // 치명 요소를 확인조차 못 했으므로 부팅 가능이라 단언할 수 없음.
         Assert.False(report.WouldBoot);
         Assert.All(report.Items, i => Assert.NotEqual(true, i.Passed));
+    }
+
+    [Fact]
+    public void ResolveInput은_EFI파티션에서_UEFI와_ESP경로를_해석한다()
+    {
+        var disk = new DiskInfo
+        {
+            DeviceNumber = 9,
+            Model = "TEST",
+            SizeBytes = 1000,
+            LogicalSectorSize = 512,
+            Partitions =
+            [
+                new PartitionInfo
+                {
+                    Number = 1, StartingOffset = 0, LengthBytes = 100,
+                    IsEfiSystemPartition = true,
+                    VolumeGuidPath = @"\\?\Volume{aaaaaaaa-0000-0000-0000-000000000001}\",
+                },
+                new PartitionInfo
+                {
+                    Number = 2, StartingOffset = 100, LengthBytes = 900,
+                    VolumeGuidPath = @"\\?\Volume{bbbbbbbb-0000-0000-0000-000000000002}\",
+                },
+            ],
+        };
+
+        var input = BootReadinessCheck.ResolveInput(disk);
+
+        Assert.True(input.Uefi);
+        Assert.Equal(@"\\?\Volume{aaaaaaaa-0000-0000-0000-000000000001}\", input.SystemRoot);
+        // 어떤 볼륨에도 \Windows\System32 가 없으므로 Windows 루트는 미해석.
+        Assert.Null(input.WindowsRoot);
+    }
+
+    [Fact]
+    public void ResolveInput은_EFI가_없으면_BIOS와_활성파티션을_시스템루트로_쓴다()
+    {
+        var disk = new DiskInfo
+        {
+            DeviceNumber = 9,
+            Model = "TEST",
+            SizeBytes = 1000,
+            LogicalSectorSize = 512,
+            Partitions =
+            [
+                new PartitionInfo
+                {
+                    Number = 1, StartingOffset = 0, LengthBytes = 1000,
+                    IsActive = true, DriveLetter = "E",
+                },
+            ],
+        };
+
+        var input = BootReadinessCheck.ResolveInput(disk);
+
+        Assert.False(input.Uefi);
+        Assert.Equal(@"E:\", input.SystemRoot);
     }
 
     private static string Dump(BootReadinessReport report) =>
