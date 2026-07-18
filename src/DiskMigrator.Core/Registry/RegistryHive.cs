@@ -213,6 +213,50 @@ public sealed class RegistryHive
     /// <summary>키가 존재하는지.</summary>
     public bool KeyExists(string keyPath) => FindKey(keyPath) >= 0;
 
+    // --- 문자열/하위키 읽기 (BCD 등 진단용) ----------------------------------
+
+    /// <summary>
+    /// 키의 REG_SZ / REG_EXPAND_SZ 값을 읽습니다. 키·값이 없거나 문자열 타입이 아니면 null.
+    /// </summary>
+    /// <remarks>
+    /// BCD 스토어도 regf 하이브라, OS 로더의 ApplicationPath 같은 값을 이 메서드로 읽어
+    /// 부팅 구성을 정적으로 검사합니다.
+    /// </remarks>
+    public string? GetString(string keyPath, string valueName)
+    {
+        int nk = FindKey(keyPath);
+        if (nk < 0) return null;
+        int vk = FindValue(nk, valueName);
+        if (vk < 0) return null;
+
+        uint type = U32(vk + 0x0C);
+        if (type is not (1 or 2)) return null; // REG_SZ(1) / REG_EXPAND_SZ(2)
+
+        uint dataLen = U32(vk + 0x04);
+        bool inline = (dataLen & InlineDataFlag) != 0;
+        int actualLen = (int)(dataLen & ~InlineDataFlag);
+        if (actualLen <= 0) return "";
+
+        int dataAt = inline ? vk + 0x08 : CellData(U32(vk + 0x08));
+        if (dataAt < 0 || dataAt + actualLen > _data.Length) return null;
+
+        string s = Encoding.Unicode.GetString(_data, dataAt, actualLen);
+        int nul = s.IndexOf('\0');
+        return nul >= 0 ? s[..nul] : s;
+    }
+
+    /// <summary>키의 직속 하위키 이름들을 반환합니다. 키가 없으면 빈 목록.</summary>
+    public IReadOnlyList<string> EnumerateSubKeyNames(string keyPath)
+    {
+        int nk = FindKey(keyPath);
+        if (nk < 0) return [];
+
+        var names = new List<string>();
+        foreach (int child in Subkeys(nk))
+            names.Add(KeyName(child));
+        return names;
+    }
+
     // --- 저장 전 정리 --------------------------------------------------------
 
     /// <summary>

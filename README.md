@@ -24,6 +24,7 @@ Windows용 디스크 전체 클론 도구. 실행 중인 시스템 디스크를 
 | 디스크 전체 섹터 복제 (부트 영역·파티션 테이블 포함) | 지원 |
 | **실행 중인 시스템 디스크 클론** (VSS 스냅샷) | 지원 |
 | **하드웨어 독립 마이그레이션** (Universal Restore) | 지원 |
+| **부팅 구성 정적 검사** (BCD·부트로더·winload·저장소 드라이버) | 지원 |
 | 복제 후 검증 (복제 중 기록한 해시와 대상 대조) | 지원 |
 | 불량 섹터 재시도 / 0 채움 / 리포트 | 지원 |
 | 대상이 더 클 때 GPT 백업 헤더 자동 보정 | 지원 |
@@ -116,6 +117,41 @@ DiskMigrator는 복제가 성공하면 백업 헤더를 진짜 디스크 끝으�
 
 **한계 — 없는 드라이버는 추가하지 못합니다.** 이 기능은 원본에 이미 설치된 인박스 드라이버를 "부팅 시작"으로 켜는 것입니다. 대상 PC가 예컨대 Intel VMD/RAID 모드인데 원본에 Intel RST(iaStorAV) 드라이버 파일이 없으면, 레지스트리만으로는 부팅되지 않습니다. 그 경우 **새 PC BIOS에서 저장소 모드를 AHCI로** 바꾸십시오(그러면 인박스 storahci가 처리). 이는 상용 도구도 마찬가지로, 없는 드라이버는 사용자가 제공해야 합니다.
 
+---
+
+## 부팅 구성 정적 검사
+
+클론한 디스크를 물리적으로 다른 PC에 옮기거나 하드웨어를 바꿔 끼우기 전에, **실제로 부팅해 보지 않고도** 부팅을 막는 흔한 결함을 값싸게 걸러냅니다. 부트로더 파일 누락, BCD 손상, 0x7B를 유발하는 드라이버 설정은 옮긴 뒤에야 파란 화면으로 드러나는데, 이 검사는 그 전에 파일·레지스트리 수준에서 잡아냅니다.
+
+검사 항목은 심각도로 나뉩니다:
+
+- **치명(Fatal)** — 실패하면 부팅 자체가 불가능. 하나라도 실패하면 "부팅 불가"로 판정합니다.
+  - ESP의 UEFI 부트로더 `EFI\Microsoft\Boot\bootmgfw.efi` (BIOS/MBR이면 `bootmgr`)
+  - `BCD` 스토어가 유효한 regf 하이브이고, **winload를 가리키는 OS 로더 항목**이 있는지
+  - Windows 볼륨의 `System32\winload.efi`(BIOS면 `winload.exe`)와 `System32\config\SYSTEM` 하이브
+- **경고(Warning)** — 같은 하드웨어면 부팅되지만 위험 신호.
+  - 폴백 부트로더 `EFI\Boot\bootx64.efi`
+  - 활성 ControlSet에 **부팅 시작(Start=0) 저장소 드라이버**가 하나도 없으면 다른 하드웨어에서 0x7B 위험
+- **정보(Info)** — 하드웨어 독립성 참고. storahci·stornvme가 모두 부팅 시작이면 대부분의 AHCI/NVMe PC를 커버합니다(아니면 [Universal Restore](#하드웨어-독립-마이그레이션-universal-restore) 권장).
+
+**BCD도 regf 레지스트리 하이브**이므로, Universal Restore가 쓰는 것과 **같은 자체 하이브 파서**로 읽습니다(`reg.exe`/`RegLoadKey` 불필요). BCD의 각 객체에서 OS 로더의 `ApplicationPath`(요소 `12000002`)를 읽어 winload를 가리키는 항목이 실제로 있는지 확인합니다.
+
+`DiskMigrator.VhdTest`에서 두 가지로 실행합니다. 검사는 **읽기 전용**이라 가상/실물을 가리지 않고 어떤 디스크에도 허용됩니다:
+
+```powershell
+# 단독 실행 — 클론한 실물 USB/SSD를 옮기기 전에 점검 (읽기 전용, 관리자 필요)
+.\DiskMigrator.VhdTest.exe <디스크번호> --boot-check
+
+# VHD 클론이 성공하면 대상 디스크에 대해 자동으로 검사합니다 (--no-boot-check로 끔)
+.\DiskMigrator.VhdTest.exe <원본> <대상>
+```
+
+**한계 — 실제 부팅 검증을 대신하지 못합니다.** 이 검사는 부팅에 필요한 파일과 구성이 *존재하고 정합적인지*를 정적으로 볼 뿐, 펌웨어·드라이버·하드웨어가 실제로 맞물려 부팅되는지는 확인하지 못합니다. MBR/VBR 부트 코드나 디스크 서명 충돌 같은 요소도 파일 검사 범위 밖입니다.
+
+**오프라인 클론 대상에 쓰십시오 — 실행 중인 OS에는 쓰지 마십시오.** 라이브/마운트된 Windows의 `BCD`·`SYSTEM` 하이브는 커널이 배타적으로 열고 있어 읽을 수 없습니다. 그 경우 검사는 해당 치명 항목을 "손상"이 아니라 **"사용 중(확인 불가)"** 으로 정직하게 보고하고, **확인하지 못한 것을 부팅 가능으로 낙관하지 않습니다**(판정 불가). 방금 클론한 오프라인 디스크를 대상으로 실행해야 하이브까지 온전히 검사됩니다. 최종 확인은 실기/VM 부팅으로 하십시오.
+
+> 실기 검증에서 확인: 라이브 시스템 디스크(디스크 0)에 돌리면 디스크 열거·ESP/Windows 볼륨 해석(볼륨 GUID 경로)·`bootmgfw.efi`·`winload.efi` 탐지·**실제 BCD 파싱 시도**까지 동작하며, 잠긴 두 하이브는 "사용 중"으로 보고되어 "판정 불가"가 나옵니다 — 의도된 동작입니다.
+
 ## 긴 클론과 스냅샷 붕괴 — 섀도 저장소 확보
 
 VSS 스냅샷은 copy-on-write입니다. 스냅샷을 뜬 뒤 원본 볼륨에 쓰기가 일어날 때마다, 원래 블록이 **diff 영역(섀도 저장소)** 으로 복사되어 그 시점 데이터를 보존합니다. diff 영역이 꽉 차면 VSS는 스냅샷을 무효화하고, 그때부터 스냅샷 읽기가 **라이브 데이터를 반환**합니다.
@@ -194,7 +230,7 @@ tests/
   DiskMigrator.Core.Tests/ 실제 디스크 없이 엔진 전체를 검증
 tools/
   DiskMigrator.Probe/      읽기 전용 하드웨어 진단
-  DiskMigrator.VhdTest/    VHD 대상 클론 통합 테스트 (가상 디스크에만 씀)
+  DiskMigrator.VhdTest/    VHD 대상 클론 통합 테스트 (가상 디스크에만 씀) + 부팅 구성 정적 검사(읽기 전용)
   vhd-clone-test.ps1       VHD 생성 → 클론 → 결과 검증 → 정리
 ```
 
@@ -257,6 +293,8 @@ tools/
 - GPT 보정 — 백업 헤더 이동, CRC32, LastUsableLBA, 보호 MBR, 데이터 영역 보존
 - 읽기 가능 길이 탐색 — VSS 섀도 복사본의 크기 오보고 대응 (이진 탐색 경계 조건)
 - CRC-32 표준 검증 벡터
+- **부팅 구성 정적 검사** — 진짜 regf 하이브(합성 BCD·SYSTEM)로 부트로더/BCD/winload/드라이버
+  판정을 검증. 단, 원시 디스크 열거→볼륨 경로 해석 접착부는 아직 실기로 실행하지 못했습니다.
 
 **아직 검증되지 않음 / 범위 밖:**
 
@@ -284,6 +322,10 @@ dotnet run --project tools/DiskMigrator.Probe
 # 3) VHD 대상 end-to-end 클론 — 임시 VHD만 다루며 물리 디스크는 건드리지 않습니다.
 .\tools\vhd-clone-test.ps1              # 오프라인 클론
 .\tools\vhd-clone-test.ps1 -UseSnapshot # VSS 핫 클론
+
+# 4) 부팅 구성 정적 검사 — 부트로더·BCD·winload·저장소 드라이버 무결성 점검.
+#    읽기 전용이라 어떤 디스크에도 허용됩니다. 관리자 권한 필요.
+.\tools\DiskMigrator.VhdTest\bin\Release\net8.0-windows\DiskMigrator.VhdTest.exe <디스크번호> --boot-check
 ```
 
 `DiskMigrator.VhdTest`의 클론 모드는 버스 종류가 `FileBackedVirtual`이 아니면 쓰기를 거부합니다 —

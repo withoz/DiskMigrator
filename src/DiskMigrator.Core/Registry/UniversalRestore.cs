@@ -22,7 +22,7 @@ public static class UniversalRestore
     /// 이들은 Windows에 기본 포함된 드라이버라 별도 설치가 필요 없습니다. 대상 PC의 컨트롤러가
     /// 무엇이든(대개 AHCI 또는 NVMe) 이 중 하나가 담당합니다.
     /// </remarks>
-    private static readonly string[] StorageDrivers =
+    internal static readonly string[] StorageDrivers =
     [
         "storahci",   // AHCI (SATA) — 가장 흔함
         "stornvme",   // NVMe

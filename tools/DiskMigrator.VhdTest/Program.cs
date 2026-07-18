@@ -25,13 +25,17 @@ bool useSnapshot = args.Contains("--snapshot");
 bool verify = !args.Contains("--no-verify");
 bool planOnly = args.Contains("--plan-only");
 bool snapStability = args.Contains("--snapshot-stability");
+bool bootCheckOnly = args.Contains("--boot-check");
+bool runBootCheck = !args.Contains("--no-boot-check");
 
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
 {
     Console.Error.WriteLine(
         "사용법:\n" +
-        "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--no-verify]\n" +
-        "      가상 디스크(VHD) 대상으로 실제 클론을 실행합니다.\n" +
+        "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--no-verify] [--no-boot-check]\n" +
+        "      가상 디스크(VHD) 대상으로 실제 클론을 실행하고, 성공 시 부팅 구성을 정적 검사합니다.\n" +
+        "  DiskMigrator.VhdTest <디스크번호> --boot-check\n" +
+        "      실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성만 점검합니다 (읽기 전용).\n" +
         "  DiskMigrator.VhdTest <원본디스크번호> --plan-only [--snapshot]\n" +
         "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --snapshot-stability [--wait <초>]\n" +
@@ -50,6 +54,20 @@ if (!diskService.IsElevated)
 {
     Console.Error.WriteLine("오류: 관리자 권한이 필요합니다.");
     return 3;
+}
+
+// 부팅 구성 정적 검사 — 읽기 전용이므로 어떤 디스크에도 허용합니다(가상/실물 무관).
+// 클론한 실물 대상(USB/SSD)을 물리적으로 옮기기 전에 값싸게 부팅 가능성을 점검하는 용도.
+if (bootCheckOnly)
+{
+    var allDisks = await diskService.EnumerateDisksAsync();
+    var disk = allDisks.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
+    if (disk is null)
+    {
+        Console.Error.WriteLine($"오류: 디스크 {sourceNumber}를 찾을 수 없습니다.");
+        return 4;
+    }
+    return BootCheck.Run(disk);
 }
 
 // 스냅샷 안정성 측정 — 대상 없이 원본 디스크의 스냅샷만 두 번 읽어 비교. 쓰기 없음.
@@ -199,6 +217,23 @@ try
                    && report.Result.VerificationPassed != false;
 
     Console.WriteLine($"\n{(success ? "*** 클론 성공 ***" : "*** 클론 실패 ***")}");
+
+    // 클론 성공 시, 대상 디스크의 부팅 구성을 정적으로 점검합니다.
+    // 클론으로 파티션 테이블이 바뀌었으므로 대상 디스크를 새로 열거해 최신 볼륨 정보를 얻습니다.
+    if (success && runBootCheck)
+    {
+        var refreshed = await diskService.EnumerateDisksAsync();
+        var freshTarget = refreshed.FirstOrDefault(d => d.DeviceNumber == targetNumber);
+        if (freshTarget is not null)
+        {
+            BootCheck.Run(freshTarget);
+        }
+        else
+        {
+            Console.WriteLine("\n(부팅 검사 생략: 대상 디스크를 다시 찾지 못했습니다.)");
+        }
+    }
+
     return success ? 0 : 1;
 }
 catch (Exception ex)
