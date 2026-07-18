@@ -15,6 +15,7 @@ internal static class BootCheck
 
         var input = BootReadinessCheck.ResolveInput(disk);
         Console.WriteLine($"  부팅 방식      : {(input.Uefi ? "UEFI (GPT/EFI 파티션)" : "BIOS (MBR/활성 파티션)")}");
+        Console.WriteLine($"  디스크 GUID    : {disk.DiskGuid?.ToString() ?? "(MBR/미상)"}");
         Console.WriteLine($"  시스템 파티션  : {input.SystemRoot ?? "(마운트 안 됨)"}");
         Console.WriteLine($"  Windows 파티션 : {input.WindowsRoot ?? "(찾지 못함)"}");
         Console.WriteLine();

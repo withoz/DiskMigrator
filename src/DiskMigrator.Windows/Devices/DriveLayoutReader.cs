@@ -15,7 +15,10 @@ internal sealed record RawPartition(
     byte? MbrType,
     bool IsActive);
 
-internal sealed record DriveLayout(PartitionStyle Style, IReadOnlyList<RawPartition> Partitions);
+internal sealed record DriveLayout(
+    PartitionStyle Style,
+    IReadOnlyList<RawPartition> Partitions,
+    Guid? GptDiskId = null);
 
 /// <summary>
 /// IOCTL_DISK_GET_DRIVE_LAYOUT_EX로 파티션 테이블을 읽습니다.
@@ -90,6 +93,8 @@ internal static class DriveLayoutReader
                           entry.Info.Mbr.BootIndicator != 0));
         }
 
-        return new DriveLayout(style, partitions.OrderBy(p => p.StartingOffset).ToList());
+        Guid? gptDiskId = style == PartitionStyle.Gpt ? header.Info.Gpt.DiskId : null;
+
+        return new DriveLayout(style, partitions.OrderBy(p => p.StartingOffset).ToList(), gptDiskId);
     }
 }

@@ -128,6 +128,7 @@ DiskMigrator는 복제가 성공하면 백업 헤더를 진짜 디스크 끝으�
 - **치명(Fatal)** — 실패하면 부팅 자체가 불가능. 하나라도 실패하면 "부팅 불가"로 판정합니다.
   - ESP의 UEFI 부트로더 `EFI\Microsoft\Boot\bootmgfw.efi` (BIOS/MBR이면 `bootmgr`)
   - `BCD` 스토어가 유효한 regf 하이브이고, **winload를 가리키는 OS 로더 항목**이 있는지
+  - **BCD 장치 참조 ↔ 디스크 대조** — BCD의 `device`/`osdevice` 요소가 **이 디스크를 실제로 가리키는지**. 디스크 서명 충돌 등으로 GPT 디스크 GUID가 바뀌면 BCD 참조가 어긋나 부팅 시 **0xc000000e**("필요한 장치를 연결할 수 없음")가 나는데, 이걸 옮기기 전에 잡아냅니다 (아래 참고).
   - Windows 볼륨의 `System32\winload.efi`(BIOS면 `winload.exe`)와 `System32\config\SYSTEM` 하이브
 - **경고(Warning)** — 같은 하드웨어면 부팅되지만 위험 신호.
   - 폴백 부트로더 `EFI\Boot\bootx64.efi`
@@ -149,6 +150,8 @@ DiskMigrator는 복제가 성공하면 백업 헤더를 진짜 디스크 끝으�
 ```
 
 GUI·CLI 모두 같은 Core 로직(`BootReadinessCheck`)을 씁니다.
+
+**BCD 장치 참조 대조 — 실기에서 규명한 0xc000000e:** 실제 다른 PC 이식 테스트에서, 부트로더·winload·BCD 구조·드라이버가 **전부 정상인데도** 부팅이 `0xc000000e`("필요한 장치를 연결할 수 없음")로 실패했습니다. 원인은 **디스크 서명 충돌**이었습니다 — 클론을 원본과 같은 켜진 Windows에 연결하면, 동일한 GPT 디스크 GUID를 감지한 Windows가 클론의 디스크 GUID를 **재서명**합니다. 그러면 BCD의 `device`/`osdevice` 요소에 내장된 옛 디스크 GUID가 어긋나 부팅 관리자가 OS 파티션을 못 찾습니다. BCD 장치 요소는 `REG_BINARY`라 자체 하이브 파서로 그 안에 **현재 디스크 GUID(16바이트)가 들어 있는지** 대조해 이 상태를 정적으로 탐지합니다. 복구는 대상에서 `bcdboot`로 재생성하거나, `bcdedit /store <BCD> /set {default} osdevice partition=...`로 장치 참조만 고치면 됩니다. **예방:** 클론을 원본과 동시에 켜진 상태로 두지 마십시오.
 
 **한계 — 실제 부팅 검증을 대신하지 못합니다.** 이 검사는 부팅에 필요한 파일과 구성이 *존재하고 정합적인지*를 정적으로 볼 뿐, 펌웨어·드라이버·하드웨어가 실제로 맞물려 부팅되는지는 확인하지 못합니다. MBR/VBR 부트 코드나 디스크 서명 충돌 같은 요소도 파일 검사 범위 밖입니다.
 

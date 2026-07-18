@@ -31,6 +31,13 @@ public sealed class DiskInfo
 
     public PartitionStyle PartitionStyle { get; init; }
 
+    /// <summary>GPT 디스크 GUID(DiskId). MBR/RAW 디스크에서는 null.</summary>
+    /// <remarks>
+    /// BCD의 장치 참조가 이 값을 내장합니다. 디스크 서명 충돌로 Windows가 이 GUID를 재서명하면
+    /// BCD 참조가 어긋나 부팅 시 0xc000000e가 납니다. 부팅 구성 검사가 이를 대조합니다.
+    /// </remarks>
+    public Guid? DiskGuid { get; init; }
+
     public bool IsRemovable { get; init; }
 
     public bool IsReadOnly { get; init; }

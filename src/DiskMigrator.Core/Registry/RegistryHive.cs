@@ -245,6 +245,36 @@ public sealed class RegistryHive
         return nul >= 0 ? s[..nul] : s;
     }
 
+    /// <summary>
+    /// 키의 값 데이터를 원시 바이트로 읽습니다(REG_BINARY 등 타입 무관). 없으면 null.
+    /// </summary>
+    /// <remarks>
+    /// BCD의 장치 참조(device/osdevice)는 REG_BINARY로 저장되며 대상 디스크·파티션 GUID를
+    /// 내장합니다. 이 바이트에서 디스크 GUID 일치 여부를 확인해 부팅 참조 유효성을 검사합니다.
+    /// </remarks>
+    public byte[]? GetBinary(string keyPath, string valueName)
+    {
+        int nk = FindKey(keyPath);
+        if (nk < 0) return null;
+        int vk = FindValue(nk, valueName);
+        if (vk < 0) return null;
+
+        uint dataLen = U32(vk + 0x04);
+        bool inline = (dataLen & InlineDataFlag) != 0;
+        int actualLen = (int)(dataLen & ~InlineDataFlag);
+        if (actualLen <= 0) return [];
+
+        if (inline)
+        {
+            int n = Math.Min(actualLen, 4);
+            return _data.AsSpan(vk + 0x08, n).ToArray();
+        }
+
+        int dataAt = CellData(U32(vk + 0x08));
+        if (dataAt < 0 || dataAt + actualLen > _data.Length) return null;
+        return _data.AsSpan(dataAt, actualLen).ToArray();
+    }
+
     /// <summary>키의 직속 하위키 이름들을 반환합니다. 키가 없으면 빈 목록.</summary>
     public IReadOnlyList<string> EnumerateSubKeyNames(string keyPath)
     {

@@ -55,6 +55,24 @@ internal sealed class HiveBuilder
         return CellOffset(cell);
     }
 
+    /// <summary>비인라인 REG_BINARY 값(vk)과 데이터 셀을 만들고 vk 셀 오프셋을 반환합니다.</summary>
+    public int Binary(string name, byte[] value)
+    {
+        int dataCell = AllocCell(value.Length);
+        value.CopyTo(_buf, DataAt(dataCell));
+
+        int cell = AllocCell(0x14 + name.Length);
+        int vk = DataAt(cell);
+        Ascii("vk", vk);
+        U16(vk + 0x02, (ushort)name.Length);
+        U32(vk + 0x04, (uint)value.Length); // 비인라인
+        U32(vk + 0x08, (uint)CellOffset(dataCell));
+        U32(vk + 0x0C, 3);   // REG_BINARY
+        U16(vk + 0x10, 1);
+        Ascii(name, vk + 0x14);
+        return CellOffset(cell);
+    }
+
     /// <summary>키(nk)를 만듭니다. 값 vk 오프셋과 자식 nk 오프셋은 먼저 만들어 전달합니다.</summary>
     public int AddKey(string name, int[] valueOffsets, int[] childOffsets)
     {

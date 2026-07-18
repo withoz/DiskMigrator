@@ -51,6 +51,12 @@ public sealed record BootCheckInput
 
     /// <summary>Windows가 설치된 볼륨의 루트(예: "C:\" 또는 "\\?\Volume{...}\"). 미마운트면 null.</summary>
     public string? WindowsRoot { get; init; }
+
+    /// <summary>
+    /// 이 디스크의 GPT 디스크 GUID. 주어지면 BCD의 장치 참조가 이 디스크를 가리키는지 대조합니다.
+    /// null(MBR/미상)이면 대조를 건너뜁니다.
+    /// </summary>
+    public Guid? DiskGuid { get; init; }
 }
 
 /// <summary>
@@ -66,6 +72,15 @@ public static class BootReadinessCheck
 {
     /// <summary>BCD 요소 코드: BcdLibraryString_ApplicationPath (OS 로더의 winload 경로).</summary>
     private const string ElementApplicationPath = "12000002";
+
+    /// <summary>BCD 요소 코드: BcdLibraryDevice_ApplicationDevice (부팅 파일이 있는 장치, "device").</summary>
+    private const string ElementApplicationDevice = "11000001";
+
+    /// <summary>BCD 요소 코드: BcdOSLoaderDevice_OSDevice (OS가 있는 장치, "osdevice").</summary>
+    private const string ElementOsDevice = "21000001";
+
+    /// <summary>BCD 요소 코드: BcdBootMgrObjectList_DefaultObject ({bootmgr}의 기본 로더 GUID).</summary>
+    private const string ElementDefault = "23000003";
 
     /// <summary>표준 Windows 부트 매니저 객체 GUID.</summary>
     private const string BootMgrObject = "{9dea862c-5cdd-4e70-acc1-f32b344d4795}";
@@ -122,6 +137,7 @@ public static class BootReadinessCheck
             Uefi = uefi,
             SystemRoot = RootOf(systemPartition),
             WindowsRoot = RootOf(windowsPartition),
+            DiskGuid = disk.DiskGuid,
         };
     }
 
@@ -163,7 +179,7 @@ public static class BootReadinessCheck
                     : "없음 — 일부 펌웨어/이동식 부팅에서 필요할 수 있습니다."));
 
             string bcd = Path.Combine(efiBoot, "BCD");
-            AnalyzeBcd(bcd, items);
+            AnalyzeBcd(bcd, input.DiskGuid, items);
         }
         else
         {
@@ -173,7 +189,7 @@ public static class BootReadinessCheck
                 hasMgr ? mgr : "없음 — BIOS/MBR 부팅이 불가능합니다."));
 
             string bcd = Path.Combine(input.SystemRoot, "Boot", "BCD");
-            AnalyzeBcd(bcd, items);
+            AnalyzeBcd(bcd, input.DiskGuid, items);
         }
     }
 
@@ -203,7 +219,7 @@ public static class BootReadinessCheck
         AnalyzeSystemHive(systemHive, input.Uefi, items);
     }
 
-    private static void AnalyzeBcd(string bcdPath, List<BootCheckItem> items)
+    private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, List<BootCheckItem> items)
     {
         if (!SafeFileExists(bcdPath))
         {
@@ -256,6 +272,92 @@ public static class BootReadinessCheck
         items.Add(new("BCD OS 로더 항목", anyLoader, BootCheckSeverity.Fatal,
             anyLoader ? $"{loaders}개 — 예: {firstPath}"
                 : "winload를 가리키는 OS 로더 항목이 없습니다 — 부팅 메뉴가 비어 있습니다."));
+
+        CheckDeviceReferences(bcd, diskGuid, items);
+    }
+
+    /// <summary>
+    /// BCD의 장치 참조(device/osdevice)가 <b>이 디스크</b>를 가리키는지 대조합니다.
+    /// </summary>
+    /// <remarks>
+    /// 이 검사가 없으면 부트로더·winload·BCD 구조가 전부 정상인데도 실부팅 시 0xc000000e가
+    /// 나는 경우를 놓칩니다(실기에서 규명). 원인은 디스크 서명 충돌로 Windows가 GPT 디스크
+    /// GUID를 재서명하면, BCD의 장치 요소에 내장된 옛 디스크 GUID가 어긋나기 때문입니다.
+    /// 장치 요소는 REG_BINARY이고 대상 디스크 GUID(16바이트)를 그대로 담으므로, 현재 디스크
+    /// GUID가 그 바이트 안에 있는지 확인하면 참조 유효성을 알 수 있습니다.
+    /// </remarks>
+    private static void CheckDeviceReferences(RegistryHive bcd, Guid? diskGuid, List<BootCheckItem> items)
+    {
+        if (diskGuid is not { } dg)
+        {
+            items.Add(new("BCD 장치 참조 ↔ 디스크", null, BootCheckSeverity.Warning,
+                "디스크 GUID를 알 수 없어 장치 참조를 대조하지 못했습니다 (MBR이거나 정보 없음)."));
+            return;
+        }
+
+        byte[] target = dg.ToByteArray();
+
+        // 기본 OS 로더의 osdevice가 우선. 없으면 winload를 가리키는 아무 로더나.
+        string? defaultId = bcd.GetString($"Objects\\{BootMgrObject}\\Elements\\{ElementDefault}", "Element");
+
+        bool checkedAny = false;
+        bool matched = false;
+
+        void Probe(string objectGuid)
+        {
+            foreach (string elem in new[] { ElementOsDevice, ElementApplicationDevice })
+            {
+                byte[]? blob = bcd.GetBinary($"Objects\\{objectGuid}\\Elements\\{elem}", "Element");
+                if (blob is null) continue;
+                checkedAny = true;
+                if (ContainsBytes(blob, target)) matched = true;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(defaultId)) Probe(defaultId);
+
+        // 기본 로더에서 확인이 안 됐으면, winload OS 로더들을 훑습니다.
+        if (!matched)
+        {
+            foreach (string guid in bcd.EnumerateSubKeyNames("Objects"))
+            {
+                string? appPath = bcd.GetString($"Objects\\{guid}\\Elements\\{ElementApplicationPath}", "Element");
+                if (appPath is null) continue;
+                if (appPath.EndsWith("winload.efi", StringComparison.OrdinalIgnoreCase) ||
+                    appPath.EndsWith("winload.exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    Probe(guid);
+                    if (matched) break;
+                }
+            }
+        }
+
+        // 부트 매니저의 device도 같은 디스크(ESP)를 가리켜야 하므로 함께 봅니다.
+        Probe(BootMgrObject);
+
+        if (!checkedAny)
+        {
+            items.Add(new("BCD 장치 참조 ↔ 디스크", null, BootCheckSeverity.Warning,
+                "대조할 장치 참조(device/osdevice)를 찾지 못했습니다."));
+            return;
+        }
+
+        items.Add(new("BCD 장치 참조 ↔ 디스크", matched, BootCheckSeverity.Fatal,
+            matched
+                ? $"BCD가 이 디스크(GUID {dg})를 가리킵니다."
+                : "BCD의 장치 참조가 이 디스크의 서명과 불일치합니다 — 부팅 시 0xc000000e 위험 " +
+                  "(디스크 서명 변경/이식). bcdboot 재생성 또는 bcdedit로 device/osdevice 복구 필요."));
+    }
+
+    /// <summary>haystack 안에 needle(연속 바이트열)이 있으면 true.</summary>
+    private static bool ContainsBytes(byte[] haystack, byte[] needle)
+    {
+        if (needle.Length == 0 || haystack.Length < needle.Length) return false;
+        for (int i = 0; i + needle.Length <= haystack.Length; i++)
+        {
+            if (haystack.AsSpan(i, needle.Length).SequenceEqual(needle)) return true;
+        }
+        return false;
     }
 
     private static void AnalyzeSystemHive(string systemHivePath, bool uefi, List<BootCheckItem> items)

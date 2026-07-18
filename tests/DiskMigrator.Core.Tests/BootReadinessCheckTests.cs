@@ -32,6 +32,29 @@ public class BootReadinessCheckTests
 
         var mgrItem = report.Items.Single(i => i.Name == "BCD 부트 매니저 항목");
         Assert.True(mgrItem.Passed);
+
+        // BCD 장치 참조가 이 디스크 GUID를 가리킴 → 통과.
+        var devItem = report.Items.Single(i => i.Name == "BCD 장치 참조 ↔ 디스크");
+        Assert.True(devItem.Passed);
+    }
+
+    [Fact]
+    public void BCD_장치참조가_디스크와_불일치하면_부팅_불가로_판정된다()
+    {
+        // 디스크 서명 충돌로 디스크 GUID가 바뀐 상황: BCD는 옛 GUID를 가리킴 → 0xc000000e.
+        using var layout = DiskLayout.CreateHealthyUefi(bcdDeviceMatchesDisk: false);
+        var report = BootReadinessCheck.Inspect(layout.Input);
+
+        Assert.False(report.WouldBoot, Dump(report));
+
+        var devItem = report.Items.Single(i => i.Name == "BCD 장치 참조 ↔ 디스크");
+        Assert.False(devItem.Passed);
+        Assert.Equal(BootCheckSeverity.Fatal, devItem.Severity);
+        Assert.Contains("0xc000000e", devItem.Detail);
+
+        // 파일·구조 검사는 전부 통과하지만(정적 검사만으로는 놓쳤던 케이스), 장치 대조가 잡아냄.
+        Assert.True(report.Items.Single(i => i.Name.Contains("bootmgfw")).Passed);
+        Assert.True(report.Items.Single(i => i.Name == "BCD OS 로더 항목").Passed);
     }
 
     [Fact]
@@ -174,8 +197,11 @@ public class BootReadinessCheckTests
             Input = input;
         }
 
-        public static DiskLayout CreateHealthyUefi()
+        public static DiskLayout CreateHealthyUefi(bool bcdDeviceMatchesDisk = true)
         {
+            Guid diskGuid = Guid.NewGuid();
+            Guid bcdDeviceGuid = bcdDeviceMatchesDisk ? diskGuid : Guid.NewGuid();
+
             string root = Path.Combine(Path.GetTempPath(), "dm-boot-" + Guid.NewGuid().ToString("N"));
             string esp = Path.Combine(root, "esp");
             string win = Path.Combine(root, "win");
@@ -185,7 +211,7 @@ public class BootReadinessCheckTests
             Directory.CreateDirectory(Path.Combine(esp, "EFI", "Boot"));
             File.WriteAllText(Path.Combine(efiBoot, "bootmgfw.efi"), "stub");
             File.WriteAllText(Path.Combine(esp, "EFI", "Boot", "bootx64.efi"), "stub");
-            File.WriteAllBytes(Path.Combine(efiBoot, "BCD"), BuildBcd());
+            File.WriteAllBytes(Path.Combine(efiBoot, "BCD"), BuildBcd(bcdDeviceGuid));
 
             string sys32 = Path.Combine(win, "Windows", "System32");
             Directory.CreateDirectory(Path.Combine(sys32, "config"));
@@ -197,6 +223,7 @@ public class BootReadinessCheckTests
                 Uefi = true,
                 SystemRoot = esp + "\\",
                 WindowsRoot = win + "\\",
+                DiskGuid = diskGuid,
             });
         }
 
@@ -214,25 +241,41 @@ public class BootReadinessCheckTests
             return b.Finish(rootKey);
         }
 
-        /// <summary>부트 매니저 객체 + winload를 가리키는 OS 로더 객체를 가진 BCD 하이브.</summary>
-        private static byte[] BuildBcd()
+        /// <summary>
+        /// 부트 매니저 + winload OS 로더 객체를 가진 BCD 하이브. 장치 요소(osdevice/device)에는
+        /// <paramref name="deviceGuid"/>를 내장해 실제 BCD 장치 참조를 흉내 냅니다.
+        /// </summary>
+        private static byte[] BuildBcd(Guid deviceGuid)
         {
             const string bootMgr = "{9dea862c-5cdd-4e70-acc1-f32b344d4795}";
             const string loaderGuid = "{11111111-2222-3333-4444-555555555555}";
+            byte[] devBlob = DeviceBlob(deviceGuid);
 
             var b = new HiveBuilder();
-            // OS 로더 객체: Elements\12000002\Element = winload 경로
+            // OS 로더: 12000002=winload 경로, 21000001=osdevice, 11000001=device
             int e12 = b.AddKey("12000002", [b.Sz("Element", @"\Windows\system32\winload.efi")], []);
-            int loaderElems = b.AddKey("Elements", [], [e12]);
+            int e21 = b.AddKey("21000001", [b.Binary("Element", devBlob)], []);
+            int e11 = b.AddKey("11000001", [b.Binary("Element", devBlob)], []);
+            int loaderElems = b.AddKey("Elements", [], [e12, e21, e11]);
             int loaderObj = b.AddKey(loaderGuid, [], [loaderElems]);
-            // 부트 매니저 객체: Elements 존재만 확인
-            int e24 = b.AddKey("24000001", [b.Sz("Element", loaderGuid)], []);
-            int mgrElems = b.AddKey("Elements", [], [e24]);
+
+            // 부트 매니저: 23000003=기본 로더 GUID, 11000001=device
+            int d23 = b.AddKey("23000003", [b.Sz("Element", loaderGuid)], []);
+            int d11 = b.AddKey("11000001", [b.Binary("Element", devBlob)], []);
+            int mgrElems = b.AddKey("Elements", [], [d23, d11]);
             int mgrObj = b.AddKey(bootMgr, [], [mgrElems]);
 
             int objects = b.AddKey("Objects", [], [loaderObj, mgrObj]);
             int rootKey = b.AddKey("", [], [objects]);
             return b.Finish(rootKey);
+        }
+
+        /// <summary>GUID를 중간에 심은 장치 요소 blob (실제 BCD 장치 요소를 흉내).</summary>
+        private static byte[] DeviceBlob(Guid guid)
+        {
+            var blob = new byte[48];
+            guid.ToByteArray().CopyTo(blob, 16);
+            return blob;
         }
 
         public void Dispose()
