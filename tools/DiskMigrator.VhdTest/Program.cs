@@ -15,6 +15,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 bool useSnapshot = args.Contains("--snapshot");
 bool verify = !args.Contains("--no-verify");
 bool planOnly = args.Contains("--plan-only");
+bool snapStability = args.Contains("--snapshot-stability");
 
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
 {
@@ -23,7 +24,9 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
         "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--no-verify]\n" +
         "      가상 디스크(VHD) 대상으로 실제 클론을 실행합니다.\n" +
         "  DiskMigrator.VhdTest <원본디스크번호> --plan-only [--snapshot]\n" +
-        "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.");
+        "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.\n" +
+        "  DiskMigrator.VhdTest <디스크번호> --snapshot-stability [--wait <초>]\n" +
+        "      VSS 스냅샷이 시간에 따라 바뀌는지 측정합니다. 어떤 디스크에도 쓰지 않습니다.");
     return 2;
 }
 
@@ -38,6 +41,18 @@ if (!diskService.IsElevated)
 {
     Console.Error.WriteLine("오류: 관리자 권한이 필요합니다.");
     return 3;
+}
+
+// 스냅샷 안정성 측정 — 대상 없이 원본 디스크의 스냅샷만 두 번 읽어 비교. 쓰기 없음.
+if (snapStability)
+{
+    int waitSec = 60;
+    int wi = Array.IndexOf(args, "--wait");
+    if (wi >= 0 && wi + 1 < args.Length) int.TryParse(args[wi + 1], out waitSec);
+
+    return await SnapshotStabilityProbe.RunAsync(
+        diskService, snapshotProvider,
+        loggerFactory.CreateLogger("SnapshotStability"), sourceNumber, waitSec);
 }
 
 // 계획 미리보기는 대상을 열지 않고 어디에도 쓰지 않으므로, 아래의 "가상 디스크에만 쓴다"
