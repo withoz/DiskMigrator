@@ -19,10 +19,15 @@
 param(
     [string]$WorkDir = "$env:TEMP\DiskMigratorVhdTest",
     [switch]$UseSnapshot,
+    # 스마트 클론(빈 영역 건너뛰기). NTFS 할당 비트맵을 읽으려면 스냅샷이 필요하므로 -UseSnapshot도 켜집니다.
+    [switch]$SkipUnused,
     [switch]$KeepVhds,
     # 검증할 실행파일. 단일 exe의 VSS 경로를 확인하려면 게시된 단일 exe를 지정합니다.
     [string]$ExePath = ""
 )
+
+# 스마트 클론은 스냅샷이 전제입니다.
+if ($SkipUnused) { $UseSnapshot = $true }
 
 $ErrorActionPreference = 'Stop'
 
@@ -177,6 +182,7 @@ attach vdisk
 
     $cloneArgs = @($sourceNum, $targetNum)
     if ($UseSnapshot) { $cloneArgs += '--snapshot' }
+    if ($SkipUnused)  { $cloneArgs += '--skip-unused' }
 
     # 열어 둔 핸들을 닫습니다. 열린 채로 두면 FSCTL_LOCK_VOLUME이 실패해야 정상이고,
     # 그건 별도 시나리오이므로 여기서는 정상 경로를 봅니다.
@@ -201,7 +207,13 @@ attach vdisk
     Write-Info "원본 VHD 분리 (GUID 충돌 방지)"
     Start-Sleep -Milliseconds 1000
 
-    # 원본을 뗀 뒤 대상의 클론 볼륨(원본과 같은 NTFS 시리얼)이 표면화되려면 재검색이 필요합니다.
+    # 클론 직후엔 원본과 디스크/파티션 GUID·NTFS 시리얼이 같아, 대상 볼륨이 깨끗하게
+    # 표면화되지 않는 경우가 있습니다(서명 충돌 잔재). 대상 VHD를 한 번 떼었다 다시 붙여
+    # 충돌 없는 상태에서 마운트되게 합니다. (클론 자체는 정상이며, 이건 순전히 검증 편의입니다.)
+    Invoke-Diskpart "select vdisk file=`"$script:TargetVhd`"`ndetach vdisk" | Out-Null
+    Start-Sleep -Milliseconds 800
+    Invoke-Diskpart "select vdisk file=`"$script:TargetVhd`"`nattach vdisk" | Out-Null
+    Start-Sleep -Milliseconds 1500
     Invoke-Diskpart "rescan" | Out-Null
     Start-Sleep -Milliseconds 1500
 
