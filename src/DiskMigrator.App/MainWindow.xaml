@@ -122,6 +122,15 @@
                             </TextBlock>
                         </CheckBox>
 
+                        <CheckBox IsChecked="{Binding SkipUnusedBlocks}" IsEnabled="{Binding UseSnapshot}"
+                                  VerticalContentAlignment="Center" Margin="0,0,20,4">
+                            <TextBlock>
+                                <Run Text="스마트 클론 (빈 영역 건너뛰기)" FontWeight="SemiBold" />
+                                <Run Text=" — 사용 중인 블록만 복사해 빠르게 (스냅샷 필요)"
+                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                            </TextBlock>
+                        </CheckBox>
+
                         <CheckBox IsChecked="{Binding UniversalRestore}" VerticalContentAlignment="Center"
                                   Margin="0,0,0,4">
                             <TextBlock>

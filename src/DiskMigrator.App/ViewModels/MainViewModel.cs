@@ -87,6 +87,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _verifyAfterClone = true;
 
     /// <summary>
+    /// 빈 영역을 건너뛰고 사용 중인 블록만 복사할지(스마트 클론). 실데이터가 적으면 크게
+    /// 빨라집니다. 스냅샷 모드에서만 효과가 있습니다.
+    /// </summary>
+    [ObservableProperty] private bool _skipUnusedBlocks;
+
+    /// <summary>
     /// 클론 후 대상 Windows를 하드웨어 독립화(Universal Restore)할지. 시스템 디스크를
     /// 다른 PC로 옮길 때 켭니다. 표준 저장소 드라이버를 부팅 시작으로 설정해 0x7B를 예방합니다.
     /// </summary>
@@ -485,6 +491,7 @@ public sealed partial class MainViewModel : ObservableObject
                 ? BadSectorPolicy.ZeroFillAndContinue
                 : BadSectorPolicy.Abort,
             VerifyAfterClone = VerifyAfterClone,
+            SkipUnusedBlocks = SkipUnusedBlocks,
         };
 
         // Progress<T>는 생성한 스레드(UI)의 컨텍스트로 콜백을 돌려주므로 별도 디스패치가 필요 없습니다.
