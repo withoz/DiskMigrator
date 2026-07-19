@@ -23,6 +23,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 bool useSnapshot = args.Contains("--snapshot");
 bool verify = !args.Contains("--no-verify");
+bool skipUnused = args.Contains("--skip-unused");
 bool planOnly = args.Contains("--plan-only");
 bool snapStability = args.Contains("--snapshot-stability");
 bool bootCheckOnly = args.Contains("--boot-check");
@@ -33,8 +34,9 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
 {
     Console.Error.WriteLine(
         "사용법:\n" +
-        "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--no-verify] [--no-boot-check]\n" +
+        "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--skip-unused] [--no-verify] [--no-boot-check]\n" +
         "      가상 디스크(VHD) 대상으로 실제 클론을 실행하고, 성공 시 부팅 구성을 정적 검사합니다.\n" +
+        "      --skip-unused: 스마트 클론(NTFS 빈 영역 건너뛰기, --snapshot과 함께).\n" +
         "  DiskMigrator.VhdTest <디스크번호> --boot-check\n" +
         "      실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성만 점검합니다 (읽기 전용).\n" +
         "  DiskMigrator.VhdTest <디스크번호> --fix-boot\n" +
@@ -132,7 +134,7 @@ if (snapStability)
 if (planOnly)
 {
     return await PlanPreview.RunAsync(
-        diskService, snapshotProvider, loggerFactory, sourceNumber, useSnapshot);
+        diskService, snapshotProvider, loggerFactory, sourceNumber, useSnapshot, skipUnused);
 }
 
 if (args.Length < 2 || !int.TryParse(args[1], out int targetNumber))
@@ -181,7 +183,8 @@ foreach (var (label, disk) in new[] { ("원본", source), ("대상", target) })
 Console.WriteLine("=== VHD 클론 통합 테스트 ===\n");
 Console.WriteLine($"원본: [{source.DeviceNumber}] {source.Model} — {SizeFormatter.Format(source.SizeBytes)} ({source.BusType})");
 Console.WriteLine($"대상: [{target.DeviceNumber}] {target.Model} — {SizeFormatter.Format(target.SizeBytes)} ({target.BusType})");
-Console.WriteLine($"스냅샷: {(useSnapshot ? "사용" : "미사용")}   검증: {(verify ? "함" : "안 함")}");
+Console.WriteLine($"스냅샷: {(useSnapshot ? "사용" : "미사용")}   검증: {(verify ? "함" : "안 함")}   " +
+                  $"스마트 클론: {(skipUnused ? "사용(빈 영역 건너뜀)" : "미사용")}");
 Console.WriteLine($"VSS 사용 가능: {snapshotProvider.IsAvailable}\n");
 
 foreach (var p in source.Partitions)
@@ -196,6 +199,7 @@ var options = new CloneOptions
 {
     BufferSize = 4 * 1024 * 1024,
     VerifyAfterClone = verify,
+    SkipUnusedBlocks = skipUnused,
     BadSectorPolicy = BadSectorPolicy.Abort,
     ProgressInterval = TimeSpan.FromMilliseconds(500),
 };

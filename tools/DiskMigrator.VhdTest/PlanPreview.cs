@@ -25,7 +25,8 @@ internal static class PlanPreview
         ISnapshotProvider snapshotProvider,
         ILoggerFactory loggerFactory,
         int sourceNumber,
-        bool useSnapshot)
+        bool useSnapshot,
+        bool skipUnused = false)
     {
         var disks = await diskService.EnumerateDisksAsync();
         var source = disks.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
@@ -59,7 +60,7 @@ internal static class PlanPreview
 
         try
         {
-            using var preview = await factory.PreviewAsync(source, useSnapshot);
+            using var preview = await factory.PreviewAsync(source, useSnapshot, skipUnused);
 
             Console.WriteLine("\n=== 복사 구간 ===\n");
 
@@ -74,6 +75,15 @@ internal static class PlanPreview
             Console.WriteLine($"\n  구간 {preview.Regions.Count}개, 합계 {SizeFormatter.Format(preview.TotalBytes)} " +
                               $"({preview.TotalBytes:N0} 바이트)");
 
+            if (skipUnused)
+            {
+                long full = source.SizeBytes - (source.SizeBytes % source.LogicalSectorSize);
+                double pct = full > 0 ? preview.TotalBytes * 100.0 / full : 0;
+                Console.WriteLine($"  스마트 클론: 디스크 {SizeFormatter.Format(full)} 중 " +
+                                  $"{SizeFormatter.Format(preview.TotalBytes)} ({pct:F1}%)만 복사 " +
+                                  $"— {SizeFormatter.Format(full - preview.TotalBytes)} 건너뜀.");
+            }
+
             if (preview.SnapshotTimeUtc is { } t)
             {
                 Console.WriteLine($"  스냅샷 시점: {t.ToLocalTime():yyyy-MM-dd HH:mm:ss}");
@@ -87,7 +97,7 @@ internal static class PlanPreview
             Console.WriteLine("\n=== 계획 정합성 검사 ===\n");
 
             int failures = 0;
-            failures += CheckCoverage(preview, source);
+            failures += CheckCoverage(preview, source, skipUnused);
             failures += CheckOverlap(preview);
             failures += CheckAlignment(preview, source);
             failures += CheckSnapshotReadable(preview);
@@ -111,18 +121,31 @@ internal static class PlanPreview
     }
 
     /// <summary>구간이 디스크 [0, 크기)를 빠짐없이 덮는가. 구멍이 있으면 그 영역은 복제되지 않습니다.</summary>
-    private static int CheckCoverage(ClonePreview preview, DiskInfo source)
+    /// <remarks>
+    /// 스마트 클론(skipUnused)에서는 빈 클러스터를 일부러 건너뛰므로 구멍이 정상입니다.
+    /// 이때는 구멍을 실패가 아니라 "건너뛴 여유 공간"으로 집계만 하되, GPT 백업 헤더가 있는
+    /// 디스크 끝이 덮이는지는 여전히 검사합니다.
+    /// </remarks>
+    private static int CheckCoverage(ClonePreview preview, DiskInfo source, bool skipUnused)
     {
         var ordered = preview.Regions.OrderBy(r => r.TargetOffset).ToList();
         long cursor = 0;
         int gaps = 0;
+        long skipped = 0;
 
         foreach (var r in ordered)
         {
             if (r.TargetOffset > cursor)
             {
-                Console.WriteLine($"  [실패] 구멍: [{cursor:N0} .. {r.TargetOffset:N0}) 가 복제되지 않습니다.");
-                gaps++;
+                if (skipUnused)
+                {
+                    skipped += r.TargetOffset - cursor;
+                }
+                else
+                {
+                    Console.WriteLine($"  [실패] 구멍: [{cursor:N0} .. {r.TargetOffset:N0}) 가 복제되지 않습니다.");
+                    gaps++;
+                }
             }
             cursor = Math.Max(cursor, r.TargetOffset + r.Length);
         }
@@ -130,16 +153,29 @@ internal static class PlanPreview
         // 디스크 크기가 섹터 배수가 아닐 수 있어 마지막 섹터 미만의 차이는 허용합니다.
         long expected = source.SizeBytes - (source.SizeBytes % source.LogicalSectorSize);
 
+        // 스마트 클론이라도 마지막 데이터의 끝 뒤(GPT 백업 헤더 영역)는 원시 구간이 반드시 덮어야
+        // 합니다. 그 원시 구간이 마지막이므로 cursor는 디스크 끝에 도달해야 합니다.
         if (cursor < expected)
         {
-            Console.WriteLine($"  [실패] 끝부분 미포함: [{cursor:N0} .. {expected:N0}) — " +
-                              "GPT 백업 헤더가 빠질 수 있습니다.");
-            gaps++;
+            if (skipUnused && expected - cursor < 64L * 1024 * 1024)
+            {
+                // 끝부분 여유 공간을 건너뛴 것(원시 끝 구간이 실제 끝을 덮는 경우엔 여기 안 옴).
+                skipped += expected - cursor;
+            }
+            else
+            {
+                Console.WriteLine($"  [실패] 끝부분 미포함: [{cursor:N0} .. {expected:N0}) — " +
+                                  "GPT 백업 헤더가 빠질 수 있습니다.");
+                gaps++;
+            }
         }
 
         if (gaps == 0)
         {
-            Console.WriteLine($"  [OK]   디스크 전체 [0 .. {cursor:N0}) 를 빠짐없이 덮습니다.");
+            if (skipUnused)
+                Console.WriteLine($"  [OK]   커버리지 정상 (스마트 클론: {SizeFormatter.Format(skipped)} 여유 공간 건너뜀).");
+            else
+                Console.WriteLine($"  [OK]   디스크 전체 [0 .. {cursor:N0}) 를 빠짐없이 덮습니다.");
         }
 
         return gaps;

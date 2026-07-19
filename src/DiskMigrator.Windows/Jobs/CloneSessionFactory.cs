@@ -4,6 +4,7 @@ using DiskMigrator.Core.Devices;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Safety;
+using DiskMigrator.Windows.Devices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -44,6 +45,7 @@ public sealed class CloneSessionFactory(
     public async Task<ClonePreview> PreviewAsync(
         DiskInfo source,
         bool useSnapshot,
+        bool skipUnusedBlocks = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -56,7 +58,7 @@ public sealed class CloneSessionFactory(
             resources.Add(sourceDevice);
 
             var (regions, snapshots, unsnapshotted) =
-                await BuildRegionsAsync(source, sourceDevice, useSnapshot, resources, ct);
+                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resources, ct);
 
             _logger.LogInformation(
                 "계획 미리보기: 구간 {Count}개, 총 {Bytes:N0}바이트, 스냅샷 {Snapshot}",
@@ -81,6 +83,7 @@ public sealed class CloneSessionFactory(
         DiskInfo source,
         DiskInfo target,
         bool useSnapshot,
+        bool skipUnusedBlocks = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -98,7 +101,7 @@ public sealed class CloneSessionFactory(
             resources.Add(sourceDevice);
 
             var (regions, snapshots, unsnapshotted) =
-                await BuildRegionsAsync(source, sourceDevice, useSnapshot, resources, ct);
+                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resources, ct);
 
             // 대상을 여는 순간 볼륨이 잠기고 마운트 해제됩니다. 가장 마지막에 합니다.
             var targetDevice = diskService.OpenWriteExclusive(target);
@@ -138,6 +141,7 @@ public sealed class CloneSessionFactory(
             DiskInfo source,
             IBlockDevice sourceDevice,
             bool useSnapshot,
+            bool skipUnusedBlocks,
             List<IDisposable> resources,
             CancellationToken ct)
     {
@@ -152,7 +156,7 @@ public sealed class CloneSessionFactory(
 
         var regions = snapshots is null
             ? BuildOfflineRegions(source, sourceDevice)
-            : BuildSnapshotRegions(source, sourceDevice, snapshots, resources, unsnapshotted);
+            : BuildSnapshotRegions(source, sourceDevice, snapshots, skipUnusedBlocks, resources, unsnapshotted);
 
         return (regions, snapshots, unsnapshotted);
     }
@@ -261,6 +265,7 @@ public sealed class CloneSessionFactory(
         DiskInfo source,
         IBlockDevice sourceDevice,
         ISnapshotSet snapshots,
+        bool skipUnusedBlocks,
         List<IDisposable> resources,
         List<string> unsnapshotted)
     {
@@ -314,14 +319,8 @@ public sealed class CloneSessionFactory(
 
                 if (fromSnapshot > 0)
                 {
-                    regions.Add(new CopyRegion
-                    {
-                        Source = snapshotDevice,
-                        SourceOffset = 0,
-                        TargetOffset = partition.StartingOffset,
-                        Length = fromSnapshot,
-                        Description = $"{Describe(partition)} — 스냅샷",
-                    });
+                    AddSnapshotDataRegions(
+                        regions, partition, snapshotDevice, snapshots, fromSnapshot, skipUnusedBlocks);
                 }
 
                 // 볼륨이 파티션보다 짧으면 남는 꼬리는 원시로 채웁니다.
@@ -344,6 +343,80 @@ public sealed class CloneSessionFactory(
         }
 
         return regions;
+    }
+
+    /// <summary>
+    /// 스냅샷 파티션 데이터를 복사 구간으로 추가합니다. 스마트 클론이 켜지고 NTFS면 할당
+    /// 비트맵을 읽어 <b>사용 중인 런만</b> 구간으로 만들고, 아니면 파티션 전체를 한 구간으로 만듭니다.
+    /// </summary>
+    /// <remarks>
+    /// 비트맵 읽기가 실패하면(비-NTFS·FSCTL 미지원·오류) 통째 복사로 안전하게 되돌립니다.
+    /// 스마트 클론은 어디까지나 최적화이므로, 실패해도 정확한 복제가 우선입니다.
+    /// </remarks>
+    private void AddSnapshotDataRegions(
+        List<CopyRegion> regions,
+        PartitionInfo partition,
+        IBlockDevice snapshotDevice,
+        ISnapshotSet snapshots,
+        long fromSnapshot,
+        bool skipUnusedBlocks)
+    {
+        bool isNtfs = partition.FileSystem is not null &&
+                      partition.FileSystem.Equals("NTFS", StringComparison.OrdinalIgnoreCase);
+
+        if (skipUnusedBlocks && isNtfs &&
+            partition.VolumeGuidPath is { } vol &&
+            snapshots.SnapshotDevicePaths.TryGetValue(vol, out string? snapshotPath))
+        {
+            try
+            {
+                // 4KB 클러스터 기준 1MB 미만 빈틈은 이어 붙여 IO 조각화를 줄입니다.
+                var reader = new VolumeBitmapReader(_logger);
+                var runs = reader.ReadRuns(snapshotPath, coalesceGapBytes: 1L << 20, capBytes: fromSnapshot);
+
+                if (runs.Count > 0)
+                {
+                    long used = runs.Sum(r => r.LengthBytes);
+                    _logger.LogInformation(
+                        "{Region}: 스마트 클론 — 사용 영역 {Runs}런 / {Used:N0}바이트만 복사 " +
+                        "(파티션 {Full:N0}바이트 중).",
+                        Describe(partition), runs.Count, used, fromSnapshot);
+
+                    foreach (var run in runs)
+                    {
+                        regions.Add(new CopyRegion
+                        {
+                            Source = snapshotDevice,
+                            SourceOffset = run.OffsetBytes,
+                            TargetOffset = partition.StartingOffset + run.OffsetBytes,
+                            Length = run.LengthBytes,
+                            Description = $"{Describe(partition)} — 스냅샷(사용 블록)",
+                        });
+                    }
+                    return;
+                }
+
+                _logger.LogWarning(
+                    "{Region}: 할당 비트맵에서 사용 런을 찾지 못해 통째 복사로 되돌립니다.",
+                    Describe(partition));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "{Region}: 할당 비트맵 읽기 실패 — 통째 복사로 안전하게 되돌립니다.",
+                    Describe(partition));
+            }
+        }
+
+        // 기본(통째 복사) 또는 스마트 클론 폴백.
+        regions.Add(new CopyRegion
+        {
+            Source = snapshotDevice,
+            SourceOffset = 0,
+            TargetOffset = partition.StartingOffset,
+            Length = fromSnapshot,
+            Description = $"{Describe(partition)} — 스냅샷",
+        });
     }
 
     /// <summary>

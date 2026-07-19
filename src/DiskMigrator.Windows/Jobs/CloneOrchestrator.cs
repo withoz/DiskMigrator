@@ -61,7 +61,7 @@ public sealed class CloneOrchestrator(
         var factory = new CloneSessionFactory(
             diskService, snapshotProvider, _loggerFactory.CreateLogger<CloneSessionFactory>());
 
-        var session = await factory.CreateAsync(source, target, useSnapshot, ct);
+        var session = await factory.CreateAsync(source, target, useSnapshot, options.SkipUnusedBlocks, ct);
 
         CloneResult result;
         GptRepairResult? gptRepair = null;

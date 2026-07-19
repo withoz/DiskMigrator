@@ -27,6 +27,25 @@ public sealed class CloneOptions
     /// <summary>복제 후 원본과 대상을 해시로 비교할지.</summary>
     public bool VerifyAfterClone { get; init; } = true;
 
+    /// <summary>
+    /// 빈 영역을 건너뛰고 <b>사용 중인 블록만</b> 복사할지(스마트 클론). NTFS 할당 비트맵을
+    /// 읽어 쓰이는 클러스터만 복제하므로, 실데이터가 적으면 크게 빨라집니다.
+    /// 스냅샷 모드에서만 동작하며, 실패 시 해당 파티션은 통째 복사로 안전하게 되돌립니다.
+    /// </summary>
+    public bool SkipUnusedBlocks { get; init; }
+
+    /// <summary>
+    /// 작은 디스크를 큰 디스크로 복제한 뒤, 남는 미할당 공간을 <b>마지막 파티션에 합칠지</b>.
+    /// GPT 파티션 엔트리를 디스크 끝까지 늘리고 NTFS 볼륨을 그 크기까지 확장합니다.
+    /// </summary>
+    public bool ExpandLastPartition { get; init; }
+
+    /// <summary>
+    /// 스마트 클론에서 건너뛴 여유 공간을 대상에서 0으로 채울지. 켜지 않으면 대상의 그 영역엔
+    /// 이전 데이터가 남습니다(파일시스템상 여유 공간이라 부팅·무결성엔 무해하지만 프라이버시 이슈).
+    /// </summary>
+    public bool ZeroFreeSpace { get; init; }
+
     /// <summary>진행률 콜백 최소 간격. UI 스레드를 초당 수천 번 깨우지 않기 위함.</summary>
     public TimeSpan ProgressInterval { get; init; } = TimeSpan.FromMilliseconds(250);
 

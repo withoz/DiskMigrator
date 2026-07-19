@@ -95,6 +95,15 @@ internal static partial class NativeMethods
     /// </summary>
     internal const uint FSCTL_ALLOW_EXTENDED_DASD_IO = 0x00090083;
 
+    /// <summary>NTFS 볼륨의 클러스터 할당 비트맵(1비트=1클러스터). 스마트 클론의 핵심.</summary>
+    internal const uint FSCTL_GET_VOLUME_BITMAP = 0x0009006F;
+
+    /// <summary>NTFS 볼륨 데이터(BytesPerCluster, TotalClusters 등).</summary>
+    internal const uint FSCTL_GET_NTFS_VOLUME_DATA = 0x00090064;
+
+    /// <summary>파티션을 넓힌 뒤 NTFS 볼륨을 그 크기까지 확장합니다(Phase 2).</summary>
+    internal const uint FSCTL_EXTEND_VOLUME = 0x000900F0;
+
     // --- Win32 오류 코드 ------------------------------------------------------
 
     internal const int ERROR_ACCESS_DENIED = 5;
