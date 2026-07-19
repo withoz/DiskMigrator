@@ -19,6 +19,13 @@ public sealed class CloneJobReport
     public GptRepairResult? GptRepair { get; init; }
     public UniversalRestoreReport? UniversalRestore { get; init; }
     public PartitionExpandResult? PartitionExpand { get; init; }
+
+    /// <summary>
+    /// 리사이즈 클론에서 GPT 재작성이 실패해 파티션 배치가 깨졌는지. true면 데이터는
+    /// 복사됐어도 파티션 테이블이 옛 위치를 가리켜, 이 디스크는 부팅·사용할 수 없습니다.
+    /// 이 경우 성공이 아니라 손상으로 다뤄야 합니다(확장·하드웨어 독립화도 건너뜀).
+    /// </summary>
+    public bool ResizeLayoutCorrupted { get; init; }
 }
 
 /// <summary>
@@ -87,6 +94,7 @@ public sealed class CloneOrchestrator(
 
         CloneResult result;
         GptRepairResult? gptRepair = null;
+        bool resizeLayoutCorrupted = false;
         try
         {
             var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
@@ -96,10 +104,23 @@ public sealed class CloneOrchestrator(
             // 데이터가 불완전하므로 의미가 없고, 오히려 "쓸 수 있는 디스크"처럼 보이게 만듭니다.
             if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
             {
-                // 리사이즈면 GPT를 새 배치로 다시 쓰고(엔트리 위치 변경), 아니면 백업 헤더만 보정합니다.
-                gptRepair = resizeLayout is not null
-                    ? RewriteGptForResize(session, source, resizeLayout, logger)
-                    : TryRepairGpt(session, target, logger);
+                if (resizeLayout is not null)
+                {
+                    // 리사이즈: GPT를 새 배치로 다시 씁니다(엔트리 위치 변경).
+                    gptRepair = RewriteGptForResize(session, source, resizeLayout, logger);
+
+                    // 재작성이 실패하면 파티션 데이터는 새 위치에 있는데 파티션 테이블은 옛 위치를
+                    // 가리켜 배치가 깨진 상태입니다. 데이터가 복사됐다는 이유로 "완료"로 보이면
+                    // 사용자가 부팅 불가 디스크를 정상 사본으로 오인합니다(실기 MBR 버그와 같은
+                    // 실패 모드). 여기서 손상으로 표시해 뒤 단계(확장·독립화)를 건너뛰고,
+                    // 결과 화면이 실패·경고를 띄우게 합니다.
+                    resizeLayoutCorrupted = gptRepair is not { WasRepaired: true };
+                }
+                else
+                {
+                    // 일반 클론: 백업 헤더만 보정합니다(실패해도 데이터는 온전).
+                    gptRepair = TryRepairGpt(session, target, logger);
+                }
             }
         }
         finally
@@ -110,8 +131,10 @@ public sealed class CloneOrchestrator(
         }
 
         // 클론이 성공했고 요청받았으면, 대상 Windows를 하드웨어 독립화합니다.
+        // 리사이즈 배치가 깨졌으면(GPT 재작성 실패) 볼륨이 기대 위치에 없어 하이브 접근이
+        // 실패하고, 애초에 부팅 불가 디스크라 손볼 의미가 없으므로 건너뜁니다.
         UniversalRestoreReport? universalRestoreReport = null;
-        if (universalRestore &&
+        if (universalRestore && !resizeLayoutCorrupted &&
             result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
         {
             try
@@ -131,9 +154,12 @@ public sealed class CloneOrchestrator(
         // 클론이 성공했으면 파티션을 확장합니다.
         // - 리사이즈: 확대한 파티션의 NTFS를 시프트로 확보한 뒤 공간까지 늘립니다.
         // - 일반: 요청 시 남는 공간을 마지막 파티션에 합칩니다(GPT 보정이 만든 미할당 공간).
+        // 배치가 깨진 리사이즈 클론에서는 파티션을 확장하지 않습니다. 파티션 테이블이 옛 위치를
+        // 가리키는 디스크에 extend를 걸면 엉뚱한 파티션을 건드릴 수 있고, 어차피 못 쓰는 사본입니다.
         PartitionExpandResult? partitionExpand = null;
         bool cloneOk = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
-        if (cloneOk && (resizeLayout?.GrownPartition is not null || options.ExpandLastPartition))
+        if (cloneOk && !resizeLayoutCorrupted &&
+            (resizeLayout?.GrownPartition is not null || options.ExpandLastPartition))
         {
             try
             {
@@ -162,6 +188,7 @@ public sealed class CloneOrchestrator(
             GptRepair = gptRepair,
             UniversalRestore = universalRestoreReport,
             PartitionExpand = partitionExpand,
+            ResizeLayoutCorrupted = resizeLayoutCorrupted,
         };
     }
 
@@ -203,9 +230,11 @@ public sealed class CloneOrchestrator(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "리사이즈 GPT 재작성에 실패했습니다.");
+            logger.LogError(ex, "리사이즈 GPT 재작성에 실패했습니다 — 파티션 배치가 깨졌습니다.");
             return new GptRepairResult(false,
-                $"데이터 복제는 정상적으로 끝났지만 파티션 배치를 반영한 GPT 재작성에 실패했습니다: {ex.Message}");
+                $"데이터는 복제됐지만 파티션 배치를 반영한 GPT 재작성에 실패했습니다({ex.Message}). " +
+                "파티션 테이블이 옛 위치를 가리켜 이 디스크는 부팅·사용할 수 없습니다. " +
+                "리사이즈를 끄고 다시 클론하십시오.");
         }
     }
 

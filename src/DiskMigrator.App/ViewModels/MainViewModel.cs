@@ -801,6 +801,21 @@ public sealed partial class MainViewModel : ObservableObject
                 "작업이 실패했습니다",
                 result.ErrorMessage ?? "알 수 없는 오류입니다."),
         };
+
+        // 리사이즈 클론에서 GPT 재작성이 실패하면 파티션 데이터는 새 위치에 있는데 파티션
+        // 테이블은 옛 위치를 가리켜 배치가 깨진 상태입니다. 데이터가 복사됐다는 이유로 "완료"로
+        // 보이면 사용자가 부팅 불가 디스크를 정상 사본으로 오인합니다. 명확한 실패·경고로 덮어씁니다.
+        if (report.ResizeLayoutCorrupted)
+        {
+            ResultIsSuccess = false;
+            PartitionExpandAvailable = false;
+            ResultTitle = "클론했지만 파티션 배치가 깨졌습니다 — 이 디스크로 부팅하지 마십시오";
+            ResultMessage =
+                $"[{report.Target.DeviceNumber}] {report.Target.Model} 에 데이터는 복사됐지만, " +
+                "파티션 리사이즈 배치를 반영하는 GPT 재작성에 실패해 파티션 테이블이 옛 위치를 " +
+                "가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. " +
+                "리사이즈를 끄고 다시 클론하십시오.";
+        }
     }
 
     private void ShowFailure(string title, string message, string details)
