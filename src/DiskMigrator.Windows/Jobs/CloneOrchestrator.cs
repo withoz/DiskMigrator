@@ -162,6 +162,12 @@ public sealed class CloneOrchestrator(
     /// 대상에는 원본 GPT가 그대로 복제돼 있으므로(엔트리에 타입·고유 GUID·이름이 온전),
     /// 각 엔트리의 StartingLBA/EndingLBA만 배치대로 고치고 백업 헤더를 끝으로 옮깁니다.
     /// 실패해도 데이터 자체는 정확히 복제된 상태이므로 전체를 실패로 만들지 않습니다.
+    ///
+    /// <para><b>확대할 파티션은 GPT에 원래 크기로 남겨 둡니다.</b> 뒤 파티션은 새 위치로 밀리므로
+    /// 확대 파티션과 그 뒤 파티션 사이에 미할당 공간이 생기고, 클론 후 <c>diskpart extend</c>가
+    /// 파티션과 NTFS를 그 공간까지 함께 늘립니다(v0.2.0 마지막 파티션 확장과 같은 검증된 경로).
+    /// GPT에서 미리 슬롯만 키우면 그 뒤에 미할당이 없어 <c>extend</c>가 무효 인자로 실패하고,
+    /// NTFS는 큰 슬롯 안에서 원래 크기로 남습니다.</para>
     /// </remarks>
     private GptRepairResult? RewriteGptForResize(
         CloneSession session, DiskInfo source, ResizeLayout layout, ILogger logger)
@@ -173,7 +179,9 @@ public sealed class CloneOrchestrator(
             var src = source.Partitions.First(p => p.Number == tp.SourceNumber);
             long oldStartLba = src.StartingOffset / sector;
             long newStartLba = tp.StartingOffset / sector;
-            long newEndLba = (tp.StartingOffset + tp.LengthBytes) / sector - 1;
+            // 확대 파티션은 원래 크기 유지(뒤에 미할당 공간을 두고 extend가 채움), 나머지는 그대로.
+            long lengthBytes = tp.Grown ? src.LengthBytes : tp.LengthBytes;
+            long newEndLba = (tp.StartingOffset + lengthBytes) / sector - 1;
             return new PartitionRemap(oldStartLba, newStartLba, newEndLba);
         }).ToList();
 

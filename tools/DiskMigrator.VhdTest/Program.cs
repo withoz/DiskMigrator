@@ -32,6 +32,13 @@ bool bootCheckOnly = args.Contains("--boot-check");
 bool fixBootOnly = args.Contains("--fix-boot");
 // <디스크> --expand-last (두 번째가 디스크 번호가 아니면) → 단독 파티션 확장 명령.
 bool expandLastOnly = args.Contains("--expand-last") && (args.Length < 2 || !int.TryParse(args[1], out _));
+// <디스크> --expand-part <파티션번호> → 지정 파티션을 뒤 미할당 공간까지 단독 확장.
+int expandPartNumber = -1;
+{
+    int epi = Array.IndexOf(args, "--expand-part");
+    if (epi >= 0 && epi + 1 < args.Length) int.TryParse(args[epi + 1], out expandPartNumber);
+}
+bool expandPartOnly = expandPartNumber >= 0;
 bool runBootCheck = !args.Contains("--no-boot-check");
 
 // --grow <파티션번호> [--grow-gb <새크기GB>] → 리사이즈 클론(그 파티션을 확대).
@@ -60,6 +67,8 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
         "      클론의 BCD 장치 참조를 현재 파티션으로 복구합니다 (0xc000000e 해결, ESP에만 씀).\n" +
         "  DiskMigrator.VhdTest <디스크번호> --expand-last\n" +
         "      마지막 파티션을 남는 공간까지 확장합니다 (대상 단독 연결 상태에서).\n" +
+        "  DiskMigrator.VhdTest <디스크번호> --expand-part <파티션번호>\n" +
+        "      지정 파티션을 뒤 미할당 공간까지 확장합니다 (리사이즈 클론 마무리, 대상 단독 연결).\n" +
         "  DiskMigrator.VhdTest <원본디스크번호> --plan-only [--snapshot]\n" +
         "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --snapshot-stability [--wait <초>]\n" +
@@ -137,6 +146,24 @@ if (expandLastOnly)
     Console.WriteLine($"=== 파티션 확장: [{disk.DeviceNumber}] {disk.Model} ===\n");
     var extender = new PartitionExtender(diskService, loggerFactory.CreateLogger<PartitionExtender>());
     var r = await extender.TryExpandLastAsync(disk.DeviceNumber);
+    Console.WriteLine($"\n{(r.Success ? "*** 확장 성공 ***" : "*** 확장 미완료 ***")}  {r.Message}");
+    return r.Success ? 0 : 1;
+}
+
+// 지정 파티션 확장 — 리사이즈 클론 후 확대한 파티션의 NTFS를 뒤 미할당 공간까지 채웁니다.
+if (expandPartOnly)
+{
+    var allDisks = await diskService.EnumerateDisksAsync();
+    var disk = allDisks.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
+    if (disk is null)
+    {
+        Console.Error.WriteLine($"오류: 디스크 {sourceNumber}를 찾을 수 없습니다.");
+        return 4;
+    }
+
+    Console.WriteLine($"=== 파티션 {expandPartNumber} 확장: [{disk.DeviceNumber}] {disk.Model} ===\n");
+    var extender = new PartitionExtender(diskService, loggerFactory.CreateLogger<PartitionExtender>());
+    var r = await extender.TryExpandPartitionAsync(disk.DeviceNumber, expandPartNumber);
     Console.WriteLine($"\n{(r.Success ? "*** 확장 성공 ***" : "*** 확장 미완료 ***")}  {r.Message}");
     return r.Success ? 0 : 1;
 }
