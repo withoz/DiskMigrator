@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Registry;
 using DiskMigrator.Core.Safety;
 using DiskMigrator.Core.Util;
@@ -104,6 +105,30 @@ public sealed partial class MainViewModel : ObservableObject
     /// (대상을 단독 연결한 뒤 디스크 관리의 '볼륨 확장'으로 마무리).
     /// </summary>
     [ObservableProperty] private bool _expandLastPartition;
+
+    // --- 파티션 리사이즈 (확대) --------------------------------------------
+
+    /// <summary>확대할 후보 파티션 목록(원본의 NTFS 파티션).</summary>
+    public ObservableCollection<PartitionChoiceViewModel> ResizablePartitions { get; } = [];
+
+    /// <summary>파티션 리사이즈(확대)를 사용할지. 대상이 원본보다 클 때만 켤 수 있습니다.</summary>
+    [ObservableProperty] private bool _resizeEnabled;
+
+    [ObservableProperty] private PartitionChoiceViewModel? _selectedResizePartition;
+
+    /// <summary>true면 남는 공간을 전부 확대 파티션에, false면 <see cref="ResizeSizeGb"/> 크기로.</summary>
+    [ObservableProperty] private bool _resizeFillRemaining = true;
+
+    [ObservableProperty] private string _resizeSizeGb = "";
+
+    /// <summary>대상이 원본보다 커서 확대할 여지가 있는지.</summary>
+    public bool CanResize =>
+        SelectedSource is not null && SelectedTarget is not null &&
+        SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
+        ResizablePartitions.Count > 0;
+
+    /// <summary>리사이즈로 확대한 파티션 번호(클론 후 "파티션 확장" 버튼이 이 파티션을 넓힘). 없으면 null.</summary>
+    private int? _grownPartitionNumber;
 
     // --- 안전 점검 ---------------------------------------------------------
 
@@ -325,8 +350,45 @@ public sealed partial class MainViewModel : ObservableObject
         CanProceed = report.CanProceed;
         NeedsConfirmation = report.NeedsTypedConfirmation;
 
+        UpdateResizeChoices();
+
         OnPropertyChanged(nameof(CanStart));
         StartCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>원본 파티션을 확대 후보 목록으로 채우고, 확대 가능 여부를 갱신합니다.</summary>
+    private void UpdateResizeChoices()
+    {
+        int? previous = SelectedResizePartition?.Number;
+        ResizablePartitions.Clear();
+
+        if (SelectedSource is not null)
+        {
+            // 확대는 diskpart로 NTFS를 늘리므로 NTFS 파티션만 후보로 둡니다.
+            foreach (var p in SelectedSource.Disk.Partitions
+                         .Where(p => p.FileSystem is not null &&
+                                     p.FileSystem.Equals("NTFS", StringComparison.OrdinalIgnoreCase))
+                         .OrderBy(p => p.StartingOffset))
+            {
+                ResizablePartitions.Add(new PartitionChoiceViewModel(p));
+            }
+        }
+
+        // 이전 선택을 같은 번호로 복원하거나 첫 항목으로.
+        SelectedResizePartition =
+            ResizablePartitions.FirstOrDefault(c => c.Number == previous) ?? ResizablePartitions.FirstOrDefault();
+
+        OnPropertyChanged(nameof(CanResize));
+
+        // 대상이 더 이상 크지 않거나 후보가 없으면 리사이즈를 끕니다.
+        if (ResizeEnabled && !CanResize) ResizeEnabled = false;
+    }
+
+    partial void OnResizeEnabledChanged(bool value)
+    {
+        // 켰는데 아무 것도 안 골랐으면 첫 후보를 선택해 줍니다.
+        if (value && SelectedResizePartition is null)
+            SelectedResizePartition = ResizablePartitions.FirstOrDefault();
     }
 
     partial void OnConfirmationTextChanged(string value)
@@ -528,7 +590,11 @@ public sealed partial class MainViewModel : ObservableObject
 
             var extender = new PartitionExtender(
                 _diskService, _loggerFactory.CreateLogger<PartitionExtender>());
-            var result = await extender.TryExpandLastAsync(target.DeviceNumber);
+
+            // 리사이즈로 확대한 파티션이 있으면 그 파티션을(마지막이 아닐 수 있음), 아니면 마지막 파티션을 넓힙니다.
+            var result = _grownPartitionNumber is { } grownNumber
+                ? await extender.TryExpandPartitionAsync(target.DeviceNumber, grownNumber)
+                : await extender.TryExpandLastAsync(target.DeviceNumber);
 
             PartitionExpandMessage = result.Message;
             PartitionExpandSuccess = result.Success;
@@ -571,6 +637,21 @@ public sealed partial class MainViewModel : ObservableObject
         ProgressRegion = UseSnapshot ? "스냅샷 생성 중... (최대 수십 초)" : "대상 볼륨 잠금 중...";
         ProgressBytes = ProgressSpeed = ProgressEta = ProgressElapsed = "";
 
+        // 파티션 리사이즈(확대) 요청을 구성합니다. 대상이 원본보다 클 때만, 고른 파티션에 대해.
+        PartitionGrowRequest? growRequest = null;
+        _grownPartitionNumber = null;
+        if (ResizeEnabled && CanResize && SelectedResizePartition is { } choice)
+        {
+            long? newBytes = null;
+            if (!ResizeFillRemaining &&
+                double.TryParse(ResizeSizeGb, out double gb) && gb > 0)
+            {
+                newBytes = (long)(gb * 1_000_000_000);
+            }
+            growRequest = new PartitionGrowRequest(choice.Number, newBytes);
+            _grownPartitionNumber = choice.Number;
+        }
+
         var options = new CloneOptions
         {
             BadSectorPolicy = ZeroFillBadSectors
@@ -579,6 +660,7 @@ public sealed partial class MainViewModel : ObservableObject
             VerifyAfterClone = VerifyAfterClone,
             SkipUnusedBlocks = SkipUnusedBlocks,
             ExpandLastPartition = ExpandLastPartition,
+            GrowRequest = growRequest,
         };
 
         // Progress<T>는 생성한 스레드(UI)의 컨텍스트로 콜백을 돌려주므로 별도 디스패치가 필요 없습니다.

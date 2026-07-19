@@ -150,6 +150,44 @@
                         </CheckBox>
                     </WrapPanel>
 
+                    <!-- 파티션 리사이즈 (확대) — 대상이 원본보다 클 때만 -->
+                    <StackPanel Margin="0,0,0,12" IsEnabled="{Binding CanResize}">
+                        <CheckBox IsChecked="{Binding ResizeEnabled}" VerticalContentAlignment="Center">
+                            <TextBlock>
+                                <Run Text="파티션 리사이즈 (확대)" FontWeight="SemiBold" />
+                                <Run Text=" — 대상이 더 클 때 고른 파티션을 넓히고 뒤 파티션을 밀어냅니다"
+                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                            </TextBlock>
+                        </CheckBox>
+
+                        <StackPanel Margin="24,8,0,0"
+                                    Visibility="{Binding ResizeEnabled, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="확대할 파티션:" VerticalAlignment="Center"
+                                           Margin="0,0,8,0" FontSize="12" />
+                                <ComboBox MinWidth="340" ItemsSource="{Binding ResizablePartitions}"
+                                          SelectedItem="{Binding SelectedResizePartition}"
+                                          DisplayMemberPath="Label" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeMode"
+                                             IsChecked="{Binding ResizeFillRemaining}"
+                                             Content="남는 공간 전부" VerticalContentAlignment="Center"
+                                             Margin="0,0,16,0" FontSize="12" />
+                                <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeMode"
+                                             Content="지정 크기(GB):" VerticalContentAlignment="Center"
+                                             Margin="0,0,6,0" FontSize="12" />
+                                <TextBox Width="70" Text="{Binding ResizeSizeGb}" VerticalContentAlignment="Center"
+                                         IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
+                            </StackPanel>
+
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}"
+                                       FontSize="11" Margin="0,6,0,0"
+                                       Text="클론 중 자동 확장이 안 되면(원본이 함께 연결된 경우), 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 확대할 수 있습니다." />
+                        </StackPanel>
+                    </StackPanel>
+
                     <!-- 안전 점검 결과 -->
                     <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8">
                         <ItemsControl ItemsSource="{Binding SafetyIssues}">
