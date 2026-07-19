@@ -3,6 +3,7 @@ using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Devices;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Safety;
 using DiskMigrator.Windows.Devices;
 using Microsoft.Extensions.Logging;
@@ -46,6 +47,7 @@ public sealed class CloneSessionFactory(
         DiskInfo source,
         bool useSnapshot,
         bool skipUnusedBlocks = false,
+        ResizeLayout? resizeLayout = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -58,7 +60,7 @@ public sealed class CloneSessionFactory(
             resources.Add(sourceDevice);
 
             var (regions, snapshots, unsnapshotted) =
-                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resources, ct);
+                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resizeLayout, resources, ct);
 
             _logger.LogInformation(
                 "계획 미리보기: 구간 {Count}개, 총 {Bytes:N0}바이트, 스냅샷 {Snapshot}",
@@ -84,6 +86,7 @@ public sealed class CloneSessionFactory(
         DiskInfo target,
         bool useSnapshot,
         bool skipUnusedBlocks = false,
+        ResizeLayout? resizeLayout = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -101,7 +104,7 @@ public sealed class CloneSessionFactory(
             resources.Add(sourceDevice);
 
             var (regions, snapshots, unsnapshotted) =
-                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resources, ct);
+                await BuildRegionsAsync(source, sourceDevice, useSnapshot, skipUnusedBlocks, resizeLayout, resources, ct);
 
             // 대상을 여는 순간 볼륨이 잠기고 마운트 해제됩니다. 가장 마지막에 합니다.
             var targetDevice = diskService.OpenWriteExclusive(target);
@@ -142,6 +145,7 @@ public sealed class CloneSessionFactory(
             IBlockDevice sourceDevice,
             bool useSnapshot,
             bool skipUnusedBlocks,
+            ResizeLayout? resizeLayout,
             List<IDisposable> resources,
             CancellationToken ct)
     {
@@ -154,9 +158,19 @@ public sealed class CloneSessionFactory(
             if (snapshots is not null) resources.Add(snapshots);
         }
 
-        var regions = snapshots is null
-            ? BuildOfflineRegions(source, sourceDevice)
-            : BuildSnapshotRegions(source, sourceDevice, snapshots, skipUnusedBlocks, resources, unsnapshotted);
+        List<CopyRegion> regions;
+        if (resizeLayout is not null)
+        {
+            // 리사이즈: 파티션을 새 오프셋으로 복사하고 GPT는 클론 후 다시 씁니다(원시 복사 없음).
+            regions = BuildResizeRegions(
+                source, sourceDevice, snapshots, resizeLayout, skipUnusedBlocks, resources, unsnapshotted);
+        }
+        else
+        {
+            regions = snapshots is null
+                ? BuildOfflineRegions(source, sourceDevice)
+                : BuildSnapshotRegions(source, sourceDevice, snapshots, skipUnusedBlocks, resources, unsnapshotted);
+        }
 
         return (regions, snapshots, unsnapshotted);
     }
@@ -320,7 +334,8 @@ public sealed class CloneSessionFactory(
                 if (fromSnapshot > 0)
                 {
                     AddSnapshotDataRegions(
-                        regions, partition, snapshotDevice, snapshots, fromSnapshot, skipUnusedBlocks);
+                        regions, partition, snapshotDevice, snapshots, fromSnapshot, skipUnusedBlocks,
+                        targetBaseOffset: partition.StartingOffset);
                 }
 
                 // 볼륨이 파티션보다 짧으면 남는 꼬리는 원시로 채웁니다.
@@ -346,6 +361,104 @@ public sealed class CloneSessionFactory(
     }
 
     /// <summary>
+    /// 리사이즈 클론: 각 파티션을 <b>새 오프셋</b>으로 복사합니다.
+    /// </summary>
+    /// <remarks>
+    /// 일반 클론과 두 가지가 다릅니다.
+    /// <list type="number">
+    /// <item>각 파티션 데이터의 <b>대상 오프셋</b>이 배치(<see cref="ResizeLayout"/>)가 정한 새 위치입니다.
+    ///   파티션 <b>내용</b>은 1:1 그대로 복사하고(확대된 여분 공간은 비운 채로 두었다가 클론 후
+    ///   NTFS를 확장), 스마트 클론·스냅샷 로직은 동일하게 적용합니다.</item>
+    /// <item>파티션 테이블은 원본을 그대로 복사한 뒤(엔트리 GUID·타입·이름 보존), 클론이 끝나면
+    ///   <see cref="GptRewriter"/>로 엔트리 위치를 새 배치에 맞게 다시 씁니다. 그래서 파티션 사이의
+    ///   정렬 간격이나 원본 끝의 GPT 백업 헤더는 복사하지 않습니다(백업은 재작성이 만듭니다).</item>
+    /// </list>
+    /// </remarks>
+    private List<CopyRegion> BuildResizeRegions(
+        DiskInfo source,
+        IBlockDevice sourceDevice,
+        ISnapshotSet? snapshots,
+        ResizeLayout layout,
+        bool skipUnusedBlocks,
+        List<IDisposable> resources,
+        List<string> unsnapshotted)
+    {
+        var regions = new List<CopyRegion>();
+        int sectorSize = sourceDevice.SectorSize;
+        long diskLength = AlignDown(sourceDevice.Length, sectorSize);
+
+        var ordered = source.Partitions.OrderBy(p => p.StartingOffset).ToList();
+        long firstStart = ordered.Count > 0 ? ordered[0].StartingOffset : 0;
+
+        // 파티션 테이블 + 첫 파티션 앞 영역(보호 MBR·GPT 헤더·엔트리 배열). 위치는 그대로.
+        // 클론 후 GptRewriter가 엔트리를 새 배치로 고치므로 검증에서는 제외합니다.
+        if (firstStart > 0)
+        {
+            regions.Add(Segment(sourceDevice, 0, 0, firstStart,
+                "파티션 테이블 및 부트 영역", stableForVerification: false));
+        }
+
+        foreach (var partition in ordered)
+        {
+            var placed = layout.Partitions.FirstOrDefault(p => p.SourceNumber == partition.Number)
+                ?? throw new InvalidOperationException(
+                    $"파티션 {partition.Number}이(가) 리사이즈 배치에 없습니다.");
+            long newStart = placed.StartingOffset;
+
+            long partitionEnd = Math.Min(partition.EndOffset, diskLength);
+            long partitionLength = partitionEnd - partition.StartingOffset;
+            if (partitionLength <= 0) continue;
+
+            IBlockDevice? snapshotDevice =
+                snapshots is null ? null : TryOpenSnapshot(partition, snapshots, resources);
+
+            if (snapshotDevice is null)
+            {
+                // 스냅샷 없음(오프라인이거나 VSS 불가 파일시스템) → 원본에서 통째로 새 오프셋에 복사.
+                if (snapshots is not null) unsnapshotted.Add(Describe(partition));
+                regions.Add(Segment(sourceDevice, partition.StartingOffset, newStart, partitionLength,
+                    $"{Describe(partition)} — 원시 복사", stableForVerification: snapshots is null));
+            }
+            else
+            {
+                long fromSnapshot = ReadableLengthProbe.Probe(snapshotDevice, partitionLength);
+
+                if (fromSnapshot > 0)
+                {
+                    // snapshotDevice가 non-null이면 snapshots도 non-null입니다(위 삼항의 else 분기).
+                    AddSnapshotDataRegions(
+                        regions, partition, snapshotDevice, snapshots!, fromSnapshot, skipUnusedBlocks,
+                        targetBaseOffset: newStart);
+                }
+
+                long tail = partitionLength - fromSnapshot;
+                if (tail > 0)
+                {
+                    regions.Add(Segment(sourceDevice, partition.StartingOffset + fromSnapshot,
+                        newStart + fromSnapshot, tail,
+                        $"{Describe(partition)} — 꼬리 영역", stableForVerification: false));
+                }
+            }
+        }
+
+        return regions;
+    }
+
+    /// <summary>임의의 원본→대상 오프셋으로 복사하는 구간을 만듭니다.</summary>
+    private static CopyRegion Segment(
+        IBlockDevice device, long sourceOffset, long targetOffset, long length,
+        string description, bool stableForVerification) =>
+        new()
+        {
+            Source = device,
+            SourceOffset = sourceOffset,
+            TargetOffset = targetOffset,
+            Length = length,
+            Description = description,
+            IsStableForVerification = stableForVerification,
+        };
+
+    /// <summary>
     /// 스냅샷 파티션 데이터를 복사 구간으로 추가합니다. 스마트 클론이 켜지고 NTFS면 할당
     /// 비트맵을 읽어 <b>사용 중인 런만</b> 구간으로 만들고, 아니면 파티션 전체를 한 구간으로 만듭니다.
     /// </summary>
@@ -359,7 +472,8 @@ public sealed class CloneSessionFactory(
         IBlockDevice snapshotDevice,
         ISnapshotSet snapshots,
         long fromSnapshot,
-        bool skipUnusedBlocks)
+        bool skipUnusedBlocks,
+        long targetBaseOffset)
     {
         bool isNtfs = partition.FileSystem is not null &&
                       partition.FileSystem.Equals("NTFS", StringComparison.OrdinalIgnoreCase);
@@ -388,7 +502,7 @@ public sealed class CloneSessionFactory(
                         {
                             Source = snapshotDevice,
                             SourceOffset = run.OffsetBytes,
-                            TargetOffset = partition.StartingOffset + run.OffsetBytes,
+                            TargetOffset = targetBaseOffset + run.OffsetBytes,
                             Length = run.LengthBytes,
                             Description = $"{Describe(partition)} — 스냅샷(사용 블록)",
                         });
@@ -413,7 +527,7 @@ public sealed class CloneSessionFactory(
         {
             Source = snapshotDevice,
             SourceOffset = 0,
-            TargetOffset = partition.StartingOffset,
+            TargetOffset = targetBaseOffset,
             Length = fromSnapshot,
             Description = $"{Describe(partition)} — 스냅샷",
         });

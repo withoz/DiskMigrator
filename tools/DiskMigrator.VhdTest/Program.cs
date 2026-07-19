@@ -1,5 +1,6 @@
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Util;
 using DiskMigrator.VhdTest;
 using DiskMigrator.Windows.Devices;
@@ -33,6 +34,18 @@ bool fixBootOnly = args.Contains("--fix-boot");
 bool expandLastOnly = args.Contains("--expand-last") && (args.Length < 2 || !int.TryParse(args[1], out _));
 bool runBootCheck = !args.Contains("--no-boot-check");
 
+// --grow <파티션번호> [--grow-gb <새크기GB>] → 리사이즈 클론(그 파티션을 확대).
+// --grow-gb 없으면 남는 공간을 전부 그 파티션에 몰아줍니다.
+int growPartition = -1;
+long? growNewBytes = null;
+{
+    int gi = Array.IndexOf(args, "--grow");
+    if (gi >= 0 && gi + 1 < args.Length && int.TryParse(args[gi + 1], out int gp)) growPartition = gp;
+    int gsi = Array.IndexOf(args, "--grow-gb");
+    if (gsi >= 0 && gsi + 1 < args.Length && double.TryParse(args[gsi + 1], out double ggb))
+        growNewBytes = (long)(ggb * 1_000_000_000);
+}
+
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
 {
     Console.Error.WriteLine(
@@ -40,6 +53,7 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
         "  DiskMigrator.VhdTest <원본디스크번호> <대상디스크번호> [--snapshot] [--skip-unused] [--no-verify] [--no-boot-check]\n" +
         "      가상 디스크(VHD) 대상으로 실제 클론을 실행하고, 성공 시 부팅 구성을 정적 검사합니다.\n" +
         "      --skip-unused: 스마트 클론(NTFS 빈 영역 건너뛰기, --snapshot과 함께).\n" +
+        "      --grow <파티션번호> [--grow-gb <새크기GB>]: 그 파티션을 확대(리사이즈 클론). 크기 생략 시 남는 공간 전부.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --boot-check\n" +
         "      실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성만 점검합니다 (읽기 전용).\n" +
         "  DiskMigrator.VhdTest <디스크번호> --fix-boot\n" +
@@ -225,9 +239,16 @@ var options = new CloneOptions
     VerifyAfterClone = verify,
     SkipUnusedBlocks = skipUnused,
     ExpandLastPartition = expandLast,
+    GrowRequest = growPartition >= 0 ? new PartitionGrowRequest(growPartition, growNewBytes) : null,
     BadSectorPolicy = BadSectorPolicy.Abort,
     ProgressInterval = TimeSpan.FromMilliseconds(500),
 };
+
+if (growPartition >= 0)
+{
+    Console.WriteLine($"파티션 리사이즈: 파티션 {growPartition} 확대" +
+                      (growNewBytes is { } nb ? $" → {SizeFormatter.Format(nb)}" : " (남는 공간 전부)"));
+}
 
 string lastPhase = "";
 var progress = new Progress<CloneProgress>(p =>

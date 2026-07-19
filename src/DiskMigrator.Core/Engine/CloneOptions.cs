@@ -1,4 +1,5 @@
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 
 namespace DiskMigrator.Core.Engine;
 
@@ -45,6 +46,14 @@ public sealed class CloneOptions
     /// 이전 데이터가 남습니다(파일시스템상 여유 공간이라 부팅·무결성엔 무해하지만 프라이버시 이슈).
     /// </summary>
     public bool ZeroFreeSpace { get; init; }
+
+    /// <summary>
+    /// 지정한 파티션을 <b>확대</b>하며 복제할지(파티션 리사이즈). 설정하면 대상에서 이 파티션을
+    /// 넓히고 그 뒤 파티션들을 오른쪽으로 밀어 배치합니다. 대상이 원본보다 커야 하며, 확대된
+    /// 파티션은 클론 후 NTFS를 그 크기까지 확장합니다. <c>null</c>이면 원본 레이아웃 그대로 복제.
+    /// </summary>
+    /// <remarks>축소(대상 &lt; 원본)는 지원하지 않습니다(파일시스템 인식 축소는 다음 버전).</remarks>
+    public PartitionGrowRequest? GrowRequest { get; init; }
 
     /// <summary>진행률 콜백 최소 간격. UI 스레드를 초당 수천 번 깨우지 않기 위함.</summary>
     public TimeSpan ProgressInterval { get; init; } = TimeSpan.FromMilliseconds(250);

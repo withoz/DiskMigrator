@@ -62,7 +62,18 @@ public sealed class CloneOrchestrator(
         var factory = new CloneSessionFactory(
             diskService, snapshotProvider, _loggerFactory.CreateLogger<CloneSessionFactory>());
 
-        var session = await factory.CreateAsync(source, target, useSnapshot, options.SkipUnusedBlocks, ct);
+        // 리사이즈 요청이 있으면 지금(원본 최신 상태)에 맞춰 배치를 계산합니다. 대상이 원본보다
+        // 커야 하고, 계획기가 확대 규칙(정렬·겹침·초과)을 검증합니다.
+        ResizeLayout? resizeLayout = null;
+        if (options.GrowRequest is { } growRequest)
+        {
+            resizeLayout = ResizePlanner.Plan(source.Partitions, target.SizeBytes, growRequest);
+            logger.LogInformation(
+                "파티션 리사이즈: 파티션 {Num} 확대, 뒤 파티션 시프트.", growRequest.PartitionNumber);
+        }
+
+        var session = await factory.CreateAsync(
+            source, target, useSnapshot, options.SkipUnusedBlocks, resizeLayout, ct);
 
         CloneResult result;
         GptRepairResult? gptRepair = null;
@@ -75,7 +86,10 @@ public sealed class CloneOrchestrator(
             // 데이터가 불완전하므로 의미가 없고, 오히려 "쓸 수 있는 디스크"처럼 보이게 만듭니다.
             if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
             {
-                gptRepair = TryRepairGpt(session, target, logger);
+                // 리사이즈면 GPT를 새 배치로 다시 쓰고(엔트리 위치 변경), 아니면 백업 헤더만 보정합니다.
+                gptRepair = resizeLayout is not null
+                    ? RewriteGptForResize(session, source, resizeLayout, logger)
+                    : TryRepairGpt(session, target, logger);
             }
         }
         finally
@@ -104,20 +118,23 @@ public sealed class CloneOrchestrator(
             }
         }
 
-        // 클론이 성공했고 요청받았으면, 남는 공간을 마지막 파티션에 합칩니다.
-        // GPT 보정이 이미 백업 헤더를 끝으로 옮겨 미할당 공간을 만든 상태에서 실행합니다.
+        // 클론이 성공했으면 파티션을 확장합니다.
+        // - 리사이즈: 확대한 파티션의 NTFS를 시프트로 확보한 뒤 공간까지 늘립니다.
+        // - 일반: 요청 시 남는 공간을 마지막 파티션에 합칩니다(GPT 보정이 만든 미할당 공간).
         PartitionExpandResult? partitionExpand = null;
-        if (options.ExpandLastPartition &&
-            result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+        bool cloneOk = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
+        if (cloneOk && (resizeLayout?.GrownPartition is not null || options.ExpandLastPartition))
         {
             try
             {
                 var extender = new PartitionExtender(diskService, _loggerFactory.CreateLogger<PartitionExtender>());
-                partitionExpand = await extender.TryExpandLastAsync(target.DeviceNumber, ct);
+                partitionExpand = resizeLayout?.GrownPartition is { } grown
+                    ? await extender.TryExpandPartitionAsync(target.DeviceNumber, grown.SourceNumber, ct)
+                    : await extender.TryExpandLastAsync(target.DeviceNumber, ct);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "마지막 파티션 확장 중 오류. 클론 데이터는 정상입니다.");
+                logger.LogWarning(ex, "파티션 확장 중 오류. 클론 데이터는 정상입니다.");
                 partitionExpand = new PartitionExpandResult(true, false,
                     $"파티션 확장에 실패했습니다: {ex.Message}. 남는 공간은 디스크 관리에서 수동 확장할 수 있습니다.");
             }
@@ -136,6 +153,42 @@ public sealed class CloneOrchestrator(
             UniversalRestore = universalRestoreReport,
             PartitionExpand = partitionExpand,
         };
+    }
+
+    /// <summary>
+    /// 리사이즈 클론 후 대상 GPT를 새 파티션 배치로 다시 씁니다(엔트리 GUID 보존, 위치만 변경).
+    /// </summary>
+    /// <remarks>
+    /// 대상에는 원본 GPT가 그대로 복제돼 있으므로(엔트리에 타입·고유 GUID·이름이 온전),
+    /// 각 엔트리의 StartingLBA/EndingLBA만 배치대로 고치고 백업 헤더를 끝으로 옮깁니다.
+    /// 실패해도 데이터 자체는 정확히 복제된 상태이므로 전체를 실패로 만들지 않습니다.
+    /// </remarks>
+    private GptRepairResult? RewriteGptForResize(
+        CloneSession session, DiskInfo source, ResizeLayout layout, ILogger logger)
+    {
+        int sector = session.TargetDevice.SectorSize;
+
+        var remaps = layout.Partitions.Select(tp =>
+        {
+            var src = source.Partitions.First(p => p.Number == tp.SourceNumber);
+            long oldStartLba = src.StartingOffset / sector;
+            long newStartLba = tp.StartingOffset / sector;
+            long newEndLba = (tp.StartingOffset + tp.LengthBytes) / sector - 1;
+            return new PartitionRemap(oldStartLba, newStartLba, newEndLba);
+        }).ToList();
+
+        try
+        {
+            var rewriter = new GptRewriter(_loggerFactory.CreateLogger<GptRewriter>());
+            var r = rewriter.Rewrite(session.TargetDevice, remaps);
+            return new GptRepairResult(r.Rewritten, r.Description);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "리사이즈 GPT 재작성에 실패했습니다.");
+            return new GptRepairResult(false,
+                $"데이터 복제는 정상적으로 끝났지만 파티션 배치를 반영한 GPT 재작성에 실패했습니다: {ex.Message}");
+        }
     }
 
     private GptRepairResult? TryRepairGpt(CloneSession session, DiskInfo target, ILogger logger)
