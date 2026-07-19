@@ -98,6 +98,13 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _universalRestore;
 
+    /// <summary>
+    /// 작은 디스크를 큰 디스크로 복제한 뒤, 남는 미할당 공간을 마지막 파티션에 합칠지.
+    /// 클론 중에는 대상 볼륨 접근 제약으로 best-effort이며, 안 되면 미할당 공간이 남습니다
+    /// (대상을 단독 연결한 뒤 디스크 관리의 '볼륨 확장'으로 마무리).
+    /// </summary>
+    [ObservableProperty] private bool _expandLastPartition;
+
     // --- 안전 점검 ---------------------------------------------------------
 
     public ObservableCollection<SafetyIssue> SafetyIssues { get; } = [];
@@ -492,6 +499,7 @@ public sealed partial class MainViewModel : ObservableObject
                 : BadSectorPolicy.Abort,
             VerifyAfterClone = VerifyAfterClone,
             SkipUnusedBlocks = SkipUnusedBlocks,
+            ExpandLastPartition = ExpandLastPartition,
         };
 
         // Progress<T>는 생성한 스레드(UI)의 컨텍스트로 콜백을 돌려주므로 별도 디스패치가 필요 없습니다.
@@ -588,6 +596,11 @@ public sealed partial class MainViewModel : ObservableObject
         if (report.UniversalRestore is { } ur)
         {
             details.Add($"새 하드웨어 대비: {ur.Message}");
+        }
+
+        if (report.PartitionExpand is { } pe)
+        {
+            details.Add($"파티션 확장: {pe.Message}");
         }
 
         ResultDetails = string.Join("\n", details);

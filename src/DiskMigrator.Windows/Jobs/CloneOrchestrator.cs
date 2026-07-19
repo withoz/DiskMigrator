@@ -18,6 +18,7 @@ public sealed class CloneJobReport
     public IReadOnlyList<string> UnsnapshottedPartitions { get; init; } = [];
     public GptRepairResult? GptRepair { get; init; }
     public UniversalRestoreReport? UniversalRestore { get; init; }
+    public PartitionExpandResult? PartitionExpand { get; init; }
 }
 
 /// <summary>
@@ -103,6 +104,25 @@ public sealed class CloneOrchestrator(
             }
         }
 
+        // 클론이 성공했고 요청받았으면, 남는 공간을 마지막 파티션에 합칩니다.
+        // GPT 보정이 이미 백업 헤더를 끝으로 옮겨 미할당 공간을 만든 상태에서 실행합니다.
+        PartitionExpandResult? partitionExpand = null;
+        if (options.ExpandLastPartition &&
+            result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+        {
+            try
+            {
+                var extender = new PartitionExtender(diskService, _loggerFactory.CreateLogger<PartitionExtender>());
+                partitionExpand = await extender.TryExpandLastAsync(target.DeviceNumber, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "마지막 파티션 확장 중 오류. 클론 데이터는 정상입니다.");
+                partitionExpand = new PartitionExpandResult(true, false,
+                    $"파티션 확장에 실패했습니다: {ex.Message}. 남는 공간은 디스크 관리에서 수동 확장할 수 있습니다.");
+            }
+        }
+
         logger.LogInformation("=== 클론 종료: {Outcome} ===", result.Outcome);
 
         return new CloneJobReport
@@ -114,6 +134,7 @@ public sealed class CloneOrchestrator(
             UnsnapshottedPartitions = session.UnsnapshottedPartitions,
             GptRepair = gptRepair,
             UniversalRestore = universalRestoreReport,
+            PartitionExpand = partitionExpand,
         };
     }
 

@@ -131,6 +131,15 @@
                             </TextBlock>
                         </CheckBox>
 
+                        <CheckBox IsChecked="{Binding ExpandLastPartition}"
+                                  VerticalContentAlignment="Center" Margin="0,0,20,4">
+                            <TextBlock>
+                                <Run Text="마지막 파티션 확장" FontWeight="SemiBold" />
+                                <Run Text=" — 큰 디스크로 복제 시 남는 공간을 마지막 파티션에 합침"
+                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                            </TextBlock>
+                        </CheckBox>
+
                         <CheckBox IsChecked="{Binding UniversalRestore}" VerticalContentAlignment="Center"
                                   Margin="0,0,0,4">
                             <TextBlock>

@@ -24,10 +24,13 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 bool useSnapshot = args.Contains("--snapshot");
 bool verify = !args.Contains("--no-verify");
 bool skipUnused = args.Contains("--skip-unused");
+bool expandLast = args.Contains("--expand-last");
 bool planOnly = args.Contains("--plan-only");
 bool snapStability = args.Contains("--snapshot-stability");
 bool bootCheckOnly = args.Contains("--boot-check");
 bool fixBootOnly = args.Contains("--fix-boot");
+// <디스크> --expand-last (두 번째가 디스크 번호가 아니면) → 단독 파티션 확장 명령.
+bool expandLastOnly = args.Contains("--expand-last") && (args.Length < 2 || !int.TryParse(args[1], out _));
 bool runBootCheck = !args.Contains("--no-boot-check");
 
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
@@ -41,6 +44,8 @@ if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
         "      실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성만 점검합니다 (읽기 전용).\n" +
         "  DiskMigrator.VhdTest <디스크번호> --fix-boot\n" +
         "      클론의 BCD 장치 참조를 현재 파티션으로 복구합니다 (0xc000000e 해결, ESP에만 씀).\n" +
+        "  DiskMigrator.VhdTest <디스크번호> --expand-last\n" +
+        "      마지막 파티션을 남는 공간까지 확장합니다 (대상 단독 연결 상태에서).\n" +
         "  DiskMigrator.VhdTest <원본디스크번호> --plan-only [--snapshot]\n" +
         "      대상 없이 복사 계획만 만들어 검증합니다. 어떤 디스크에도 쓰지 않습니다.\n" +
         "  DiskMigrator.VhdTest <디스크번호> --snapshot-stability [--wait <초>]\n" +
@@ -101,6 +106,25 @@ if (fixBootOnly)
         if (fresh is not null) BootCheck.Run(fresh);
     }
     return result.Success ? 0 : 1;
+}
+
+// 파티션 확장 — 클론한 대상의 마지막 파티션을 남는 공간까지 넓힙니다.
+// 대상이 접근 가능한(단독 연결) 상태여야 하므로 별도 명령으로 둡니다.
+if (expandLastOnly)
+{
+    var allDisks = await diskService.EnumerateDisksAsync();
+    var disk = allDisks.FirstOrDefault(d => d.DeviceNumber == sourceNumber);
+    if (disk is null)
+    {
+        Console.Error.WriteLine($"오류: 디스크 {sourceNumber}를 찾을 수 없습니다.");
+        return 4;
+    }
+
+    Console.WriteLine($"=== 파티션 확장: [{disk.DeviceNumber}] {disk.Model} ===\n");
+    var extender = new PartitionExtender(diskService, loggerFactory.CreateLogger<PartitionExtender>());
+    var r = await extender.TryExpandLastAsync(disk.DeviceNumber);
+    Console.WriteLine($"\n{(r.Success ? "*** 확장 성공 ***" : "*** 확장 미완료 ***")}  {r.Message}");
+    return r.Success ? 0 : 1;
 }
 
 // 스냅샷 안정성 측정 — 대상 없이 원본 디스크의 스냅샷만 두 번 읽어 비교. 쓰기 없음.
@@ -200,6 +224,7 @@ var options = new CloneOptions
     BufferSize = 4 * 1024 * 1024,
     VerifyAfterClone = verify,
     SkipUnusedBlocks = skipUnused,
+    ExpandLastPartition = expandLast,
     BadSectorPolicy = BadSectorPolicy.Abort,
     ProgressInterval = TimeSpan.FromMilliseconds(500),
 };
@@ -242,6 +267,11 @@ try
     }
 
     Console.WriteLine($"  GPT 보정    : {report.GptRepair?.Description ?? "해당 없음"}");
+
+    if (report.PartitionExpand is { } exp)
+    {
+        Console.WriteLine($"  파티션 확장 : {(exp.Success ? "성공" : "미완료")} — {exp.Message}");
+    }
 
     if (report.Result.ErrorMessage is { } err)
     {
