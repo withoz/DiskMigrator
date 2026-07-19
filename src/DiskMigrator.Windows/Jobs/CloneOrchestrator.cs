@@ -67,6 +67,16 @@ public sealed class CloneOrchestrator(
         ResizeLayout? resizeLayout = null;
         if (options.GrowRequest is { } growRequest)
         {
+            // 리사이즈는 GPT 전용입니다. MBR은 파티션 테이블을 다시 쓰는 GptRewriter가 동작하지
+            // 않아, 파티션을 새 위치로 옮겨 놓고도 테이블은 옛 위치를 가리켜 배치가 깨집니다.
+            // 몇 시간짜리 클론을 시작하기 전에 여기서 즉시 막습니다.
+            if (source.PartitionStyle != PartitionStyle.Gpt)
+            {
+                throw new InvalidOperationException(
+                    $"파티션 리사이즈(확대)는 GPT 디스크만 지원합니다. 이 원본은 {source.PartitionStyle} " +
+                    "형식이라 리사이즈 옵션을 끄고 클론해야 합니다. (MBR 리사이즈는 아직 지원하지 않습니다.)");
+            }
+
             resizeLayout = ResizePlanner.Plan(source.Partitions, target.SizeBytes, growRequest);
             logger.LogInformation(
                 "파티션 리사이즈: 파티션 {Num} 확대, 뒤 파티션 시프트.", growRequest.PartitionNumber);

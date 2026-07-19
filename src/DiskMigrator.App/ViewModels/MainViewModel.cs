@@ -121,9 +121,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _resizeSizeGb = "";
 
-    /// <summary>대상이 원본보다 커서 확대할 여지가 있는지.</summary>
+    /// <summary>대상이 원본보다 커서 확대할 여지가 있는지. 리사이즈는 GPT 원본만 지원합니다.</summary>
     public bool CanResize =>
         SelectedSource is not null && SelectedTarget is not null &&
+        SelectedSource.Disk.PartitionStyle == PartitionStyle.Gpt &&
         SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
         ResizablePartitions.Count > 0;
 
