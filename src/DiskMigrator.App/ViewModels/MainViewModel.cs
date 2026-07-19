@@ -205,6 +205,24 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _bootRepairMessage = "";
     [ObservableProperty] private bool _bootRepairSuccess;
 
+    // --- 파티션 확장 재시도 (남는 공간을 마지막 파티션에 합치기) ------------
+
+    /// <summary>
+    /// 대상에 남는 미할당 공간이 있어 "파티션 확장" 버튼을 보여줄지. 클론 중에는 대상 볼륨
+    /// 접근 제약으로 확장이 실패하기 쉬우므로, 대상을 단독 연결한 뒤 이 버튼으로 마무리합니다.
+    /// </summary>
+    [ObservableProperty] private bool _partitionExpandAvailable;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExpandPartitionCommand))]
+    private bool _isExpandingPartition;
+
+    public bool CanExpandPartition => !IsExpandingPartition;
+
+    [ObservableProperty] private bool _partitionExpandRan;
+    [ObservableProperty] private string _partitionExpandMessage = "";
+    [ObservableProperty] private bool _partitionExpandSuccess;
+
     // --- 명령 --------------------------------------------------------------
 
     [RelayCommand]
@@ -250,6 +268,24 @@ public sealed partial class MainViewModel : ObservableObject
             d.Disk.SizeBytes == previous.SizeBytes &&
             string.Equals(d.Disk.Model, previous.Model, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(d.Disk.SerialNumber ?? "", previous.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// 방금 클론한 대상 디스크를 지금 다시 열거해 최신 정보를 얻습니다. 클론으로 파티션이
+    /// 바뀌었고 USB 재연결로 장치 번호가 달라졌을 수 있으므로, 먼저 신원(모델/시리얼/크기)으로
+    /// 찾고 실패하면 장치 번호로 대체합니다.
+    /// </summary>
+    private async Task<DiskInfo?> ResolveCurrentTargetAsync()
+    {
+        if (SelectedTarget is null) return null;
+
+        var previousTarget = SelectedTarget.Disk;
+        var disks = await _diskService.EnumerateDisksAsync();
+        return disks.FirstOrDefault(d =>
+                   d.SizeBytes == previousTarget.SizeBytes &&
+                   string.Equals(d.Model, previousTarget.Model, StringComparison.OrdinalIgnoreCase) &&
+                   string.Equals(d.SerialNumber ?? "", previousTarget.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase))
+               ?? disks.FirstOrDefault(d => d.DeviceNumber == previousTarget.DeviceNumber);
     }
 
     partial void OnSelectedSourceChanged(DiskItemViewModel? value) => UpdateSafety();
@@ -347,6 +383,10 @@ public sealed partial class MainViewModel : ObservableObject
         BootRepairAvailable = false;
         BootRepairRan = false;
         BootRepairMessage = "";
+        PartitionExpandAvailable = false;
+        PartitionExpandRan = false;
+        PartitionExpandMessage = "";
+        PartitionExpandSuccess = false;
     }
 
     /// <summary>
@@ -366,13 +406,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var previousTarget = SelectedTarget.Disk;
-            var disks = await _diskService.EnumerateDisksAsync();
-            var target = disks.FirstOrDefault(d =>
-                             d.SizeBytes == previousTarget.SizeBytes &&
-                             string.Equals(d.Model, previousTarget.Model, StringComparison.OrdinalIgnoreCase) &&
-                             string.Equals(d.SerialNumber ?? "", previousTarget.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase))
-                         ?? disks.FirstOrDefault(d => d.DeviceNumber == previousTarget.DeviceNumber);
+            var target = await ResolveCurrentTargetAsync();
 
             if (target is null)
             {
@@ -432,13 +466,7 @@ public sealed partial class MainViewModel : ObservableObject
         BootRepairRan = false;
         try
         {
-            var previousTarget = SelectedTarget.Disk;
-            var disks = await _diskService.EnumerateDisksAsync();
-            var target = disks.FirstOrDefault(d =>
-                             d.SizeBytes == previousTarget.SizeBytes &&
-                             string.Equals(d.Model, previousTarget.Model, StringComparison.OrdinalIgnoreCase) &&
-                             string.Equals(d.SerialNumber ?? "", previousTarget.SerialNumber ?? "", StringComparison.OrdinalIgnoreCase))
-                         ?? disks.FirstOrDefault(d => d.DeviceNumber == previousTarget.DeviceNumber);
+            var target = await ResolveCurrentTargetAsync();
 
             if (target is null)
             {
@@ -469,6 +497,57 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             IsRepairingBoot = false;
+        }
+    }
+
+    /// <summary>
+    /// 대상 디스크의 마지막 파티션을 남는 미할당 공간까지 확장합니다.
+    /// </summary>
+    /// <remarks>
+    /// 클론 중 자동 확장은 원본이 함께 연결돼 있어 대상 볼륨에 접근하지 못해 실패하기 쉽습니다.
+    /// 대상을 단독으로 연결한 뒤 이 버튼을 누르면(원본 분리 상태) 확실히 동작합니다 —
+    /// diskpart가 파티션과 NTFS를 한 번에 정합적으로 늘리므로 중간에 깨진 상태가 없습니다.
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanExpandPartition))]
+    private async Task ExpandPartitionAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsExpandingPartition = true;
+        PartitionExpandRan = false;
+        try
+        {
+            var target = await ResolveCurrentTargetAsync();
+            if (target is null)
+            {
+                PartitionExpandMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                PartitionExpandSuccess = false;
+                PartitionExpandRan = true;
+                return;
+            }
+
+            var extender = new PartitionExtender(
+                _diskService, _loggerFactory.CreateLogger<PartitionExtender>());
+            var result = await extender.TryExpandLastAsync(target.DeviceNumber);
+
+            PartitionExpandMessage = result.Message;
+            PartitionExpandSuccess = result.Success;
+            PartitionExpandRan = true;
+            _logger.LogInformation("파티션 확장: 성공={Success} {Message}", result.Success, result.Message);
+
+            // 성공했으면 더 확장할 공간이 없으니 버튼을 감춥니다.
+            if (result.Success) PartitionExpandAvailable = false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "파티션 확장에 실패했습니다.");
+            PartitionExpandMessage = $"확장에 실패했습니다: {ex.Message}";
+            PartitionExpandSuccess = false;
+            PartitionExpandRan = true;
+        }
+        finally
+        {
+            IsExpandingPartition = false;
         }
     }
 
@@ -598,13 +677,26 @@ public sealed partial class MainViewModel : ObservableObject
             details.Add($"새 하드웨어 대비: {ur.Message}");
         }
 
-        if (report.PartitionExpand is { } pe)
-        {
-            details.Add($"파티션 확장: {pe.Message}");
-        }
+        // 파티션 확장 결과는 아래 전용 패널(재시도 버튼 포함)에서 보여주므로 여기선 생략합니다.
 
         ResultDetails = string.Join("\n", details);
         ResultIsSuccess = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
+
+        // 클론 중 파티션 확장을 시도했다면 그 결과를 결과 화면에도 보여줍니다.
+        if (report.PartitionExpand is { } expand)
+        {
+            PartitionExpandRan = true;
+            PartitionExpandMessage = expand.Message;
+            PartitionExpandSuccess = expand.Success;
+        }
+
+        // 대상에 남는 공간이 있고 아직 확장이 끝나지 않았으면 "파티션 확장" 버튼을 제안합니다.
+        // 클론 중 자동 확장은 대상 볼륨 접근 제약으로 실패하기 쉬우므로, 대상을 단독 연결한
+        // 뒤 이 버튼으로 마무리하는 것이 정석입니다.
+        bool alreadyExpanded = report.PartitionExpand is { Success: true };
+        PartitionExpandAvailable = ResultIsSuccess &&
+                                   report.Target.SizeBytes > report.Source.SizeBytes &&
+                                   !alreadyExpanded;
 
         (ResultTitle, ResultMessage) = result.Outcome switch
         {
