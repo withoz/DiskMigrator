@@ -23,16 +23,39 @@ public static class GptImageBuilder
     /// <summary>첫 사용 가능 LBA: 보호 MBR(0) + 헤더(1) + 항목 배열(2~33) 다음.</summary>
     public const long FirstUsableLba = 2 + EntryArrayLbaCount;
 
+    /// <summary>Basic Data 파티션 타입 GUID.</summary>
+    public static readonly Guid BasicDataType = new("ebd0a0a2-b9e5-4433-87c0-68b6b72699c7");
+
+    /// <summary>이미지에 넣을 파티션 하나의 명세.</summary>
+    /// <param name="FirstLba">시작 LBA.</param>
+    /// <param name="LastLba">끝 LBA(포함).</param>
+    /// <param name="Unique">고유 파티션 GUID(null이면 무작위 생성).</param>
+    /// <param name="Type">타입 GUID(null이면 Basic Data).</param>
+    /// <param name="Name">파티션 이름.</param>
+    public sealed record PartitionSpec(
+        long FirstLba, long LastLba, Guid? Unique = null, Guid? Type = null, string Name = "Part");
+
     /// <summary>
-    /// 파티션 하나를 가진 유효한 GPT 디스크 이미지를 만듭니다.
+    /// 파티션 하나(디스크를 가득 채움)를 가진 유효한 GPT 디스크 이미지를 만듭니다.
     /// </summary>
     /// <param name="sizeBytes">디스크 전체 크기. 섹터 크기의 배수여야 합니다.</param>
     public static byte[] Build(long sizeBytes)
     {
+        long lastUsable = (sizeBytes / SectorSize - 1) - EntryArrayLbaCount - 1;
+        return Build(sizeBytes, new PartitionSpec(FirstUsableLba, lastUsable, Name: "Test Partition"));
+    }
+
+    /// <summary>
+    /// 지정한 파티션들을 가진 유효한 GPT 디스크 이미지를 만듭니다.
+    /// </summary>
+    public static byte[] Build(long sizeBytes, params PartitionSpec[] parts)
+    {
         if (sizeBytes % SectorSize != 0)
-        {
             throw new ArgumentException("크기는 섹터 크기의 배수여야 합니다.", nameof(sizeBytes));
-        }
+        if (parts.Length == 0)
+            throw new ArgumentException("파티션이 하나 이상 필요합니다.", nameof(parts));
+        if (parts.Length > EntryCount)
+            throw new ArgumentException($"파티션은 최대 {EntryCount}개입니다.", nameof(parts));
 
         var image = new byte[sizeBytes];
         long lastLba = (sizeBytes / SectorSize) - 1;
@@ -43,13 +66,17 @@ public static class GptImageBuilder
 
         // --- 파티션 항목 배열 ---
         var entries = new byte[EntryCount * EntrySize];
-        WritePartitionEntry(
-            entries.AsSpan(0, EntrySize),
-            typeGuid: new Guid("ebd0a0a2-b9e5-4433-87c0-68b6b72699c7"), // Basic Data
-            partitionGuid: Guid.NewGuid(),
-            firstLba: FirstUsableLba,
-            lastLba: lastUsableLba,
-            name: "Test Partition");
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var p = parts[i];
+            WritePartitionEntry(
+                entries.AsSpan(i * EntrySize, EntrySize),
+                typeGuid: p.Type ?? BasicDataType,
+                partitionGuid: p.Unique ?? Guid.NewGuid(),
+                firstLba: p.FirstLba,
+                lastLba: p.LastLba,
+                name: p.Name);
+        }
 
         uint entriesCrc = Crc32.Compute(entries);
 
@@ -167,4 +194,35 @@ public static class GptImageBuilder
 
     public static long ReadPartitionEntryLba(ReadOnlySpan<byte> sector) =>
         BinaryPrimitives.ReadInt64LittleEndian(sector.Slice(72, 8));
+
+    // --- 파티션 엔트리 읽기 (재작성 검증용) --------------------------------
+
+    /// <summary>엔트리 배열이 시작하는 LBA에서 index번째 엔트리의 StartingLBA를 읽습니다.</summary>
+    public static long ReadEntryStartLba(byte[] image, long entryArrayLba, int index) =>
+        BinaryPrimitives.ReadInt64LittleEndian(
+            image.AsSpan((int)(entryArrayLba * SectorSize) + index * EntrySize + 32, 8));
+
+    public static long ReadEntryEndLba(byte[] image, long entryArrayLba, int index) =>
+        BinaryPrimitives.ReadInt64LittleEndian(
+            image.AsSpan((int)(entryArrayLba * SectorSize) + index * EntrySize + 40, 8));
+
+    public static Guid ReadEntryUniqueGuid(byte[] image, long entryArrayLba, int index) =>
+        new(image.AsSpan((int)(entryArrayLba * SectorSize) + index * EntrySize + 16, 16).ToArray());
+
+    public static string ReadEntryName(byte[] image, long entryArrayLba, int index)
+    {
+        var raw = image.AsSpan((int)(entryArrayLba * SectorSize) + index * EntrySize + 56, 72).ToArray();
+        return Encoding.Unicode.GetString(raw).TrimEnd('\0');
+    }
+
+    /// <summary>헤더가 가리키는 엔트리 배열의 CRC가 헤더에 저장된 값과 일치하는지 검사합니다.</summary>
+    public static bool IsEntriesCrcValid(byte[] image, ReadOnlySpan<byte> headerSector)
+    {
+        uint stored = BinaryPrimitives.ReadUInt32LittleEndian(headerSector.Slice(88, 4));
+        long entryLba = ReadPartitionEntryLba(headerSector);
+        uint count = BinaryPrimitives.ReadUInt32LittleEndian(headerSector.Slice(80, 4));
+        uint size = BinaryPrimitives.ReadUInt32LittleEndian(headerSector.Slice(84, 4));
+        var arr = image.AsSpan((int)(entryLba * SectorSize), (int)(count * size));
+        return Crc32.Compute(arr) == stored;
+    }
 }
