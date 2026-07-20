@@ -410,7 +410,16 @@ public sealed partial class MainViewModel : ObservableObject
         UpdateSafety();
     }
 
-    partial void OnUseSnapshotChanged(bool value) => UpdateSafety();
+    partial void OnUseSnapshotChanged(bool value)
+    {
+        // 스마트 클론은 스냅샷 볼륨의 NTFS 할당 비트맵을 읽어야 하므로 스냅샷 없이는 성립하지
+        // 않습니다. 스냅샷을 끄면 체크박스가 회색이 될 뿐 켜진 상태로 남는데, 그러면 엔진은
+        // 그 값을 조용히 버리고 통째 복사를 합니다 — 화면은 "빈 영역을 건너뜁니다"라고 말하는데
+        // 실제로는 아무 일도 일어나지 않습니다. 함께 꺼서 그 상태 자체를 없앱니다.
+        if (!value) SkipUnusedBlocks = false;
+
+        UpdateSafety();
+    }
 
     private void UpdateSafety()
     {

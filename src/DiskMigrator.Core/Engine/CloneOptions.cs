@@ -70,11 +70,9 @@ public sealed class CloneOptions
     /// </remarks>
     public FreeSpaceMode FreeSpace { get; init; } = FreeSpaceMode.Leave;
 
-    /// <summary>
-    /// 스마트 클론에서 건너뛴 여유 공간을 대상에서 0으로 채울지. 켜지 않으면 대상의 그 영역엔
-    /// 이전 데이터가 남습니다(파일시스템상 여유 공간이라 부팅·무결성엔 무해하지만 프라이버시 이슈).
-    /// </summary>
-    public bool ZeroFreeSpace { get; init; }
+    // ZeroFreeSpace(스마트 클론에서 건너뛴 영역을 0으로 채우기)는 여기 있었지만 엔진 어디에서도
+    // 읽지 않는 죽은 스위치였습니다. 동작하는 것처럼 문서화된 채 남아 있으면 나중에 누군가
+    // 화면에 체크박스를 달아 아무 일도 안 하는 옵션을 만들게 됩니다. 실제로 구현할 때 다시 넣습니다.
 
     /// <summary>
     /// 넓힐 파티션과 크기. <see cref="FreeSpace"/>가 <see cref="FreeSpaceMode.GrowPartition"/>일 때만

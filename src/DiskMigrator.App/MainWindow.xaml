@@ -727,7 +727,7 @@
                             <Button Content="파티션 확장" Command="{Binding ExpandPartitionCommand}"
                                     MinWidth="130" Padding="16,8" />
                             <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
-                                       Text="확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다." />
+                                       Text="확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 맨 뒤가 복구 파티션이면 그것이 커집니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다." />
                         </StackPanel>
 
                         <TextBlock Text="확장 중..." Margin="0,6,0,0" Style="{StaticResource Caption}"
