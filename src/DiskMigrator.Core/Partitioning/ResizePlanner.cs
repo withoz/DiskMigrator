@@ -233,5 +233,12 @@ public static class ResizePlanner
     private static long AlignUp(long value, long alignment) =>
         value % alignment == 0 ? value : value + (alignment - value % alignment);
 
-    private static string SizeGb(long bytes) => $"{bytes / 1_000_000_000.0:F1} GB";
+    /// <summary>
+    /// 오류 문구의 크기 표기. 화면의 다른 모든 크기와 같은 기준(1024)이어야 합니다.
+    /// </summary>
+    /// <remarks>
+    /// 1000 기준으로 적으면 "930.49 GB 파티션"을 보고 있는 사용자에게 "현재 크기(999.1 GB)"라고
+    /// 말하게 됩니다. 어느 쪽이 맞는지 알 수 없어, 고치라고 알려 주는 문구가 오히려 혼란을 줍니다.
+    /// </remarks>
+    private static string SizeGb(long bytes) => Util.SizeFormatter.Format(bytes);
 }
