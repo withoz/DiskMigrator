@@ -523,7 +523,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         var report = SafetyGuard.Evaluate(
-            SelectedSource.Disk, SelectedTarget.Disk, IsElevated, UseSnapshot);
+            SelectedSource.Disk, SelectedTarget.Disk, IsElevated, UseSnapshot,
+            sourceHibernated: HasHibernationImage(SelectedSource.Disk));
 
         // 심각한 것부터 보여줍니다 — 차단 사유가 정보 메시지에 묻히면 안 됩니다.
         foreach (var issue in report.Issues.OrderByDescending(i => i.Severity))
@@ -542,6 +543,27 @@ public sealed partial class MainViewModel : ObservableObject
 
         OnPropertyChanged(nameof(CanStart));
         StartCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 원본에 최대 절전 이미지(<c>hiberfil.sys</c>)가 있는지 — 사본이 검은 화면에서 멈추는 원인.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SafetyGuard"/>는 파일을 읽지 않는 순수 판정기라, 파일 확인은 여기서 하고
+    /// 결과만 넘깁니다. 볼륨이 마운트되지 않았거나 접근할 수 없으면 false — 확인하지 못한 것을
+    /// 문제로 단정하지 않습니다.
+    /// </remarks>
+    private static bool HasHibernationImage(DiskInfo disk)
+    {
+        try
+        {
+            string? windowsRoot = BootReadinessCheck.ResolveInput(disk).WindowsRoot;
+            return windowsRoot is not null && File.Exists(Path.Combine(windowsRoot, "hiberfil.sys"));
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>원본 파티션을 확대 후보 목록으로 채우고, 확대 가능 여부를 갱신합니다.</summary>

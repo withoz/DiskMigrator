@@ -412,4 +412,75 @@ public class SafetyGuardTests
 
         SafetyGuard.AssertTargetUnchanged(confirmed, fresh); // 예외가 없어야 합니다.
     }
+
+    // --- 복제는 되지만 부팅이 안 될 조합 ------------------------------------
+    //
+    // 실기에서 MBR 원본을 NVMe로 옮기고 나서야 부팅이 불가능함을 알았습니다.
+    // 원본만 봐도 시작 전에 말할 수 있는 것들입니다.
+
+    private static PartitionInfo Part(
+        int number, bool active = false, bool esp = false, long start = 1L << 20) =>
+        new()
+        {
+            Number = number,
+            StartingOffset = start,
+            LengthBytes = 50L * 1024 * 1024 * 1024,
+            IsActive = active,
+            IsEfiSystemPartition = esp,
+            FileSystem = "NTFS",
+        };
+
+    [Fact]
+    public void MBR_활성파티션_원본은_레거시_전용임을_알린다()
+    {
+        var source = Disk(0, style: PartitionStyle.Mbr, partitions: [Part(1, active: true)]);
+
+        var report = SafetyGuard.Evaluate(source, Disk(1, serial: "OTHER"), isElevated: true);
+
+        var issue = report.Issues.Single(i => i.Code == SafetyGuard.CodeSourceBiosOnly);
+        Assert.Equal(SafetySeverity.Warning, issue.Severity);
+        Assert.Contains("NVMe", issue.Message);
+    }
+
+    [Fact]
+    public void ESP가_있으면_레거시_전용_안내를_하지_않는다()
+    {
+        // UEFI로 부팅되는 원본은 대상이 NVMe여도 문제없습니다.
+        var source = Disk(0, style: PartitionStyle.Gpt,
+            partitions: [Part(1, esp: true), Part(2, start: 2L << 30)]);
+
+        var report = SafetyGuard.Evaluate(source, Disk(1, serial: "OTHER"), isElevated: true);
+
+        Assert.DoesNotContain(report.Issues, i => i.Code == SafetyGuard.CodeSourceBiosOnly);
+    }
+
+    [Fact]
+    public void 활성_파티션이_없는_MBR_데이터_디스크는_알리지_않는다()
+    {
+        // 부팅용이 아닌 데이터 디스크에 부팅 경고를 붙이면 소음이 됩니다.
+        var source = Disk(0, style: PartitionStyle.Mbr, partitions: [Part(1)]);
+
+        var report = SafetyGuard.Evaluate(source, Disk(1, serial: "OTHER"), isElevated: true);
+
+        Assert.DoesNotContain(report.Issues, i => i.Code == SafetyGuard.CodeSourceBiosOnly);
+    }
+
+    [Fact]
+    public void 최대_절전_이미지가_있으면_검은_화면을_예고한다()
+    {
+        var report = SafetyGuard.Evaluate(
+            Disk(0), Disk(1, serial: "OTHER"), isElevated: true, sourceHibernated: true);
+
+        var issue = report.Issues.Single(i => i.Code == SafetyGuard.CodeSourceHibernated);
+        Assert.Equal(SafetySeverity.Warning, issue.Severity);
+        Assert.Contains("검은 화면", issue.Message);
+    }
+
+    [Fact]
+    public void 최대_절전_이미지가_없으면_알리지_않는다()
+    {
+        var report = SafetyGuard.Evaluate(Disk(0), Disk(1, serial: "OTHER"), isElevated: true);
+
+        Assert.DoesNotContain(report.Issues, i => i.Code == SafetyGuard.CodeSourceHibernated);
+    }
 }

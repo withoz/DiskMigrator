@@ -28,6 +28,8 @@ public static class SafetyGuard
     public const string CodeSourceIsLiveSystem = "SOURCE_IS_LIVE_SYSTEM";
     public const string CodeSourceOverUsb = "SOURCE_OVER_USB";
     public const string CodeTargetOverUsb = "TARGET_OVER_USB";
+    public const string CodeSourceBiosOnly = "SOURCE_BIOS_ONLY";
+    public const string CodeSourceHibernated = "SOURCE_HIBERNATED";
 
     /// <summary>
     /// 원본 → 대상 전체 섹터 클론의 안전성을 평가합니다.
@@ -40,7 +42,8 @@ public static class SafetyGuard
         DiskInfo source,
         DiskInfo target,
         bool isElevated,
-        bool useSnapshot = false)
+        bool useSnapshot = false,
+        bool sourceHibernated = false)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(target);
@@ -181,8 +184,50 @@ public static class SafetyGuard
                 "대상이 USB로 연결돼 있어 속도가 제한됩니다. 작업 중 연결이 끊기지 않도록 주의하십시오."));
         }
 
+        // --- 복제는 되지만 부팅이 안 될 조합 ----------------------------------
+        //
+        // 도구가 "복제했습니다"까지만 말하고 "부팅됩니다"는 사용자가 알아내야 했습니다.
+        // 실기에서 MBR 원본을 NVMe로 옮기고 나서야 부팅이 불가능함을 알게 되는 일이
+        // 있었습니다. 원본만 봐도 시작 전에 말할 수 있는 것들입니다.
+
+        if (IsBiosOnlyLayout(source))
+        {
+            issues.Add(new SafetyIssue(SafetySeverity.Warning, CodeSourceBiosOnly,
+                "원본이 MBR·활성 파티션(BIOS 방식)이고 EFI 시스템 파티션이 없습니다. " +
+                "사본은 레거시(CSM) 부팅을 지원하는 하드웨어에서만 부팅합니다 — " +
+                "NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다(NVMe에는 레거시 부팅 " +
+                "옵션 ROM이 없습니다). 그런 곳으로 옮기려면 복제 후 mbr2gpt로 GPT/UEFI 변환이 필요합니다."));
+        }
+
+        if (sourceHibernated)
+        {
+            issues.Add(new SafetyIssue(SafetySeverity.Warning, CodeSourceHibernated,
+                "원본에 최대 절전 이미지(hiberfil.sys)가 있습니다 — 빠른 시작으로 종료된 " +
+                "Windows입니다. 사본은 저장된 커널 상태를 다른 하드웨어에서 복원하려다 " +
+                "오류 문구 없이 검은 화면에서 멈춥니다. 복제 후 완료 화면의 '부팅 복구'가 " +
+                "재개를 끄고 이미지를 지웁니다."));
+        }
+
         return new SafetyReport { Issues = issues };
     }
+
+    /// <summary>
+    /// 원본이 BIOS(레거시)로만 부팅되는 배치인지 — MBR이면서 활성 파티션이 있고 ESP가 없음.
+    /// </summary>
+    /// <remarks>
+    /// 이 배치의 사본은 레거시 부팅을 지원하는 하드웨어에서만 켜집니다. UEFI 펌웨어는
+    /// ESP의 부트로더를 찾는데 그것이 없으므로 <b>아무 말 없이 다음 장치로 넘어갑니다</b>.
+    /// NVMe는 특히 확정적입니다 — 레거시 부팅용 옵션 ROM이 사실상 존재하지 않아, 대상이
+    /// NVMe면 어떤 모드로도 부팅되지 않습니다.
+    ///
+    /// <para>대상이 어디에 꽂힐지는 알 수 없습니다. 복제 중에는 대상이 USB 케이스에 들어 있는
+    /// 경우가 많아 <see cref="DiskInfo.BusType"/>으로는 판단할 수 없습니다. 그래서 대상이 아니라
+    /// <b>원본의 부팅 방식</b>을 근거로 알립니다.</para>
+    /// </remarks>
+    private static bool IsBiosOnlyLayout(DiskInfo source) =>
+        source.PartitionStyle == PartitionStyle.Mbr &&
+        source.Partitions.Any(p => p.IsActive) &&
+        !source.Partitions.Any(p => p.IsEfiSystemPartition);
 
     /// <summary>
     /// 두 디스크가 물리적으로 같은 디스크인지 판정합니다.
