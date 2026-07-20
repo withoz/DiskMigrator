@@ -248,6 +248,18 @@
                 -->
                 <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,18,0,0"
                             Visibility="{Binding HasFreeSpace, Converter={StaticResource BoolToVisibility}}">
+
+                    <!--
+                        복제 후 예상 배치 — 위 대상 막대와 같은 모양으로 그리고 머리글로만 시점을
+                        가릅니다. 한쪽만 다르게 그리면 다른 의미의 그래프로 착각합니다.
+                        선택을 바꾸면 즉시 다시 그려져, 결과를 보면서 고를 수 있습니다.
+                    -->
+                    <ContentControl Content="{Binding TargetAfterLayout}"
+                                    ContentTemplate="{StaticResource DiskLayoutTemplate}"
+                                    Margin="0,0,0,10"
+                                    Visibility="{Binding TargetAfterLayout,
+                                                 Converter={StaticResource NullToVisibility}}" />
+
                     <TextBlock Text="{Binding FreeSpaceText}" Style="{StaticResource StepTitle}"
                                Margin="0,0,0,10" TextWrapping="Wrap" />
 

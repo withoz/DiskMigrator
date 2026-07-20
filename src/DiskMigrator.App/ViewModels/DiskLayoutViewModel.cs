@@ -25,11 +25,16 @@ public sealed class DiskSegmentViewModel
     public string UsageText { get; init; } = "";
 }
 
-/// <summary>막대가 원본을 그리는지 대상을 그리는지.</summary>
+/// <summary>막대가 무엇을 그리는지.</summary>
 public enum DiskRole
 {
     Source,
+
+    /// <summary>대상의 현재 내용 — 지워질 것.</summary>
     Target,
+
+    /// <summary>대상의 복제 후 예상 배치 — 만들어질 것.</summary>
+    TargetAfter,
 }
 
 /// <summary>
@@ -85,19 +90,30 @@ public sealed class DiskLayoutViewModel
             : $"파티션이 차지한 끝 {SizeFormatter.Format(DiskLayoutMap.OccupiedEnd(disk))} · " +
               $"디스크 {SizeFormatter.Format(disk.SizeBytes)}";
 
-        bool isTarget = role == DiskRole.Target;
+        // 세 막대는 같은 모양으로 그리고 라벨로만 시점을 가릅니다. 한쪽만 다르게 그리면
+        // 다른 의미의 그래프로 착각하게 됩니다.
+        (string roleText, Brush roleBrush, string actionText, Brush actionBrush) = role switch
+        {
+            DiskRole.Target => ("대상", DangerBrush, "이 디스크가 지워집니다", DangerBrush),
+            DiskRole.TargetAfter => ("변경 후", AccentBrush, "복제가 끝나면 이렇게 됩니다", MutedBrush),
+            _ => ("원본", AccentBrush, "읽기만 합니다", MutedBrush),
+        };
 
         return new DiskLayoutViewModel
         {
-            RoleText = isTarget ? "대상" : "원본",
-            RoleBrush = isTarget ? DangerBrush : AccentBrush,
+            RoleText = roleText,
+            RoleBrush = roleBrush,
             DiskName = disk.Model,
             DiskSizeText = SizeFormatter.Format(disk.SizeBytes),
-            ActionText = isTarget ? "이 디스크가 지워집니다" : "읽기만 합니다",
-            ActionBrush = isTarget ? DangerBrush : MutedBrush,
+            ActionText = actionText,
+            ActionBrush = actionBrush,
             Segments = spans.Select(ToSegment).ToList(),
             SummaryText = summary,
-            TrailingFreeText = trailing >= DiskLayoutMap.GapNoiseThreshold
+
+            // 이 경고는 원본 막대에서만 뜻이 통합니다 — "이 디스크를 더 작은 곳으로 옮기면
+            // 뒤쪽은 안 따라간다". 복제 후 예상 막대에서는 사용자가 방금 '그대로 둡니다'를
+            // 골라 의도적으로 남긴 공간이라, 같은 문구를 쓰면 앞뒤가 맞지 않습니다.
+            TrailingFreeText = role == DiskRole.Source && trailing >= DiskLayoutMap.GapNoiseThreshold
                 ? $"뒤쪽 빈 공간 {SizeFormatter.Format(trailing)} — 더 작은 디스크로 옮길 때 이만큼은 복제되지 않습니다."
                 : null,
         };

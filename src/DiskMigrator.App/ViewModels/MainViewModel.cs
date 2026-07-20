@@ -113,6 +113,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private DiskLayoutViewModel? _targetLayout;
 
+    /// <summary>
+    /// 복제가 끝난 뒤 대상이 어떤 배치가 될지. 위 대상 막대("지금 지워질 것")와 시점이 달라
+    /// 따로 그립니다.
+    /// </summary>
+    [ObservableProperty] private DiskLayoutViewModel? _targetAfterLayout;
+
     /// <summary>남는 공간을 미할당으로 남길지(기본).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowGrowDetails))]
@@ -391,6 +397,7 @@ public sealed partial class MainViewModel : ObservableObject
         // 배치 막대는 한쪽만 골라도 보여줍니다 — 고르는 중에 디스크 구성을 확인하는 것이 목적입니다.
         SourceLayout = DiskLayoutViewModel.For(SelectedSource?.Disk, DiskRole.Source);
         TargetLayout = DiskLayoutViewModel.For(SelectedTarget?.Disk, DiskRole.Target);
+        UpdateAfterLayout();
 
         if (SelectedSource is null || SelectedTarget is null)
         {
@@ -488,6 +495,66 @@ public sealed partial class MainViewModel : ObservableObject
         // 켰는데 아무 것도 안 골랐으면 첫 후보를 선택해 줍니다.
         if (value && SelectedResizePartition is null)
             SelectedResizePartition = ResizablePartitions.FirstOrDefault();
+
+        UpdateAfterLayout();
+    }
+
+    partial void OnFreeSpaceLeaveChanged(bool value) => UpdateAfterLayout();
+    partial void OnFreeSpaceExpandLastChanged(bool value) => UpdateAfterLayout();
+    partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value) => UpdateAfterLayout();
+    partial void OnResizeFillRemainingChanged(bool value) => UpdateAfterLayout();
+    partial void OnResizeSizeGbChanged(string value) => UpdateAfterLayout();
+
+    /// <summary>
+    /// "복제가 끝나면 이렇게 됩니다" 막대를 다시 계산합니다. 남는 공간 선택이 바뀔 때마다
+    /// 즉시 반영돼야 사용자가 결과를 보면서 고를 수 있습니다.
+    /// </summary>
+    private void UpdateAfterLayout()
+    {
+        if (SelectedSource is null || SelectedTarget is null)
+        {
+            TargetAfterLayout = null;
+            return;
+        }
+
+        var mode = FreeSpaceMode.Leave;
+        if (HasFreeSpace)
+        {
+            if (FreeSpaceGrowPartition && CanResize) mode = FreeSpaceMode.GrowPartition;
+            else if (FreeSpaceExpandLast) mode = FreeSpaceMode.ExpandLast;
+        }
+
+        PartitionGrowRequest? grow = null;
+        if (mode == FreeSpaceMode.GrowPartition && SelectedResizePartition is { } choice)
+        {
+            long? newBytes = null;
+            if (!ResizeFillRemaining && TryParseSizeGb(ResizeSizeGb, out double gb) && gb > 0)
+                newBytes = (long)(gb * 1_000_000_000);
+
+            grow = new PartitionGrowRequest(choice.Number, newBytes);
+        }
+
+        var projected = ProjectedLayout.After(
+            SelectedSource.Disk, SelectedTarget.Disk.SizeBytes, mode, grow);
+
+        if (projected is null)
+        {
+            TargetAfterLayout = null;
+            return;
+        }
+
+        // 미리보기는 '대상 크기의 디스크에 이 배치'라는 가상의 디스크입니다.
+        var preview = new DiskInfo
+        {
+            DeviceNumber = SelectedTarget.Disk.DeviceNumber,
+            Model = SelectedTarget.Disk.Model,
+            SizeBytes = SelectedTarget.Disk.SizeBytes,
+            LogicalSectorSize = SelectedTarget.Disk.LogicalSectorSize,
+            PartitionStyle = SelectedSource.Disk.PartitionStyle,
+            Partitions = projected,
+        };
+
+        TargetAfterLayout = DiskLayoutViewModel.For(preview, DiskRole.TargetAfter);
     }
 
     partial void OnConfirmationTextChanged(string value)
