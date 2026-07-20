@@ -170,10 +170,20 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     public bool CanResize =>
         SelectedSource is not null && SelectedTarget is not null &&
-        SelectedSource.Disk.PartitionStyle == PartitionStyle.Gpt &&
+        SelectedSource.Disk.PartitionStyle is PartitionStyle.Gpt or PartitionStyle.Mbr &&
         SelectedSource.Disk.LogicalSectorSize == SelectedTarget.Disk.LogicalSectorSize &&
         SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
+        !ExceedsMbrLimit &&
         ResizablePartitions.Count > 0;
+
+    /// <summary>
+    /// MBR 원본인데 대상이 약 2 TB를 넘는지. MBR의 시작·크기 필드는 32비트 섹터 수라
+    /// 그보다 뒤는 가리킬 수 없어, 뒤로 밀린 파티션이 표현되지 않습니다.
+    /// </summary>
+    private bool ExceedsMbrLimit =>
+        SelectedSource is not null && SelectedTarget is not null &&
+        SelectedSource.Disk.PartitionStyle == PartitionStyle.Mbr &&
+        (SelectedTarget.Disk.SizeBytes / SelectedTarget.Disk.LogicalSectorSize) - 1 > uint.MaxValue;
 
     /// <summary>'고른 파티션 넓히기'가 회색인 이유. 쓸 수 있으면 빈 문자열.</summary>
     /// <remarks>
@@ -187,11 +197,16 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (SelectedSource is null || SelectedTarget is null || CanResize) return "";
 
-            if (SelectedSource.Disk.PartitionStyle != PartitionStyle.Gpt)
+            if (SelectedSource.Disk.PartitionStyle is not (PartitionStyle.Gpt or PartitionStyle.Mbr))
             {
-                return $"원본이 {SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant()} 디스크라 " +
-                       "쓸 수 없습니다 — 이 방식은 파티션을 옮기고 GPT를 다시 씁니다. " +
-                       "'마지막 파티션에 합치기'는 MBR에서도 됩니다.";
+                return $"원본이 {SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant()} 형식이라 " +
+                       "쓸 수 없습니다 — 이 방식은 파티션을 옮기고 파티션 테이블을 다시 씁니다.";
+            }
+
+            if (ExceedsMbrLimit)
+            {
+                return "MBR 원본은 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 " +
+                       "쓸 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 GPT로 바꾸십시오.";
             }
 
             if (SelectedSource.Disk.LogicalSectorSize != SelectedTarget.Disk.LogicalSectorSize)

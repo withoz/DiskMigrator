@@ -334,13 +334,13 @@
                                  VerticalContentAlignment="Top" Margin="0,0,0,4">
                         <StackPanel>
                             <TextBlock Text="고른 파티션 넓히기" Style="{StaticResource Body}" />
-                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT 원본만"
+                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                     </RadioButton>
 
                     <!--
-                        회색이 된 이유를 그 자리에서 말합니다. 항목 설명의 "GPT 원본만"은 막는
+                        회색이 된 이유를 그 자리에서 말합니다. 항목 설명의 한 줄로는 막는
                         네 조건 중 하나일 뿐이라, 나머지 경우에는 왜 못 고르는지 알 방법이 없고
                         적어 둔 그 하나조차 흘려보게 됩니다.
                         RadioButton 바깥에 둡니다 — 안에 넣으면 비활성 상태라 같이 흐려집니다.

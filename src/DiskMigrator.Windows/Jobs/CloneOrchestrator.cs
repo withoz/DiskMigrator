@@ -82,14 +82,26 @@ public sealed class CloneOrchestrator(
         ResizeLayout? resizeLayout = null;
         if (options.FreeSpace == FreeSpaceMode.GrowPartition && options.GrowRequest is { } growRequest)
         {
-            // 리사이즈는 GPT 전용입니다. MBR은 파티션 테이블을 다시 쓰는 GptRewriter가 동작하지
-            // 않아, 파티션을 새 위치로 옮겨 놓고도 테이블은 옛 위치를 가리켜 배치가 깨집니다.
-            // 몇 시간짜리 클론을 시작하기 전에 여기서 즉시 막습니다.
-            if (source.PartitionStyle != PartitionStyle.Gpt)
+            // 리사이즈는 파티션을 새 위치로 옮기므로 파티션 테이블을 다시 쓸 수 있어야 합니다.
+            // GPT는 GptRewriter가, MBR은 MbrRewriter가 맡습니다. 둘 다 아닌 형식(초기화되지 않은
+            // 디스크 등)은 옮겨 놓고 테이블을 못 고쳐 배치가 깨지므로, 몇 시간짜리 클론을
+            // 시작하기 전에 여기서 막습니다.
+            if (source.PartitionStyle is not (PartitionStyle.Gpt or PartitionStyle.Mbr))
             {
                 throw new InvalidOperationException(
-                    $"파티션 리사이즈(확대)는 GPT 디스크만 지원합니다. 이 원본은 {source.PartitionStyle} " +
-                    "형식이라 리사이즈 옵션을 끄고 클론해야 합니다. (MBR 리사이즈는 아직 지원하지 않습니다.)");
+                    $"파티션 리사이즈(확대)는 GPT 또는 MBR 디스크만 지원합니다. 이 원본은 " +
+                    $"{source.PartitionStyle} 형식이라 리사이즈 옵션을 끄고 클론해야 합니다.");
+            }
+
+            // MBR의 시작·크기 필드는 32비트 섹터 수라 약 2 TB까지만 가리킬 수 있습니다. 대상이
+            // 그보다 크면 뒤로 밀린 파티션이 표현되지 않아 테이블이 깨집니다. 미리 막습니다.
+            if (source.PartitionStyle == PartitionStyle.Mbr &&
+                target.SizeBytes / target.LogicalSectorSize - 1 > uint.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "MBR 디스크는 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 " +
+                    "리사이즈를 적용할 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 " +
+                    "GPT로 바꾼 뒤 클론하십시오.");
             }
 
             // GPT 엔트리의 위치는 LBA(섹터 번호)로 저장됩니다. 리사이즈는 원본 GPT를 대상에 그대로
@@ -280,17 +292,31 @@ public sealed class CloneOrchestrator(
             return new PartitionRemap(oldStartLba, newStartLba, newEndLba);
         }).ToList();
 
+        // 파티션 배치 계산과 remap은 두 형식이 똑같습니다. 다른 것은 그 배치를 어느 테이블에
+        // 적어 넣느냐뿐이라, 여기서만 갈라집니다.
+        bool isMbr = source.PartitionStyle == PartitionStyle.Mbr;
+        string tableName = isMbr ? "MBR" : "GPT";
+
         try
         {
-            var rewriter = new GptRewriter(_loggerFactory.CreateLogger<GptRewriter>());
-            var r = rewriter.Rewrite(session.TargetDevice, remaps);
-            return new GptRepairResult(r.Rewritten, r.Description);
+            if (isMbr)
+            {
+                var r = new MbrRewriter(_loggerFactory.CreateLogger<MbrRewriter>())
+                    .Rewrite(session.TargetDevice, remaps);
+                return new GptRepairResult(r.Rewritten, r.Description);
+            }
+            else
+            {
+                var r = new GptRewriter(_loggerFactory.CreateLogger<GptRewriter>())
+                    .Rewrite(session.TargetDevice, remaps);
+                return new GptRepairResult(r.Rewritten, r.Description);
+            }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "리사이즈 GPT 재작성에 실패했습니다 — 파티션 배치가 깨졌습니다.");
+            logger.LogError(ex, "리사이즈 {Table} 재작성에 실패했습니다 — 파티션 배치가 깨졌습니다.", tableName);
             return new GptRepairResult(false,
-                $"데이터는 복제됐지만 파티션 배치를 반영한 GPT 재작성에 실패했습니다({ex.Message}). " +
+                $"데이터는 복제됐지만 파티션 배치를 반영한 {tableName} 재작성에 실패했습니다({ex.Message}). " +
                 "파티션 테이블이 옛 위치를 가리켜 이 디스크는 부팅·사용할 수 없습니다. " +
                 "리사이즈를 끄고 다시 클론하십시오.");
         }
