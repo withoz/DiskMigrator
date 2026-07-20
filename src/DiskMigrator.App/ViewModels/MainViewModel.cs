@@ -196,6 +196,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (!CanProceed || SelectedTarget is null) return false;
             if (Stage != AppStage.Selecting) return false;
+            if (ResolveFreeSpacePlan().Error is not null) return false;
 
             return !NeedsConfirmation ||
                    SafetyGuard.IsConfirmationValid(SelectedTarget.Disk, ConfirmationText);
@@ -221,6 +222,10 @@ public sealed partial class MainViewModel : ObservableObject
                     ? "안전 검사를 통과하지 못했습니다."
                     : $"차단됨 — {blocker.Message}";
             }
+
+            // 남는 공간 설정이 덜 됐으면 확인 입력보다 먼저 말해 줍니다 — 모델명을 다 치고
+            // 나서야 "파티션을 고르십시오"를 만나면 헛수고가 됩니다.
+            if (ResolveFreeSpacePlan().Error is { } freeSpaceError) return freeSpaceError;
 
             if (NeedsConfirmation &&
                 !SafetyGuard.IsConfirmationValid(SelectedTarget.Disk, ConfirmationText))
@@ -496,14 +501,37 @@ public sealed partial class MainViewModel : ObservableObject
         if (value && SelectedResizePartition is null)
             SelectedResizePartition = ResizablePartitions.FirstOrDefault();
 
-        UpdateAfterLayout();
+        RefreshFreeSpaceChoice();
     }
 
-    partial void OnFreeSpaceLeaveChanged(bool value) => UpdateAfterLayout();
-    partial void OnFreeSpaceExpandLastChanged(bool value) => UpdateAfterLayout();
-    partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value) => UpdateAfterLayout();
-    partial void OnResizeFillRemainingChanged(bool value) => UpdateAfterLayout();
-    partial void OnResizeSizeGbChanged(string value) => UpdateAfterLayout();
+    partial void OnFreeSpaceLeaveChanged(bool value) => RefreshFreeSpaceChoice();
+    partial void OnFreeSpaceExpandLastChanged(bool value) => RefreshFreeSpaceChoice();
+    partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value) => RefreshFreeSpaceChoice();
+    partial void OnResizeFillRemainingChanged(bool value) => RefreshFreeSpaceChoice();
+    partial void OnResizeSizeGbChanged(string value) => RefreshFreeSpaceChoice();
+
+    /// <summary>
+    /// 남는 공간 선택이 바뀌면 결과 막대와 시작 버튼이 <b>함께</b> 갱신돼야 합니다.
+    /// 막대만 다시 그리면, 파티션을 고르지 않아 시작할 수 없는 상태인데도 버튼은 켜져 있습니다.
+    /// </summary>
+    private void RefreshFreeSpaceChoice()
+    {
+        UpdateAfterLayout();
+
+        OnPropertyChanged(nameof(CanStart));
+        OnPropertyChanged(nameof(BlockedReason));
+        OnPropertyChanged(nameof(HasBlockedReason));
+        StartCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 화면 상태를 클론 엔진이 받는 형태로 옮깁니다. 판정 자체는
+    /// <see cref="FreeSpacePlanner"/>(Core, 단위 테스트 있음)가 하고 여기서는 값만 건넵니다.
+    /// 미리보기 막대·시작 버튼·실제 실행이 모두 이 하나를 부릅니다.
+    /// </summary>
+    private FreeSpacePlan ResolveFreeSpacePlan() => FreeSpacePlanner.Resolve(
+        HasFreeSpace, CanResize, FreeSpaceExpandLast, FreeSpaceGrowPartition,
+        SelectedResizePartition?.Number, ResizeFillRemaining, ResizeSizeGb);
 
     /// <summary>
     /// "복제가 끝나면 이렇게 됩니다" 막대를 다시 계산합니다. 남는 공간 선택이 바뀔 때마다
@@ -517,25 +545,18 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        var mode = FreeSpaceMode.Leave;
-        if (HasFreeSpace)
-        {
-            if (FreeSpaceGrowPartition && CanResize) mode = FreeSpaceMode.GrowPartition;
-            else if (FreeSpaceExpandLast) mode = FreeSpaceMode.ExpandLast;
-        }
+        var plan = ResolveFreeSpacePlan();
 
-        PartitionGrowRequest? grow = null;
-        if (mode == FreeSpaceMode.GrowPartition && SelectedResizePartition is { } choice)
+        // 시작할 수 없는 상태에서는 결과 막대를 그리지 않습니다. 무엇이 될지 모르는 채로
+        // 그럴듯한 그림을 보여 주는 것보다 아무것도 안 보여 주는 편이 정직합니다.
+        if (plan.Error is not null)
         {
-            long? newBytes = null;
-            if (!ResizeFillRemaining && TryParseSizeGb(ResizeSizeGb, out double gb) && gb > 0)
-                newBytes = (long)(gb * 1_000_000_000);
-
-            grow = new PartitionGrowRequest(choice.Number, newBytes);
+            TargetAfterLayout = null;
+            return;
         }
 
         var projected = ProjectedLayout.After(
-            SelectedSource.Disk, SelectedTarget.Disk.SizeBytes, mode, grow);
+            SelectedSource.Disk, SelectedTarget.Disk.SizeBytes, plan.Mode, plan.Grow);
 
         if (projected is null)
         {
@@ -793,52 +814,21 @@ public sealed partial class MainViewModel : ObservableObject
 
         // 남는 공간 처리 방식을 먼저 정합니다. 입력이 잘못됐으면 대상에 아무것도 쓰지 않고
         // 여기서 멈춥니다 — 몇 시간짜리 작업을 시작한 뒤 잘못을 알리는 것보다 낫습니다.
-        var freeSpaceMode = FreeSpaceMode.Leave;
-        if (HasFreeSpace)
+        var plan = ResolveFreeSpacePlan();
+
+        // 시작 버튼은 이미 이 사유로 막혀 있어야 합니다. 그래도 한 번 더 봅니다 — 대상 디스크에
+        // 쓰기 시작한 뒤에는 되돌릴 수 없으므로, 배선이 어긋났을 때 조용히 진행되면 안 됩니다.
+        if (plan.Error is { } planError)
         {
-            if (FreeSpaceGrowPartition && CanResize) freeSpaceMode = FreeSpaceMode.GrowPartition;
-            else if (FreeSpaceExpandLast) freeSpaceMode = FreeSpaceMode.ExpandLast;
-        }
-
-        PartitionGrowRequest? growRequest = null;
-        _grownPartitionNumber = null;
-        if (freeSpaceMode == FreeSpaceMode.GrowPartition && SelectedResizePartition is { } choice)
-        {
-            long? newBytes = null;
-
-            if (!ResizeFillRemaining)
-            {
-                // '새 총 크기' 모드인데 입력이 숫자가 아니면 조용히 null(= 남는 공간 전부)로
-                // 넘어가면 안 됩니다. 사용자가 지정한 것과 전혀 다른 크기(남는 공간 전체)로
-                // 파티션이 커져 버립니다. 명시적으로 막고 알립니다.
-                if (!TryParseSizeGb(ResizeSizeGb, out double gb) || gb <= 0)
-                {
-                    Stage = AppStage.Finished;
-                    ShowFailure(
-                        "리사이즈 크기가 올바르지 않습니다",
-                        $"'새 총 크기(GB)'에 0보다 큰 숫자를 입력하십시오(입력값: \"{ResizeSizeGb}\"). " +
-                        "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.",
-                        "대상 디스크에는 아무것도 쓰지 않았습니다.");
-                    return;
-                }
-
-                newBytes = (long)(gb * 1_000_000_000);
-            }
-
-            growRequest = new PartitionGrowRequest(choice.Number, newBytes);
-            _grownPartitionNumber = choice.Number;
-        }
-        else if (freeSpaceMode == FreeSpaceMode.GrowPartition)
-        {
-            // 넓히기를 골랐는데 파티션이 없는 상태로는 시작하지 않습니다.
-            // 그냥 두면 아무 일도 안 하면서 사용자는 넓혀졌다고 믿게 됩니다.
             Stage = AppStage.Finished;
-            ShowFailure(
-                "넓힐 파티션을 고르지 않았습니다",
-                "'고른 파티션 넓히기'를 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.",
+            ShowFailure("남는 공간 설정이 올바르지 않습니다", planError,
                 "대상 디스크에는 아무것도 쓰지 않았습니다.");
             return;
         }
+
+        var freeSpaceMode = plan.Mode;
+        var growRequest = plan.Grow;
+        _grownPartitionNumber = growRequest?.PartitionNumber;
 
         _cts = new CancellationTokenSource();
         _pause = new PauseController();
@@ -1015,19 +1005,6 @@ public sealed partial class MainViewModel : ObservableObject
                 "가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. " +
                 "리사이즈를 끄고 다시 클론하십시오.";
         }
-    }
-
-    /// <summary>
-    /// 리사이즈 크기 입력(GB)을 읽습니다. 사용자의 지역 설정과 마침표 표기를 모두 받아들입니다
-    /// (예: "1.5"와 "1,5"). 어느 쪽으로도 읽히지 않으면 false — 호출자가 작업을 막습니다.
-    /// </summary>
-    private static bool TryParseSizeGb(string? text, out double gb)
-    {
-        gb = 0;
-        if (string.IsNullOrWhiteSpace(text)) return false;
-
-        return double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out gb)
-            || double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out gb);
     }
 
     private void ShowFailure(string title, string message, string details)
