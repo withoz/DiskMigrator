@@ -344,8 +344,8 @@ public sealed partial class MainViewModel : ObservableObject
         NeedsConfirmation = false;
 
         // 배치 막대는 한쪽만 골라도 보여줍니다 — 고르는 중에 디스크 구성을 확인하는 것이 목적입니다.
-        SourceLayout = DiskLayoutViewModel.For(SelectedSource?.Disk);
-        TargetLayout = DiskLayoutViewModel.For(SelectedTarget?.Disk);
+        SourceLayout = DiskLayoutViewModel.For(SelectedSource?.Disk, DiskRole.Source);
+        TargetLayout = DiskLayoutViewModel.For(SelectedTarget?.Disk, DiskRole.Target);
 
         if (SelectedSource is null || SelectedTarget is null)
         {

@@ -25,6 +25,13 @@ public sealed class DiskSegmentViewModel
     public string UsageText { get; init; } = "";
 }
 
+/// <summary>막대가 원본을 그리는지 대상을 그리는지.</summary>
+public enum DiskRole
+{
+    Source,
+    Target,
+}
+
 /// <summary>
 /// 디스크 하나의 파티션 배치를 막대 그래프로 그리기 위한 표현.
 /// </summary>
@@ -36,6 +43,27 @@ public sealed class DiskLayoutViewModel
 {
     public required IReadOnlyList<DiskSegmentViewModel> Segments { get; init; }
 
+    // --- 막대 머리글 -------------------------------------------------------
+    //
+    // 열 제목("원본 (읽기)")은 목록 맨 위에 있어서, 막대와 범례를 들여다보는 동안
+    // 시야에서 사라집니다. 이 도구에서 가장 위험한 실수가 원본과 대상을 뒤바꾸는 것이므로
+    // 막대 옆에서 한 번 더 말해 줍니다.
+
+    /// <summary>"원본" 또는 "대상".</summary>
+    public required string RoleText { get; init; }
+
+    /// <summary>역할 칩 배경색 — 원본은 강조색, 대상은 위험색.</summary>
+    public required Brush RoleBrush { get; init; }
+
+    public required string DiskName { get; init; }
+    public required string DiskSizeText { get; init; }
+
+    /// <summary>이 디스크에 무슨 일이 일어나는지 — "읽기만 합니다" / "이 디스크가 지워집니다".</summary>
+    public required string ActionText { get; init; }
+
+    /// <summary>대상일 때만 위험색으로 강조합니다.</summary>
+    public required Brush ActionBrush { get; init; }
+
     /// <summary>"파티션이 차지한 끝 616 MB · 디스크 2.00 GB" 같은 요약.</summary>
     public required string SummaryText { get; init; }
 
@@ -43,7 +71,7 @@ public sealed class DiskLayoutViewModel
     public string? TrailingFreeText { get; init; }
 
     /// <summary>디스크가 없으면 null을 돌려줍니다(화면에서 숨김).</summary>
-    public static DiskLayoutViewModel? For(DiskInfo? disk)
+    public static DiskLayoutViewModel? For(DiskInfo? disk, DiskRole role)
     {
         if (disk is null || disk.SizeBytes <= 0) return null;
 
@@ -57,8 +85,16 @@ public sealed class DiskLayoutViewModel
             : $"파티션이 차지한 끝 {SizeFormatter.Format(DiskLayoutMap.OccupiedEnd(disk))} · " +
               $"디스크 {SizeFormatter.Format(disk.SizeBytes)}";
 
+        bool isTarget = role == DiskRole.Target;
+
         return new DiskLayoutViewModel
         {
+            RoleText = isTarget ? "대상" : "원본",
+            RoleBrush = isTarget ? DangerBrush : AccentBrush,
+            DiskName = disk.Model,
+            DiskSizeText = SizeFormatter.Format(disk.SizeBytes),
+            ActionText = isTarget ? "이 디스크가 지워집니다" : "읽기만 합니다",
+            ActionBrush = isTarget ? DangerBrush : MutedBrush,
             Segments = spans.Select(ToSegment).ToList(),
             SummaryText = summary,
             TrailingFreeText = trailing >= DiskLayoutMap.GapNoiseThreshold
@@ -130,6 +166,11 @@ public sealed class DiskLayoutViewModel
         if (p.GptPartitionType == WindowsRecovery) return "복구";
         return p.FileSystem ?? "RAW";
     }
+
+    // 머리글용 색 — App.xaml의 팔레트와 같은 값입니다.
+    private static readonly Brush AccentBrush = Frozen("#52738F");
+    private static readonly Brush DangerBrush = Frozen("#DC2626");
+    private static readonly Brush MutedBrush = Frozen("#837B72");
 
     // 역할별 색 — 채도를 낮춰 화면과 톤을 맞추되, 색상(hue)은 서로 벌려 둡니다.
     // 막대에서 조각을 구분하는 것이 이 색의 유일한 일이라 예쁨보다 구별이 우선입니다.

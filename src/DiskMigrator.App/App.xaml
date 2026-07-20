@@ -101,6 +101,31 @@
         <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Display}" />
         <Style x:Key="SubHeading" TargetType="TextBlock" BasedOn="{StaticResource SectionLabel}" />
 
+        <!--
+            단계 표식 — 선택 → 옵션 → 확인·실행은 실제로 순서가 있는 절차라서 번호를 씁니다.
+            장식이 아니라 "어디까지 왔는지"를 알려주는 정보입니다.
+        -->
+        <Style x:Key="StepNumber" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,7,0" />
+        </Style>
+
+        <Style x:Key="StepNumberText" TargetType="TextBlock" BasedOn="{StaticResource Micro}">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="StepTitle" TargetType="TextBlock" BasedOn="{StaticResource Body}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <Style TargetType="Button">
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="Padding" Value="16,8" />
