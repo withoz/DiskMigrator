@@ -71,6 +71,18 @@
                                     </Border.Width>
 
                                     <Grid>
+                                        <!--
+                                            조각 위에 드라이브 문자를 직접 적습니다. 범례를 눈으로
+                                            따라가지 않아도 어느 조각이 C: 인지 바로 알 수 있습니다.
+                                            좁은 조각에는 넣지 않습니다 — 잘리면 오히려 지저분합니다.
+                                        -->
+                                        <TextBlock Text="{Binding BarLabel}" Style="{StaticResource Micro}"
+                                                   FontWeight="SemiBold" Foreground="{Binding BarLabelBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                   Margin="2,4,2,0" TextTrimming="CharacterEllipsis"
+                                                   Visibility="{Binding ShowBarLabel,
+                                                                Converter={StaticResource BoolToVisibility}}" />
+
                                         <!-- 사용 중인 만큼을 아래쪽에 짙은 띠로 겹쳐 그립니다. -->
                                         <Border VerticalAlignment="Bottom" Height="6" Margin="3,0,3,3"
                                                 CornerRadius="1" Background="#33000000"

@@ -23,6 +23,20 @@ public sealed class DiskSegmentViewModel
     public double UsedFraction { get; init; }
 
     public string UsageText { get; init; } = "";
+
+    // --- 막대 안 라벨 ------------------------------------------------------
+    //
+    // 조각 위에 드라이브 문자를 직접 적습니다. 범례를 눈으로 따라가지 않아도
+    // 어느 조각이 C: 인지 바로 알 수 있습니다.
+
+    /// <summary>막대 안에 적을 짧은 이름 — "C:" 또는 "EFI"·"MSR"·"복구"·"미할당".</summary>
+    public required string BarLabel { get; init; }
+
+    /// <summary>글자가 들어갈 만큼 조각이 넓은지. 좁으면 글자가 잘려 지저분해집니다.</summary>
+    public required bool ShowBarLabel { get; init; }
+
+    /// <summary>조각 색이 어두우면 흰 글자, 밝으면(미할당) 어두운 글자.</summary>
+    public required Brush BarLabelBrush { get; init; }
 }
 
 /// <summary>막대가 무엇을 그리는지.</summary>
@@ -131,6 +145,9 @@ public sealed class DiskLayoutViewModel
                 Fill = UnallocatedBrush,
                 Tooltip = $"미할당 공간 {SizeFormatter.Format(span.LengthBytes)}\n" +
                           "어떤 파티션에도 속하지 않아 복제 대상이 아닙니다.",
+                BarLabel = "미할당",
+                ShowBarLabel = span.DisplayFraction >= LabelMinFraction,
+                BarLabelBrush = DarkLabelBrush,   // 미할당은 밝은 색이라 어두운 글자
             };
         }
 
@@ -168,7 +185,21 @@ public sealed class DiskLayoutViewModel
             UsageText = hasUsage
                 ? $"사용 {SizeFormatter.Format(used)} / 여유 {SizeFormatter.Format(p.FreeSpaceBytes!.Value)}"
                 : "",
+
+            // 드라이브 문자가 있으면 그것이 가장 알아보기 쉽습니다. 없으면 역할을 짧게.
+            BarLabel = p.DriveLetter is { } dl2 ? $"{dl2}:" : ShortRole(p),
+            ShowBarLabel = span.DisplayFraction >= LabelMinFraction,
+            BarLabelBrush = LightLabelBrush,
         };
+    }
+
+    /// <summary>막대 안에 넣을 짧은 역할 이름 — 좁은 조각에 긴 글자는 안 들어갑니다.</summary>
+    private static string ShortRole(PartitionInfo p)
+    {
+        if (p.IsEfiSystemPartition) return "EFI";
+        if (p.GptPartitionType == MicrosoftReserved) return "MSR";
+        if (p.GptPartitionType == WindowsRecovery) return "복구";
+        return p.FileSystem ?? "RAW";
     }
 
     // 잘 알려진 GPT 타입 GUID. Windows 프로젝트에도 같은 표가 있지만 internal이라 여기서 다시 둡니다.
@@ -182,6 +213,19 @@ public sealed class DiskLayoutViewModel
         if (p.GptPartitionType == WindowsRecovery) return "복구";
         return p.FileSystem ?? "RAW";
     }
+
+    /// <summary>
+    /// 이 비율보다 좁은 조각에는 글자를 넣지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// 좁은 조각에 글자를 넣으면 잘려서 오히려 지저분해집니다. 최소 표시 비율이 2%이므로
+    /// 그보다 넉넉한 값을 씁니다 — "미할당"(3글자)이 들어갈 만큼.
+    /// </remarks>
+    private const double LabelMinFraction = 0.07;
+
+    // 막대 안 글자색 — 색 조각 위에는 흰 글자, 밝은 미할당 위에는 어두운 글자.
+    private static readonly Brush LightLabelBrush = Frozen("#FFFFFF");
+    private static readonly Brush DarkLabelBrush = Frozen("#6B6259");
 
     // 머리글용 색 — App.xaml의 팔레트와 같은 값입니다.
     private static readonly Brush AccentBrush = Frozen("#52738F");
