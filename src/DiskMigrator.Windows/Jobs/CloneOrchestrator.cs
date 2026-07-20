@@ -100,6 +100,24 @@ public sealed class CloneOrchestrator(
             logger.LogInformation(
                 "파티션 리사이즈: 파티션 {Num} 확대, 뒤 파티션 시프트.", growRequest.PartitionNumber);
         }
+        else if (target.SizeBytes < source.SizeBytes)
+        {
+            // 대상이 원본보다 작습니다. SafetyGuard가 "원본 파티션이 모두 들어간다"를 확인했을
+            // 때만 여기까지 옵니다(아니면 차단). 파티션은 제자리에 복제하고, 원본 끝의 GPT 백업
+            // 헤더는 복사하지 않은 채 클론 후 줄어든 대상 끝에 다시 씁니다. 원본에는 쓰지 않습니다.
+            if (source.PartitionStyle != PartitionStyle.Gpt)
+            {
+                throw new InvalidOperationException(
+                    $"대상이 원본보다 작은 클론은 GPT 원본만 지원합니다. 이 원본은 {source.PartitionStyle} " +
+                    "형식이라 대상이 원본 이상 크기여야 합니다.");
+            }
+
+            resizeLayout = ResizePlanner.PlanFit(source.Partitions, target.SizeBytes);
+            logger.LogInformation(
+                "맞춤 클론: 대상({Target:N0}바이트)이 원본({Source:N0}바이트)보다 작지만 파티션이 모두 " +
+                "들어갑니다. 파티션은 제자리 복제, GPT 백업 헤더만 새 끝으로 재작성합니다.",
+                target.SizeBytes, source.SizeBytes);
+        }
 
         var session = await factory.CreateAsync(
             source, target, useSnapshot, options.SkipUnusedBlocks, resizeLayout, ct);
@@ -121,12 +139,17 @@ public sealed class CloneOrchestrator(
                     // 리사이즈: GPT를 새 배치로 다시 씁니다(엔트리 위치 변경).
                     gptRepair = RewriteGptForResize(session, source, resizeLayout, logger);
 
-                    // 재작성이 실패하면 파티션 데이터는 새 위치에 있는데 파티션 테이블은 옛 위치를
-                    // 가리켜 배치가 깨진 상태입니다. 데이터가 복사됐다는 이유로 "완료"로 보이면
-                    // 사용자가 부팅 불가 디스크를 정상 사본으로 오인합니다(실기 MBR 버그와 같은
-                    // 실패 모드). 여기서 손상으로 표시해 뒤 단계(확장·독립화)를 건너뛰고,
-                    // 결과 화면이 실패·경고를 띄우게 합니다.
-                    resizeLayoutCorrupted = gptRepair is not { WasRepaired: true };
+                    // 재작성 실패의 무게는 배치가 파티션을 옮겼는지에 달렸습니다.
+                    //
+                    // - 옮긴 경우(확대 리사이즈): 데이터는 새 위치에 있는데 파티션 테이블은 옛
+                    //   위치를 가리켜 배치가 깨집니다. 데이터가 복사됐다는 이유로 "완료"로 보이면
+                    //   사용자가 부팅 불가 디스크를 정상 사본으로 오인합니다(실기 MBR 버그와 같은
+                    //   실패 모드) → 손상으로 표시해 뒤 단계를 건너뛰고 실패로 알립니다.
+                    // - 제자리인 경우(맞춤 클론): 파티션 위치는 정확하고 백업 헤더·사용 가능 경계만
+                    //   못 고친 것이라, 일반 GPT 보정 실패와 같은 수준입니다. 여기서 "부팅 불가"로
+                    //   경고하면 멀쩡한 사본을 두고 늑대를 부르는 셈이므로 경고만 남깁니다.
+                    resizeLayoutCorrupted =
+                        MovesPartitions(source, resizeLayout) && gptRepair is not { WasRepaired: true };
                 }
                 else
                 {
@@ -218,6 +241,20 @@ public sealed class CloneOrchestrator(
     /// GPT에서 미리 슬롯만 키우면 그 뒤에 미할당이 없어 <c>extend</c>가 무효 인자로 실패하고,
     /// NTFS는 큰 슬롯 안에서 원래 크기로 남습니다.</para>
     /// </remarks>
+    /// <summary>
+    /// 이 배치가 파티션을 실제로 옮기거나 키우는지(확대 리사이즈) 아니면 제자리인지(맞춤 클론).
+    /// </summary>
+    /// <remarks>
+    /// GPT 재작성 실패의 심각도를 가르는 기준입니다. 옮긴 배치에서 재작성이 실패하면 파티션
+    /// 테이블이 옛 위치를 가리켜 디스크를 쓸 수 없지만, 제자리 배치라면 파티션은 정확한 곳에
+    /// 있고 백업 헤더만 못 고친 상태입니다.
+    /// </remarks>
+    private static bool MovesPartitions(DiskInfo source, ResizeLayout layout) =>
+        layout.Partitions.Any(tp =>
+            tp.Grown ||
+            source.Partitions.FirstOrDefault(p => p.Number == tp.SourceNumber) is not { } src ||
+            src.StartingOffset != tp.StartingOffset);
+
     private GptRepairResult? RewriteGptForResize(
         CloneSession session, DiskInfo source, ResizeLayout layout, ILogger logger)
     {

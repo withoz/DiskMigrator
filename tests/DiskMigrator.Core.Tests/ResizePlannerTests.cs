@@ -166,4 +166,75 @@ public class ResizePlannerTests
         long expectedEnd = (target - target % ResizePlanner.Alignment) - ResizePlanner.EndReserve;
         Assert.Equal(expectedEnd, p2.EndOffset);
     }
+
+    // --- 맞춤 클론(PlanFit) — 대상이 작아도 파티션이 들어가면 제자리 복제 -----------
+
+    [Fact]
+    public void 최소_대상_크기는_디스크가_아니라_파티션_끝을_기준으로_한다()
+    {
+        // 파티션은 1MB~2GB만 차지. 원본 디스크가 1TB든 상관없어야 한다.
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 100 * Mb), Part(2, 101 * Mb, 2 * Gb) };
+
+        long min = ResizePlanner.MinimumTargetSize(src);
+
+        Assert.Equal(101 * Mb + 2 * Gb + ResizePlanner.EndReserve, min);
+        Assert.True(min < 3 * Gb);
+    }
+
+    [Fact]
+    public void 뒤가_비어있는_디스크는_더_작은_대상에_들어간다()
+    {
+        // 원본 20GB짜리 배치지만 실제 파티션은 앞쪽 ~2.1GB만 차지.
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 100 * Mb), Part(2, 101 * Mb, 2 * Gb) };
+
+        Assert.True(ResizePlanner.LayoutFitsIn(src, 4 * Gb));
+        Assert.False(ResizePlanner.LayoutFitsIn(src, 2 * Gb));
+    }
+
+    [Fact]
+    public void 맞춤_클론은_파티션을_하나도_옮기지_않는다()
+    {
+        var src = WindowsLayout();          // 20GB 디스크를 채우는 배치
+        long lastEnd = src.Max(p => p.EndOffset);
+        long target = lastEnd + 8 * Mb;     // 딱 들어갈 만큼만 큰 대상
+
+        var layout = ResizePlanner.PlanFit(src, target);
+
+        Assert.Equal(src.Count, layout.Partitions.Count);
+        Assert.Null(layout.GrownPartition);
+        foreach (var original in src)
+        {
+            var placed = layout.Partitions.Single(p => p.SourceNumber == original.Number);
+            Assert.Equal(original.StartingOffset, placed.StartingOffset);
+            Assert.Equal(original.LengthBytes, placed.LengthBytes);
+            Assert.False(placed.Grown);
+        }
+    }
+
+    [Fact]
+    public void 맞춤_클론은_파티션이_안_들어가면_거부한다()
+    {
+        var src = WindowsLayout();
+        long lastEnd = src.Max(p => p.EndOffset);
+
+        // 마지막 파티션 끝보다 작은 대상 — 잘라내면 데이터가 사라지므로 반드시 거부해야 한다.
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => ResizePlanner.PlanFit(src, lastEnd - 1 * Mb));
+
+        Assert.Contains("들어가지 않습니다", ex.Message);
+    }
+
+    [Fact]
+    public void 맞춤_클론은_백업GPT_자리를_남긴다()
+    {
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 1 * Gb) };
+        long lastEnd = 1 * Mb + 1 * Gb;
+
+        // 파티션 끝과 정확히 같은 크기의 대상은 백업 GPT 자리가 없어 거부돼야 한다.
+        Assert.Throws<InvalidOperationException>(() => ResizePlanner.PlanFit(src, lastEnd));
+
+        // 예약분을 더하면 들어간다.
+        var layout = ResizePlanner.PlanFit(src, ResizePlanner.MinimumTargetSize(src));
+        Assert.Single(layout.Partitions);
+    }
 }

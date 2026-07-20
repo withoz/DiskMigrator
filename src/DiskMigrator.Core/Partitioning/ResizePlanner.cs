@@ -58,6 +58,69 @@ public static class ResizePlanner
     public const long EndReserve = Alignment;
 
     /// <summary>
+    /// 이 파티션 배치를 담으려면 대상 디스크가 최소 몇 바이트여야 하는지(끝의 백업 GPT 예약 포함).
+    /// </summary>
+    /// <remarks>
+    /// 원본 디스크의 <b>전체 크기</b>가 아니라 <b>파티션이 실제로 차지한 끝</b>을 기준으로 합니다.
+    /// 뒤쪽이 비어 있는 디스크(예: 1TB에 파티션은 200GB만)는 그보다 작은 대상에도 그대로 들어갑니다.
+    /// </remarks>
+    public static long MinimumTargetSize(IReadOnlyList<PartitionInfo> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.Count == 0)
+            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+
+        return AlignUp(source.Max(p => p.EndOffset) + EndReserve, Alignment);
+    }
+
+    /// <summary>
+    /// 원본 파티션 배치가 <paramref name="targetSizeBytes"/> 크기의 대상에 <b>그대로</b> 들어가는지.
+    /// </summary>
+    public static bool LayoutFitsIn(IReadOnlyList<PartitionInfo> source, long targetSizeBytes) =>
+        source is { Count: > 0 } && targetSizeBytes >= MinimumTargetSize(source);
+
+    /// <summary>
+    /// 파티션을 <b>옮기지 않고</b> 그대로 두는 배치를 만듭니다(맞춤 클론).
+    /// </summary>
+    /// <remarks>
+    /// 대상이 원본 디스크보다 작아도, 원본의 파티션이 모두 대상 안에 들어가면 복제할 수 있습니다.
+    /// 파티션은 제자리에 복사하고, 원본 끝에 있던 GPT 백업 헤더는 복사하지 않은 채
+    /// <see cref="GptRewriter"/>가 줄어든 대상의 끝에 다시 씁니다. 파티션 위치가 하나도 바뀌지
+    /// 않으므로 파티션 내부(부트 구성·BCD가 참조하는 GUID 포함)는 영향을 받지 않습니다.
+    ///
+    /// <para>버려지는 것은 마지막 파티션 <b>뒤의 빈 공간</b>뿐입니다. 파일시스템을 줄이지 않으므로
+    /// 원본에는 아무것도 쓰지 않습니다. 파티션 자체가 대상보다 큰 경우(진짜 NTFS 축소)는
+    /// 이 경로가 아니라 별도 기능입니다.</para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">파티션이 대상에 들어가지 않을 때.</exception>
+    public static ResizeLayout PlanFit(IReadOnlyList<PartitionInfo> source, long targetSizeBytes)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.Count == 0)
+            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+
+        var ordered = source.OrderBy(p => p.StartingOffset).ToList();
+        long maxEnd = AlignDown(targetSizeBytes, Alignment) - EndReserve;
+
+        if (ordered[^1].EndOffset > maxEnd)
+        {
+            throw new InvalidOperationException(
+                $"원본 파티션이 대상에 들어가지 않습니다. 파티션이 {SizeGb(ordered[^1].EndOffset)}까지 " +
+                $"차지하므로 대상이 최소 {SizeGb(MinimumTargetSize(ordered))}는 되어야 합니다 " +
+                $"(대상 {SizeGb(targetSizeBytes)}).");
+        }
+
+        var result = ordered
+            .Select(p => new TargetPartition(p.Number, p.StartingOffset, p.LengthBytes, Grown: false))
+            .ToList();
+
+        Validate(result, targetSizeBytes, maxEnd);
+        return new ResizeLayout { Partitions = result };
+    }
+
+    /// <summary>
     /// 확대 배치를 계산합니다.
     /// </summary>
     /// <param name="source">원본 파티션 목록(순서 무관 — 내부에서 오프셋순 정렬).</param>

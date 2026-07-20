@@ -1,4 +1,5 @@
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 
 namespace DiskMigrator.Core.Safety;
 
@@ -20,6 +21,7 @@ public static class SafetyGuard
     public const string CodeTargetHasPageFile = "TARGET_HAS_PAGEFILE";
     public const string CodeTargetReadOnly = "TARGET_READ_ONLY";
     public const string CodeTargetTooSmall = "TARGET_TOO_SMALL";
+    public const string CodeTargetSmallerLayoutFits = "TARGET_SMALLER_LAYOUT_FITS";
     public const string CodeSectorSizeMismatch = "SECTOR_SIZE_MISMATCH";
     public const string CodeTargetHasData = "TARGET_HAS_DATA";
     public const string CodeTargetLarger = "TARGET_LARGER";
@@ -85,15 +87,41 @@ public static class SafetyGuard
                 "대상 디스크가 읽기 전용 상태입니다. 쓰기 방지를 해제해야 합니다."));
         }
 
-        // 전체 섹터 복제는 대상이 원본보다 작으면 물리적으로 불가능합니다.
-        // (파티션 축소 + 사용 블록만 복사하는 스마트 클론은 Phase 5 범위)
+        // 대상이 원본보다 작아도, 원본의 파티션이 모두 대상 안에 들어가면 복제할 수 있습니다.
+        // 뒤쪽이 비어 있는 디스크(예: 1TB에 파티션은 200GB만)가 흔한데, 디스크 전체 크기로만
+        // 판정하면 실제로는 들어가는 조합까지 막게 됩니다. 이때는 파티션을 제자리에 복사하고
+        // GPT 백업 헤더만 줄어든 끝으로 다시 씁니다 — 원본에는 쓰지 않습니다.
+        //
+        // 파티션 자체가 대상보다 큰 경우(진짜 파일시스템 축소)는 여전히 차단합니다.
         if (target.SizeBytes < source.SizeBytes)
         {
-            var shortfall = source.SizeBytes - target.SizeBytes;
-            issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetTooSmall,
-                $"대상이 원본보다 {FormatSize(shortfall)} 작습니다. " +
-                $"(원본 {FormatSize(source.SizeBytes)} / 대상 {FormatSize(target.SizeBytes)}) " +
-                "전체 섹터 복제는 대상 용량이 원본 이상일 때만 가능합니다."));
+            bool layoutFits =
+                source.PartitionStyle == PartitionStyle.Gpt &&
+                source.Partitions.Count > 0 &&
+                ResizePlanner.LayoutFitsIn(source.Partitions, target.SizeBytes);
+
+            if (layoutFits)
+            {
+                var dropped = source.SizeBytes - ResizePlanner.MinimumTargetSize(source.Partitions);
+                issues.Add(new SafetyIssue(SafetySeverity.RequiresConfirmation, CodeTargetSmallerLayoutFits,
+                    $"대상이 원본보다 작지만 원본의 파티션은 모두 들어갑니다. " +
+                    $"(원본 {FormatSize(source.SizeBytes)} / 대상 {FormatSize(target.SizeBytes)}) " +
+                    $"마지막 파티션 뒤의 빈 공간 {FormatSize(dropped)}는 복제되지 않습니다. " +
+                    "파티션 위치와 내용은 그대로이며 원본에는 쓰지 않습니다."));
+            }
+            else
+            {
+                var shortfall = source.SizeBytes - target.SizeBytes;
+                string detail = source.PartitionStyle == PartitionStyle.Gpt && source.Partitions.Count > 0
+                    ? $"원본 파티션이 {FormatSize(ResizePlanner.MinimumTargetSize(source.Partitions))}까지 " +
+                      "차지하므로 대상에 들어가지 않습니다. 파티션을 줄이려면 원본에서 먼저 볼륨을 축소하십시오."
+                    : "전체 섹터 복제는 대상 용량이 원본 이상일 때만 가능합니다.";
+
+                issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetTooSmall,
+                    $"대상이 원본보다 {FormatSize(shortfall)} 작습니다. " +
+                    $"(원본 {FormatSize(source.SizeBytes)} / 대상 {FormatSize(target.SizeBytes)}) " +
+                    detail));
+            }
         }
 
         if (source.LogicalSectorSize != target.LogicalSectorSize)

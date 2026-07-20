@@ -132,6 +132,64 @@ public class SafetyGuardTests
     }
 
     [Fact]
+    public void 대상이_작아도_GPT_파티션이_모두_들어가면_확인만_받는다()
+    {
+        // 1TB 원본이지만 파티션은 앞쪽 ~10GB만 차지 → 100GB 대상에 그대로 들어간다.
+        var partitions = new List<PartitionInfo>
+        {
+            new() { Number = 1, StartingOffset = 1024 * 1024, LengthBytes = 10L * 1024 * 1024 * 1024 },
+        };
+
+        var report = SafetyGuard.Evaluate(
+            Disk(0, size: 1024L * 1024 * 1024 * 1024, serial: "A1",
+                 style: PartitionStyle.Gpt, partitions: partitions),
+            Disk(1, size: OneHundredGb, serial: "B2"),
+            isElevated: true);
+
+        Assert.DoesNotContain(report.Blockers, i => i.Code == SafetyGuard.CodeTargetTooSmall);
+        Assert.Contains(report.Issues, i => i.Code == SafetyGuard.CodeTargetSmallerLayoutFits);
+        Assert.True(report.CanProceed);
+    }
+
+    [Fact]
+    public void 대상이_작고_파티션이_안_들어가면_여전히_차단된다()
+    {
+        // 파티션이 대상보다 크다 — 파일시스템을 줄이지 않고는 불가능하므로 차단.
+        var partitions = new List<PartitionInfo>
+        {
+            new() { Number = 1, StartingOffset = 1024 * 1024, LengthBytes = 200L * 1024 * 1024 * 1024 },
+        };
+
+        var report = SafetyGuard.Evaluate(
+            Disk(0, size: 1024L * 1024 * 1024 * 1024, serial: "A1",
+                 style: PartitionStyle.Gpt, partitions: partitions),
+            Disk(1, size: OneHundredGb, serial: "B2"),
+            isElevated: true);
+
+        Assert.False(report.CanProceed);
+        Assert.Contains(report.Blockers, i => i.Code == SafetyGuard.CodeTargetTooSmall);
+    }
+
+    [Fact]
+    public void MBR_원본은_대상이_작으면_들어가더라도_차단된다()
+    {
+        // 맞춤 클론은 GPT 백업 헤더 재작성에 기대므로 GPT 전용이다.
+        var partitions = new List<PartitionInfo>
+        {
+            new() { Number = 1, StartingOffset = 1024 * 1024, LengthBytes = 10L * 1024 * 1024 * 1024 },
+        };
+
+        var report = SafetyGuard.Evaluate(
+            Disk(0, size: 1024L * 1024 * 1024 * 1024, serial: "A1",
+                 style: PartitionStyle.Mbr, partitions: partitions),
+            Disk(1, size: OneHundredGb, serial: "B2"),
+            isElevated: true);
+
+        Assert.False(report.CanProceed);
+        Assert.Contains(report.Blockers, i => i.Code == SafetyGuard.CodeTargetTooSmall);
+    }
+
+    [Fact]
     public void 대상이_원본과_같은_크기면_통과한다()
     {
         var report = SafetyGuard.Evaluate(
