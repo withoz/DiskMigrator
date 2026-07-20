@@ -24,6 +24,13 @@ public sealed class DiskSegmentViewModel
 
     public string UsageText { get; init; } = "";
 
+    /// <summary>범례 오른쪽 칸에 들어갈 크기·사용량 한 덩어리.</summary>
+    /// <remarks>
+    /// 크기와 사용량을 따로 두면 조각마다 조각 수가 달라(사용량이 없는 MSR·미할당)
+    /// 칸 경계가 어긋납니다. 한 칸으로 합치고 가운뎃점으로 나눕니다.
+    /// </remarks>
+    public string DetailText => HasUsage ? $"{SizeText} · {UsageText}" : SizeText;
+
     // --- 막대 안 라벨 ------------------------------------------------------
     //
     // 조각 위에 드라이브 문자를 직접 적습니다. 범례를 눈으로 따라가지 않아도
@@ -83,6 +90,9 @@ public sealed class DiskLayoutViewModel
     /// <summary>대상일 때만 위험색으로 강조합니다.</summary>
     public required Brush ActionBrush { get; init; }
 
+    /// <summary>막대 테두리 — 역할을 옅은 색으로 한 번 더 되풀이합니다.</summary>
+    public required Brush BarBorderBrush { get; init; }
+
     /// <summary>"파티션이 차지한 끝 616 MB · 디스크 2.00 GB" 같은 요약.</summary>
     public required string SummaryText { get; init; }
 
@@ -106,11 +116,11 @@ public sealed class DiskLayoutViewModel
 
         // 세 막대는 같은 모양으로 그리고 라벨로만 시점을 가릅니다. 한쪽만 다르게 그리면
         // 다른 의미의 그래프로 착각하게 됩니다.
-        (string roleText, Brush roleBrush, string actionText, Brush actionBrush) = role switch
+        (string roleText, Brush roleBrush, string actionText, Brush actionBrush, Brush lineBrush) = role switch
         {
-            DiskRole.Target => ("대상", DangerBrush, "이 디스크가 지워집니다", DangerBrush),
-            DiskRole.TargetAfter => ("변경 후", AccentBrush, "복제가 끝나면 이렇게 됩니다", MutedBrush),
-            _ => ("원본", AccentBrush, "읽기만 합니다", MutedBrush),
+            DiskRole.Target => ("대상", DangerBrush, "이 디스크가 지워집니다", DangerBrush, DangerLineBrush),
+            DiskRole.TargetAfter => ("변경 후", AccentBrush, "복제가 끝나면 이렇게 됩니다", MutedBrush, AccentLineBrush),
+            _ => ("원본", AccentBrush, "읽기만 합니다", MutedBrush, AccentLineBrush),
         };
 
         return new DiskLayoutViewModel
@@ -121,6 +131,7 @@ public sealed class DiskLayoutViewModel
             DiskSizeText = SizeFormatter.Format(disk.SizeBytes),
             ActionText = actionText,
             ActionBrush = actionBrush,
+            BarBorderBrush = lineBrush,
             Segments = spans.Select(ToSegment).ToList(),
             SummaryText = summary,
 
@@ -182,9 +193,10 @@ public sealed class DiskLayoutViewModel
             Tooltip = tip.ToString(),
             HasUsage = hasUsage,
             UsedFraction = hasUsage ? Math.Clamp((double)used / p.LengthBytes, 0, 1) : 0,
-            UsageText = hasUsage
-                ? $"사용 {SizeFormatter.Format(used)} / 여유 {SizeFormatter.Format(p.FreeSpaceBytes!.Value)}"
-                : "",
+            // 여유는 적지 않습니다 — 크기에서 사용을 뺀 값이라 새 정보가 없는데 줄만 길어져
+            // 두 칸 격자에서 잘렸습니다. 막대의 흰 띠가 이미 비율을 보여 주고,
+            // 정확한 값은 툴팁에 있습니다.
+            UsageText = hasUsage ? $"사용 {SizeFormatter.Format(used)}" : "",
 
             // 드라이브 문자가 있으면 그것이 가장 알아보기 쉽습니다. 없으면 역할을 짧게.
             BarLabel = p.DriveLetter is { } dl2 ? $"{dl2}:" : ShortRole(p),
@@ -231,6 +243,11 @@ public sealed class DiskLayoutViewModel
     private static readonly Brush AccentBrush = Frozen("#52738F");
     private static readonly Brush DangerBrush = Frozen("#DC2626");
     private static readonly Brush MutedBrush = Frozen("#837B72");
+
+    // 막대 테두리는 역할을 옅게 되풀이합니다 — 칩은 위쪽 한 곳뿐이라 막대만 보고 있으면
+    // 어느 쪽인지 놓칩니다. 채도를 낮춰 배지의 경고를 잡아먹지 않게 합니다.
+    private static readonly Brush AccentLineBrush = Frozen("#C3CEDA");
+    private static readonly Brush DangerLineBrush = Frozen("#FECACA");
 
     // 역할별 색 — 채도를 낮춰 화면과 톤을 맞추되, 색상(hue)은 서로 벌려 둡니다.
     // 막대에서 조각을 구분하는 것이 이 색의 유일한 일이라 예쁨보다 구별이 우선입니다.

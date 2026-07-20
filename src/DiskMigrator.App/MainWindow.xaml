@@ -30,7 +30,9 @@
                     열 제목은 목록 맨 위에 있어 막대를 들여다보는 동안 시야에서 사라집니다.
                     원본과 대상을 뒤바꾸는 것이 이 도구에서 가장 위험한 실수라 여기서 한 번 더 말합니다.
                 -->
-                <DockPanel Margin="0,0,0,5">
+                <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="0,0,0,1"
+                        Padding="0,0,0,5" Margin="0,0,0,7">
+                <DockPanel>
                     <Border DockPanel.Dock="Left" Background="{Binding RoleBrush}" CornerRadius="3"
                             Padding="6,1" Margin="0,0,7,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding RoleText}" Style="{StaticResource Micro}"
@@ -49,8 +51,9 @@
                                    Margin="6,0,0,0" />
                     </StackPanel>
                 </DockPanel>
+                </Border>
 
-                <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" CornerRadius="6"
+                <Border BorderBrush="{Binding BarBorderBrush}" BorderThickness="1" CornerRadius="5"
                         Background="{StaticResource SurfaceAlt}" Padding="2" ClipToBounds="True">
                     <ItemsControl ItemsSource="{Binding Segments}" ClipToBounds="True">
                         <ItemsControl.ItemsPanel>
@@ -60,7 +63,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Height="44" Margin="0,0,1,0" CornerRadius="3"
+                                <Border Height="40" Margin="0,0,1,0" CornerRadius="2"
                                         Background="{Binding Fill}" ToolTip="{Binding Tooltip}">
                                     <Border.Width>
                                         <MultiBinding Converter="{StaticResource FractionToWidth}">
@@ -108,27 +111,43 @@
                     </ItemsControl>
                 </Border>
 
-                <!-- 범례: 조각이 좁아 글자를 못 넣으므로 아래에 목록으로 풉니다. -->
-                <ItemsControl ItemsSource="{Binding Segments}" Margin="0,6,0,0">
+                <!--
+                    범례: 조각이 좁아 글자를 못 넣으므로 아래에 목록으로 풉니다.
+
+                    WrapPanel은 항목 글자 길이에 따라 한 줄에 2개가 되기도 3개가 되기도 해서
+                    막대마다 줄바꿈 위치가 달라졌습니다. 항상 2칸 격자로 고정하고, 이름 칸 폭을
+                    SharedSizeGroup으로 묶어 색칩·이름·수치의 세로선이 모든 줄에서 맞게 합니다.
+                -->
+                <ItemsControl ItemsSource="{Binding Segments}" Margin="0,7,0,0"
+                              Grid.IsSharedSizeScope="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
+                            <UniformGrid Columns="2" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,14,3" ToolTip="{Binding Tooltip}">
-                                <Border Width="9" Height="9" CornerRadius="3" Background="{Binding Fill}"
-                                        VerticalAlignment="Center" Margin="0,0,5,0" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Micro}" Foreground="{StaticResource TextBrush}">
-                                    <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
-                                    <Run Text="{Binding SizeText, Mode=OneWay}" Foreground="{StaticResource Muted}" />
-                                </TextBlock>
-                                <TextBlock Text="{Binding UsageText}" VerticalAlignment="Center" Style="{StaticResource Micro}"
-                                           Margin="5,0,0,0" Foreground="{StaticResource Muted}"
-                                           Visibility="{Binding HasUsage,
-                                                        Converter={StaticResource BoolToVisibility}}" />
-                            </StackPanel>
+                            <Grid Margin="0,0,16,4" ToolTip="{Binding Tooltip}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="LegendName" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 색칩 모서리는 막대 조각과 같은 반경이어야 같은 것으로 읽힙니다. -->
+                                <Border Grid.Column="0" Width="9" Height="9" CornerRadius="2"
+                                        Background="{Binding Fill}"
+                                        VerticalAlignment="Center" Margin="0,0,6,0" />
+
+                                <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="0,0,8,0"
+                                           VerticalAlignment="Center" Style="{StaticResource Micro}"
+                                           FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+
+                                <TextBlock Grid.Column="2" Text="{Binding DetailText}"
+                                           VerticalAlignment="Center" Style="{StaticResource Micro}"
+                                           Foreground="{StaticResource Muted}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -207,23 +226,28 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- 원본 -->
-                <DockPanel Grid.Row="0" Grid.Column="0">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                <!--
+                    원본 — 두 열은 위에서부터 차곡차곡 쌓습니다. DockPanel로 막대를 아래에
+                    붙이면 한쪽에만 막대가 있을 때(대상 미선택) 그 열의 목록만 늘어나
+                    두 목록의 아래끝이 어긋납니다.
+                    열 제목 높이(26)와 목록 높이(260)를 양쪽에 똑같이 박아 가로줄을 맞춥니다.
+                -->
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                    <StackPanel Orientation="Horizontal" Height="26" Margin="0,0,0,8">
                         <TextBlock Text="원본 (읽기)" Style="{StaticResource SubHeading}" VerticalAlignment="Center" />
                         <Button Content="새로고침" Command="{Binding RefreshDisksCommand}"
-                                Padding="8,3" MinWidth="0" FontSize="11" Margin="12,0,0,0" />
+                                Padding="8,3" MinWidth="0" FontSize="11" Margin="12,0,0,0"
+                                VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <ContentControl DockPanel.Dock="Bottom"
-                                    Content="{Binding SourceLayout}"
+                    <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedSource}"
+                             Style="{StaticResource DiskListStyle}" Height="260" />
+
+                    <ContentControl Content="{Binding SourceLayout}"
                                     ContentTemplate="{StaticResource DiskLayoutTemplate}"
                                     Visibility="{Binding SourceLayout,
                                                  Converter={StaticResource NullToVisibility}}" />
-
-                    <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedSource}"
-                             Style="{StaticResource DiskListStyle}" MinHeight="260" />
-                </DockPanel>
+                </StackPanel>
 
                 <!-- 화살표 -->
                 <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Margin="20,0">
@@ -233,21 +257,21 @@
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
-                <!-- 대상 -->
-                <DockPanel Grid.Row="0" Grid.Column="2">
-                    <TextBlock DockPanel.Dock="Top" Text="대상 (모든 데이터가 삭제됨)"
-                               Style="{StaticResource SubHeading}" Foreground="{StaticResource Danger}"
-                               Margin="0,0,0,8" />
+                <!-- 대상 — 높이는 원본 열과 같은 값이어야 가로줄이 맞습니다. -->
+                <StackPanel Grid.Row="0" Grid.Column="2">
+                    <Grid Height="26" Margin="0,0,0,8">
+                        <TextBlock Text="대상 (모든 데이터가 삭제됨)" VerticalAlignment="Center"
+                                   Style="{StaticResource SubHeading}" Foreground="{StaticResource Danger}" />
+                    </Grid>
 
-                    <ContentControl DockPanel.Dock="Bottom"
-                                    Content="{Binding TargetLayout}"
+                    <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
+                             Style="{StaticResource DiskListStyle}" Height="260" />
+
+                    <ContentControl Content="{Binding TargetLayout}"
                                     ContentTemplate="{StaticResource DiskLayoutTemplate}"
                                     Visibility="{Binding TargetLayout,
                                                  Converter={StaticResource NullToVisibility}}" />
-
-                    <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
-                             Style="{StaticResource DiskListStyle}" MinHeight="260" />
-                </DockPanel>
+                </StackPanel>
 
                 <!--
                     남는 공간 처리 — 대상 막대 바로 아래(오른쪽 칸). 디스크를 보는 자리와
