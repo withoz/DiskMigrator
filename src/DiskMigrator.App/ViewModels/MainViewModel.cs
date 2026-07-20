@@ -531,7 +531,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private FreeSpacePlan ResolveFreeSpacePlan() => FreeSpacePlanner.Resolve(
         HasFreeSpace, CanResize, FreeSpaceExpandLast, FreeSpaceGrowPartition,
-        SelectedResizePartition?.Number, ResizeFillRemaining, ResizeSizeGb);
+        SelectedResizePartition?.Number, ResizeFillRemaining, ResizeSizeGb,
+        SelectedSource?.Disk.Partitions, SelectedTarget?.Disk.SizeBytes ?? 0);
 
     /// <summary>
     /// "복제가 끝나면 이렇게 됩니다" 막대를 다시 계산합니다. 남는 공간 선택이 바뀔 때마다

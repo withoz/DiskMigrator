@@ -28,6 +28,11 @@ public static class FreeSpacePlanner
     /// </remarks>
     public const long BytesPerGb = 1024L * 1024 * 1024;
 
+    /// <param name="source">
+    /// 원본 파티션 배치. 주면 <see cref="ResizePlanner"/>로 <b>실제로 그 배치가 되는지</b>까지
+    /// 확인해, 엔진이 던질 거부 사유를 시작 전에 그대로 보여 줍니다.
+    /// </param>
+    /// <param name="targetSizeBytes">대상 디스크 크기. <paramref name="source"/>와 함께 줍니다.</param>
     public static FreeSpacePlan Resolve(
         bool hasFreeSpace,
         bool canResize,
@@ -35,7 +40,9 @@ public static class FreeSpacePlanner
         bool growPartition,
         int? growPartitionNumber,
         bool fillRemaining,
-        string? sizeText)
+        string? sizeText,
+        IReadOnlyList<Models.PartitionInfo>? source = null,
+        long targetSizeBytes = 0)
     {
         var mode = FreeSpaceMode.Leave;
         if (hasFreeSpace)
@@ -54,7 +61,7 @@ public static class FreeSpacePlanner
                 "'고른 파티션 넓히기'를 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.");
         }
 
-        if (fillRemaining) return new FreeSpacePlan(mode, new PartitionGrowRequest(number, null), null);
+        if (fillRemaining) return Feasible(mode, new PartitionGrowRequest(number, null), source, targetSizeBytes);
 
         // '새 총 크기' 모드인데 입력이 숫자가 아니면 조용히 null(= 남는 공간 전부)로 넘어가면
         // 안 됩니다. 사용자가 지정한 것과 전혀 다른 크기로 파티션이 커져 버립니다.
@@ -65,7 +72,34 @@ public static class FreeSpacePlanner
                 "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.");
         }
 
-        return new FreeSpacePlan(mode, new PartitionGrowRequest(number, (long)(gb * BytesPerGb)), null);
+        return Feasible(mode, new PartitionGrowRequest(number, (long)(gb * BytesPerGb)), source, targetSizeBytes);
+    }
+
+    /// <summary>
+    /// 이 요청이 실제로 배치가 되는지 <see cref="ResizePlanner"/>에게 물어보고, 안 되면 그
+    /// 이유를 그대로 사용자에게 돌려줍니다.
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 여기서 걸리는 요청(예: 930 GB 파티션에 "600" 입력)이 숫자로는 읽히므로 통과했고,
+    /// 미리보기만 소리 없이 사라진 뒤 '클론 시작'을 눌러야 이유를 볼 수 있었습니다. 화면에서
+    /// 그림이 사라지는 것은 사용자에게 아무 말도 해 주지 않습니다.
+    /// </remarks>
+    private static FreeSpacePlan Feasible(
+        FreeSpaceMode mode, PartitionGrowRequest grow,
+        IReadOnlyList<Models.PartitionInfo>? source, long targetSizeBytes)
+    {
+        if (source is null || source.Count == 0 || targetSizeBytes <= 0)
+            return new FreeSpacePlan(mode, grow, null);
+
+        try
+        {
+            ResizePlanner.Plan(source, targetSizeBytes, grow);
+            return new FreeSpacePlan(mode, grow, null);
+        }
+        catch (Exception ex)
+        {
+            return new FreeSpacePlan(mode, null, ex.Message);
+        }
     }
 
     /// <summary>

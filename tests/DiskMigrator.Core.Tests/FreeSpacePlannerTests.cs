@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Partitioning;
 
@@ -137,5 +138,71 @@ public class FreeSpacePlannerTests
 
         Assert.Null(plan.Error);
         Assert.Null(plan.Grow!.NewLengthBytes);
+    }
+
+    // --- 실행 가능성까지 같은 자리에서 --------------------------------------
+    //
+    // 숫자로 읽히기만 하면 통과시키면, 930 GB 파티션에 "600"을 넣은 요청이 그대로 흘러가
+    // 미리보기만 소리 없이 사라지고 이유는 '클론 시작'을 눌러야 나옵니다.
+
+    /// <summary>전형적인 Windows 배치 — [ESP][MSR][C: 930GB][복구]. C:는 마지막이 아닙니다.</summary>
+    private static List<PartitionInfo> Windows930()
+    {
+        const long mb = 1L << 20;
+        long esp = mb, espLen = 200 * mb;
+        long msr = esp + espLen, msrLen = 16 * mb;
+        long c = msr + msrLen, cLen = 930L << 30;
+        long rec = c + cLen, recLen = 826 * mb;
+
+        return
+        [
+            new() { Number = 1, StartingOffset = esp, LengthBytes = espLen, FileSystem = "FAT32" },
+            new() { Number = 2, StartingOffset = msr, LengthBytes = msrLen },
+            new() { Number = 3, StartingOffset = c, LengthBytes = cLen, FileSystem = "NTFS" },
+            new() { Number = 4, StartingOffset = rec, LengthBytes = recLen, FileSystem = "NTFS" },
+        ];
+    }
+
+    private static long TargetWithSlack(List<PartitionInfo> source, long slackBytes) =>
+        source[^1].StartingOffset + source[^1].LengthBytes + slackBytes;
+
+    [Fact]
+    public void 현재보다_작은_크기를_넣으면_시작_전에_이유를_알려준다()
+    {
+        var source = Windows930();
+        long target = TargetWithSlack(source, 10L << 30);
+
+        var plan = FreeSpacePlanner.Resolve(
+            hasFreeSpace: true, canResize: true, expandLast: false, growPartition: true,
+            growPartitionNumber: 3, fillRemaining: false, sizeText: "600",
+            source: source, targetSizeBytes: target);
+
+        Assert.NotNull(plan.Error);
+        Assert.Contains("작습니다", plan.Error);
+        Assert.Null(plan.Grow);
+    }
+
+    [Fact]
+    public void 늘릴_수_있는_크기는_그대로_통과한다()
+    {
+        var source = Windows930();
+        long target = TargetWithSlack(source, 100L << 30);
+
+        var plan = FreeSpacePlanner.Resolve(
+            hasFreeSpace: true, canResize: true, expandLast: false, growPartition: true,
+            growPartitionNumber: 3, fillRemaining: false, sizeText: "1000",
+            source: source, targetSizeBytes: target);
+
+        Assert.Null(plan.Error);
+        Assert.Equal(1000L << 30, plan.Grow!.NewLengthBytes);
+    }
+
+    [Fact]
+    public void 원본_배치를_주지_않으면_실행_가능성은_검사하지_않는다()
+    {
+        // 디스크를 아직 고르지 않은 화면에서도 파싱 검사는 돌아야 합니다.
+        var plan = Resolve(growPartition: true, fillRemaining: false, sizeText: "600");
+
+        Assert.Null(plan.Error);
     }
 }
