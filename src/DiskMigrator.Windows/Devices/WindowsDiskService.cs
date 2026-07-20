@@ -142,6 +142,7 @@ public sealed class WindowsDiskService(ILogger<WindowsDiskService>? logger = nul
             BusType = descriptor?.BusType ?? DiskBusType.Unknown,
             PartitionStyle = layout.Style,
             DiskGuid = layout.GptDiskId,
+            MbrSignature = layout.MbrSignature,
             IsRemovable = descriptor?.RemovableMedia
                           ?? geometry.Geometry.MediaType == MEDIA_TYPE.RemovableMedia,
             IsReadOnly = !isWritable,

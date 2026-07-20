@@ -20,11 +20,15 @@ public sealed record BootRepairResult(bool Success, string Message, IReadOnlyLis
 /// 0xc000000e를 고칩니다.
 /// </summary>
 /// <remarks>
-/// 디스크 서명 충돌로 GPT 디스크 GUID가 재서명되면 BCD의 장치 참조가 어긋나 부팅이
-/// 0xc000000e로 실패합니다. 이 복구는 대상 디스크의 ESP에 임시 드라이브 문자를 부여하고
-/// <c>bcdedit /store</c>로 부팅 관리자·기본 로더·재개 개체의 device/osdevice를 이 디스크의
-/// 실제 파티션으로 다시 씁니다. bcdedit은 BCD 장치 요소의 버전별 형식을 정확히 다루므로,
-/// 하이브 바이너리를 직접 조작하는 위험을 피합니다. UEFI(GPT/ESP) 클론 전용입니다.
+/// 원본과 대상을 함께 연결해 두면 디스크 식별자가 충돌해 Windows가 대상을 재서명합니다.
+/// 그러면 BCD의 장치 참조가 어긋나 부팅이 0xc000000e로 실패합니다. 이 복구는 부팅 파일이 있는
+/// 파티션에 임시 드라이브 문자를 부여하고 <c>bcdedit /store</c>로 부팅 관리자·기본 로더·재개
+/// 개체의 device/osdevice를 이 디스크의 실제 파티션으로 다시 씁니다. bcdedit은 BCD 장치 요소의
+/// 버전별 형식을 정확히 다루므로, 하이브 바이너리를 직접 조작하는 위험을 피합니다.
+///
+/// <para><b>UEFI와 BIOS 둘 다 지원합니다.</b> UEFI는 ESP 안의
+/// <c>EFI\Microsoft\Boot\BCD</c>를, BIOS는 활성 파티션 루트의 <c>Boot\BCD</c>를 고칩니다.
+/// 고치는 내용은 같고 부팅 파일이 어디 있느냐만 다릅니다.</para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class BootRepair(ILogger? logger = null)
@@ -36,9 +40,23 @@ public sealed class BootRepair(ILogger? logger = null)
     {
         var steps = new List<string>();
 
+        // 부팅 파일(bootmgr·BCD)이 있는 파티션을 찾습니다.
+        //
+        // UEFI는 ESP, BIOS는 활성 파티션입니다. 예전에는 ESP만 찾아서 BIOS/MBR 클론에서는
+        // "ESP를 찾지 못했습니다"로 끝났습니다 — 정작 MBR 클론이 디스크 서명 충돌로 BCD 참조가
+        // 어긋나기 가장 쉬운데 고칠 방법이 없었습니다.
         var esp = disk.Partitions.FirstOrDefault(p => p.IsEfiSystemPartition || p.GptPartitionType == EfiSystem);
-        if (esp?.VolumeGuidPath is null)
-            return new(false, "EFI 시스템 파티션(ESP)을 찾지 못했습니다. UEFI/GPT 클론에만 사용할 수 있습니다.", steps);
+        bool uefi = esp is not null;
+
+        var system = esp ?? disk.Partitions.FirstOrDefault(p => p.IsActive);
+        if (system is null || (system.VolumeGuidPath is null && system.DriveLetter is null))
+        {
+            return new(false,
+                uefi
+                    ? "EFI 시스템 파티션(ESP)의 볼륨 경로를 알 수 없습니다."
+                    : "부팅 파일이 있는 활성 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).",
+                steps);
+        }
 
         var windows = FindWindowsPartition(disk);
         if (windows is null)
@@ -48,9 +66,9 @@ public sealed class BootRepair(ILogger? logger = null)
         try
         {
             // ESP는 보통 드라이브 문자가 없으므로 임시 부여. bcdedit의 partition= 값은 문자만 받습니다.
-            char espLetter = esp.DriveLetter is { } el ? el[0] : (espTemp = AssignTempLetter(esp.VolumeGuidPath))
-                ?? throw new InvalidOperationException("ESP에 임시 드라이브 문자를 부여하지 못했습니다.");
-            steps.Add($"ESP → {espLetter}: ({(espTemp is null ? "기존" : "임시")})");
+            char espLetter = system.DriveLetter is { } el ? el[0] : (espTemp = AssignTempLetter(system.VolumeGuidPath!))
+                ?? throw new InvalidOperationException("부팅 파티션에 임시 드라이브 문자를 부여하지 못했습니다.");
+            steps.Add($"{(uefi ? "ESP" : "활성 파티션")} → {espLetter}: ({(espTemp is null ? "기존" : "임시")})");
 
             char winLetter;
             if (windows.DriveLetter is { } wl) winLetter = wl[0];
@@ -59,7 +77,10 @@ public sealed class BootRepair(ILogger? logger = null)
             else return new(false, "Windows 파티션의 볼륨 경로를 알 수 없습니다.", steps);
             steps.Add($"Windows → {winLetter}: ({(winTemp is null ? "기존" : "임시")})");
 
-            string bcd = $@"{espLetter}:\EFI\Microsoft\Boot\BCD";
+            // UEFI는 ESP 안의 EFI\Microsoft\Boot\, BIOS는 활성 파티션 루트의 Boot\.
+            string bcd = uefi
+                ? $@"{espLetter}:\EFI\Microsoft\Boot\BCD"
+                : $@"{espLetter}:\Boot\BCD";
             if (!File.Exists(bcd))
                 return new(false, $"BCD를 찾지 못했습니다: {bcd}", steps);
 

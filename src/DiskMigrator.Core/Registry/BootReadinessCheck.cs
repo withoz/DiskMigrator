@@ -54,9 +54,18 @@ public sealed record BootCheckInput
 
     /// <summary>
     /// 이 디스크의 GPT 디스크 GUID. 주어지면 BCD의 장치 참조가 이 디스크를 가리키는지 대조합니다.
-    /// null(MBR/미상)이면 대조를 건너뜁니다.
     /// </summary>
     public Guid? DiskGuid { get; init; }
+
+    /// <summary>
+    /// 이 디스크의 MBR 디스크 서명. MBR에서 <see cref="DiskGuid"/>와 같은 역할을 합니다.
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 GPT GUID만 대조하고 MBR은 통째로 건너뛰어, MBR 클론에서 BCD 참조가 어긋나
+    /// 있어도 "부팅 준비 완료"라고 답했습니다. 실기 클론에서 정확히 그 일이 일어났습니다 —
+    /// 원본과 대상이 함께 연결돼 Windows가 대상을 재서명했는데, 검사는 그것을 보지 못했습니다.
+    /// </remarks>
+    public uint? MbrSignature { get; init; }
 }
 
 /// <summary>
@@ -138,6 +147,7 @@ public static class BootReadinessCheck
             SystemRoot = RootOf(systemPartition),
             WindowsRoot = RootOf(windowsPartition),
             DiskGuid = disk.DiskGuid,
+            MbrSignature = disk.MbrSignature,
         };
     }
 
@@ -179,7 +189,7 @@ public static class BootReadinessCheck
                     : "없음 — 일부 펌웨어/이동식 부팅에서 필요할 수 있습니다."));
 
             string bcd = Path.Combine(efiBoot, "BCD");
-            AnalyzeBcd(bcd, input.DiskGuid, items);
+            AnalyzeBcd(bcd, input.DiskGuid, input.MbrSignature, items);
         }
         else
         {
@@ -189,7 +199,7 @@ public static class BootReadinessCheck
                 hasMgr ? mgr : "없음 — BIOS/MBR 부팅이 불가능합니다."));
 
             string bcd = Path.Combine(input.SystemRoot, "Boot", "BCD");
-            AnalyzeBcd(bcd, input.DiskGuid, items);
+            AnalyzeBcd(bcd, input.DiskGuid, input.MbrSignature, items);
         }
     }
 
@@ -219,7 +229,7 @@ public static class BootReadinessCheck
         AnalyzeSystemHive(systemHive, input.Uefi, items);
     }
 
-    private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, List<BootCheckItem> items)
+    private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, uint? mbrSignature, List<BootCheckItem> items)
     {
         if (!SafeFileExists(bcdPath))
         {
@@ -273,7 +283,7 @@ public static class BootReadinessCheck
             anyLoader ? $"{loaders}개 — 예: {firstPath}"
                 : "winload를 가리키는 OS 로더 항목이 없습니다 — 부팅 메뉴가 비어 있습니다."));
 
-        CheckDeviceReferences(bcd, diskGuid, items);
+        CheckDeviceReferences(bcd, diskGuid, mbrSignature, items);
     }
 
     /// <summary>
@@ -286,16 +296,22 @@ public static class BootReadinessCheck
     /// 장치 요소는 REG_BINARY이고 대상 디스크 GUID(16바이트)를 그대로 담으므로, 현재 디스크
     /// GUID가 그 바이트 안에 있는지 확인하면 참조 유효성을 알 수 있습니다.
     /// </remarks>
-    private static void CheckDeviceReferences(RegistryHive bcd, Guid? diskGuid, List<BootCheckItem> items)
+    private static void CheckDeviceReferences(
+        RegistryHive bcd, Guid? diskGuid, uint? mbrSignature, List<BootCheckItem> items)
     {
-        if (diskGuid is not { } dg)
+        // GPT는 디스크 GUID 16바이트, MBR은 디스크 서명 4바이트가 장치 요소에 그대로 들어갑니다.
+        // 둘 중 아는 것으로 대조합니다.
+        byte[]? target =
+            diskGuid is { } dg ? dg.ToByteArray() :
+            mbrSignature is { } sig ? BitConverter.GetBytes(sig) :
+            null;
+
+        if (target is null)
         {
             items.Add(new("BCD 장치 참조 ↔ 디스크", null, BootCheckSeverity.Warning,
-                "디스크 GUID를 알 수 없어 장치 참조를 대조하지 못했습니다 (MBR이거나 정보 없음)."));
+                "디스크 GUID도 MBR 서명도 알 수 없어 장치 참조를 대조하지 못했습니다."));
             return;
         }
-
-        byte[] target = dg.ToByteArray();
 
         // 기본 OS 로더의 osdevice가 우선. 없으면 winload를 가리키는 아무 로더나.
         string? defaultId = bcd.GetString($"Objects\\{BootMgrObject}\\Elements\\{ElementDefault}", "Element");
@@ -342,11 +358,14 @@ public static class BootReadinessCheck
             return;
         }
 
+        string identity = diskGuid is { } g ? $"GUID {g}" : $"MBR 서명 0x{mbrSignature:X8}";
+
         items.Add(new("BCD 장치 참조 ↔ 디스크", matched, BootCheckSeverity.Fatal,
             matched
-                ? $"BCD가 이 디스크(GUID {dg})를 가리킵니다."
-                : "BCD의 장치 참조가 이 디스크의 서명과 불일치합니다 — 부팅 시 0xc000000e 위험 " +
-                  "(디스크 서명 변경/이식). bcdboot 재생성 또는 bcdedit로 device/osdevice 복구 필요."));
+                ? $"BCD가 이 디스크({identity})를 가리킵니다."
+                : $"BCD의 장치 참조가 이 디스크({identity})를 가리키지 않습니다 — 부팅 시 0xc000000e 위험. " +
+                  "원본과 대상을 함께 연결해 두면 서명이 충돌해 Windows가 대상을 재서명합니다. " +
+                  "'부팅 복구'로 device/osdevice를 이 디스크의 파티션으로 다시 설정하십시오."));
     }
 
     /// <summary>haystack 안에 needle(연속 바이트열)이 있으면 true.</summary>

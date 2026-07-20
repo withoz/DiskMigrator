@@ -38,6 +38,14 @@ public sealed class DiskInfo
     /// </remarks>
     public Guid? DiskGuid { get; init; }
 
+    /// <summary>MBR 디스크의 NT 디스크 서명(0x1B8). GPT/RAW 디스크에서는 null.</summary>
+    /// <remarks>
+    /// MBR에서 <see cref="DiskGuid"/>와 같은 역할을 합니다. BCD의 장치 참조가 이 4바이트를
+    /// 내장하므로, 원본과 대상이 함께 연결돼 서명이 충돌하면 Windows가 대상을 재서명하고
+    /// BCD 참조가 어긋나 부팅이 실패합니다. 부팅 구성 검사가 이를 대조합니다.
+    /// </remarks>
+    public uint? MbrSignature { get; init; }
+
     public bool IsRemovable { get; init; }
 
     public bool IsReadOnly { get; init; }

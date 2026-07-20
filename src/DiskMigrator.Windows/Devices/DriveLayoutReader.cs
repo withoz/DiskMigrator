@@ -18,7 +18,14 @@ internal sealed record RawPartition(
 internal sealed record DriveLayout(
     PartitionStyle Style,
     IReadOnlyList<RawPartition> Partitions,
-    Guid? GptDiskId = null);
+    Guid? GptDiskId = null,
+
+    /// <summary>MBR 디스크의 NT 디스크 서명(0x1B8). GPT/RAW에서는 null.</summary>
+    /// <remarks>
+    /// GPT의 디스크 GUID와 같은 역할을 합니다 — BCD의 장치 참조가 이 값을 내장하므로,
+    /// 서명이 달라지면 클론이 부팅하지 못합니다. 부팅 구성 검사가 이를 대조합니다.
+    /// </remarks>
+    uint? MbrSignature = null);
 
 /// <summary>
 /// IOCTL_DISK_GET_DRIVE_LAYOUT_EX로 파티션 테이블을 읽습니다.
@@ -94,7 +101,9 @@ internal static class DriveLayoutReader
         }
 
         Guid? gptDiskId = style == PartitionStyle.Gpt ? header.Info.Gpt.DiskId : null;
+        uint? mbrSignature = style == PartitionStyle.Mbr ? header.Info.Mbr.Signature : null;
 
-        return new DriveLayout(style, partitions.OrderBy(p => p.StartingOffset).ToList(), gptDiskId);
+        return new DriveLayout(
+            style, partitions.OrderBy(p => p.StartingOffset).ToList(), gptDiskId, mbrSignature);
     }
 }

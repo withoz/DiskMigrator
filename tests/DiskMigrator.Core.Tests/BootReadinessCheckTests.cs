@@ -57,6 +57,48 @@ public class BootReadinessCheckTests
         Assert.True(report.Items.Single(i => i.Name == "BCD OS 로더 항목").Passed);
     }
 
+    /// <summary>
+    /// MBR 클론에서 BCD 참조 대조가 실제로 돌아야 합니다. 예전에는 GPT GUID만 보고 MBR은
+    /// 통째로 건너뛰어, 참조가 어긋난 디스크를 "부팅 준비 완료"로 보고했습니다 —
+    /// 실기 클론에서 정확히 그 일이 일어났습니다.
+    /// </summary>
+    [Fact]
+    public void 정상_BIOS_MBR_클론은_부팅_준비_완료로_판정된다()
+    {
+        using var layout = DiskLayout.CreateHealthyBios();
+
+        var report = BootReadinessCheck.Inspect(layout.Input);
+
+        Assert.True(report.WouldBoot, Dump(report));
+    }
+
+    [Fact]
+    public void MBR_서명이_BCD와_불일치하면_부팅_불가로_판정된다()
+    {
+        // 원본과 대상을 함께 연결해 두면 Windows가 대상을 재서명하고, BCD는 옛 서명을
+        // 가리킨 채 남습니다. 부팅하면 0xc000000e가 납니다.
+        using var layout = DiskLayout.CreateHealthyBios(bcdSignatureMatchesDisk: false);
+
+        var report = BootReadinessCheck.Inspect(layout.Input);
+
+        Assert.False(report.WouldBoot);
+        var item = report.Items.Single(i => i.Name.Contains("장치 참조"));
+        Assert.False(item.Passed);
+        Assert.Equal(BootCheckSeverity.Fatal, item.Severity);
+    }
+
+    [Fact]
+    public void MBR_서명도_GUID도_없으면_대조를_건너뛴다()
+    {
+        using var layout = DiskLayout.CreateHealthyBios();
+        var input = layout.Input with { MbrSignature = null };
+
+        var report = BootReadinessCheck.Inspect(input);
+
+        var item = report.Items.Single(i => i.Name.Contains("장치 참조"));
+        Assert.Null(item.Passed);
+    }
+
     [Fact]
     public void 부트로더가_없으면_부팅_불가로_판정된다()
     {
@@ -227,6 +269,45 @@ public class BootReadinessCheckTests
             });
         }
 
+        /// <summary>
+        /// BIOS/MBR 클론 — 부팅 파일이 활성 파티션 루트에 있고, BCD 장치 참조에는 GPT GUID 대신
+        /// 4바이트 디스크 서명이 들어갑니다.
+        /// </summary>
+        public static DiskLayout CreateHealthyBios(bool bcdSignatureMatchesDisk = true)
+        {
+            const uint diskSignature = 812018231;   // 실기 N: 디스크의 서명
+            uint bcdSignature = bcdSignatureMatchesDisk ? diskSignature : 285794371;
+
+            string root = Path.Combine(Path.GetTempPath(), "dm-boot-" + Guid.NewGuid().ToString("N"));
+            string sys = Path.Combine(root, "sys");
+            string win = sys;   // BIOS 단일 파티션 배치 — 부팅 파일과 Windows가 한 파티션에.
+
+            Directory.CreateDirectory(Path.Combine(sys, "Boot"));
+            File.WriteAllText(Path.Combine(sys, "bootmgr"), "stub");
+            File.WriteAllBytes(Path.Combine(sys, "Boot", "BCD"), BuildBcd(SignatureBlob(bcdSignature), "winload.exe"));
+
+            string sys32 = Path.Combine(win, "Windows", "System32");
+            Directory.CreateDirectory(Path.Combine(sys32, "config"));
+            File.WriteAllText(Path.Combine(sys32, "winload.exe"), "stub");
+            File.WriteAllBytes(Path.Combine(sys32, "config", "SYSTEM"), BuildSystem());
+
+            return new DiskLayout(root, sys, win, new BootCheckInput
+            {
+                Uefi = false,
+                SystemRoot = sys + "\\",
+                WindowsRoot = win + "\\",
+                MbrSignature = diskSignature,
+            });
+        }
+
+        /// <summary>디스크 서명 4바이트를 중간에 심은 장치 요소 blob.</summary>
+        private static byte[] SignatureBlob(uint signature)
+        {
+            var blob = new byte[48];
+            BitConverter.GetBytes(signature).CopyTo(blob, 20);
+            return blob;
+        }
+
         /// <summary>Select\Current 와 ControlSet001\Services\{storahci,stornvme,pciide}\Start 를 가진 SYSTEM 하이브.</summary>
         private static byte[] BuildSystem()
         {
@@ -245,15 +326,16 @@ public class BootReadinessCheckTests
         /// 부트 매니저 + winload OS 로더 객체를 가진 BCD 하이브. 장치 요소(osdevice/device)에는
         /// <paramref name="deviceGuid"/>를 내장해 실제 BCD 장치 참조를 흉내 냅니다.
         /// </summary>
-        private static byte[] BuildBcd(Guid deviceGuid)
+        private static byte[] BuildBcd(Guid deviceGuid) => BuildBcd(DeviceBlob(deviceGuid), "winload.efi");
+
+        private static byte[] BuildBcd(byte[] devBlob, string loaderName)
         {
             const string bootMgr = "{9dea862c-5cdd-4e70-acc1-f32b344d4795}";
             const string loaderGuid = "{11111111-2222-3333-4444-555555555555}";
-            byte[] devBlob = DeviceBlob(deviceGuid);
 
             var b = new HiveBuilder();
             // OS 로더: 12000002=winload 경로, 21000001=osdevice, 11000001=device
-            int e12 = b.AddKey("12000002", [b.Sz("Element", @"\Windows\system32\winload.efi")], []);
+            int e12 = b.AddKey("12000002", [b.Sz("Element", $@"\Windows\system32\{loaderName}")], []);
             int e21 = b.AddKey("21000001", [b.Binary("Element", devBlob)], []);
             int e11 = b.AddKey("11000001", [b.Binary("Element", devBlob)], []);
             int loaderElems = b.AddKey("Elements", [], [e12, e21, e11]);
