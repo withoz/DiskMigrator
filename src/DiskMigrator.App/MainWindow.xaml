@@ -351,7 +351,14 @@
                                          IsChecked="{Binding ResizeFillRemaining}"
                                          Content="남는 공간 전부" VerticalContentAlignment="Center"
                                          Margin="0,0,14,0" FontSize="12" />
+                            <!--
+                                두 라디오 모두 뷰모델이 받쳐야 합니다. 한쪽만 묶어 두면 나머지
+                                한쪽의 선택은 화면에만 있어서, 바인딩이 다시 적용될 때 조용히
+                                '남는 공간 전부'로 돌아갑니다 — 입력한 크기 대신 남는 공간
+                                전부를 쓰게 되는데 화면은 그렇게 보이지 않습니다.
+                            -->
                             <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeSize"
+                                         IsChecked="{Binding ResizeUseCustomSize}"
                                          Content="새 총 크기(GB):" VerticalContentAlignment="Center"
                                          Margin="0,0,6,0" FontSize="12" />
                             <!--

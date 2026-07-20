@@ -142,6 +142,25 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>true면 남는 공간을 전부 확대 파티션에, false면 <see cref="ResizeSizeGb"/> 크기로.</summary>
     [ObservableProperty] private bool _resizeFillRemaining = true;
 
+    /// <summary><see cref="ResizeFillRemaining"/>의 반대. '새 총 크기' 라디오가 묶이는 곳입니다.</summary>
+    /// <remarks>
+    /// 예전에는 '남는 공간 전부'만 뷰모델에 묶여 있고 '새 총 크기'의 선택 상태는 화면에만
+    /// 있었습니다. 그러면 <see cref="ResizeFillRemaining"/> 바인딩이 다시 적용되는 순간
+    /// 선택이 '남는 공간 전부'로 돌아가고, 입력한 크기 대신 <b>남는 공간 전부</b>가 쓰입니다 —
+    /// 사용자가 지정한 것과 전혀 다른 결과인데 화면은 그렇게 보이지 않습니다.
+    /// 두 라디오 모두 뷰모델이 받치게 해서 그런 상태 자체를 없앱니다.
+    /// </remarks>
+    public bool ResizeUseCustomSize
+    {
+        get => !ResizeFillRemaining;
+        set
+        {
+            // 라디오는 꺼질 때도 false를 써 보냅니다. 그때 반대쪽을 건드리면 두 개가 서로를
+            // 꺼서 아무것도 선택되지 않습니다.
+            if (value) ResizeFillRemaining = false;
+        }
+    }
+
     [ObservableProperty] private string _resizeSizeGb = "";
 
     /// <summary>
@@ -523,7 +542,11 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnFreeSpaceLeaveChanged(bool value) => RefreshFreeSpaceChoice();
     partial void OnFreeSpaceExpandLastChanged(bool value) => RefreshFreeSpaceChoice();
     partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value) => RefreshFreeSpaceChoice();
-    partial void OnResizeFillRemainingChanged(bool value) => RefreshFreeSpaceChoice();
+    partial void OnResizeFillRemainingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ResizeUseCustomSize));
+        RefreshFreeSpaceChoice();
+    }
     partial void OnResizeSizeGbChanged(string value) => RefreshFreeSpaceChoice();
 
     /// <summary>
