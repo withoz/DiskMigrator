@@ -49,8 +49,10 @@ long? growNewBytes = null;
     int gi = Array.IndexOf(args, "--grow");
     if (gi >= 0 && gi + 1 < args.Length && int.TryParse(args[gi + 1], out int gp)) growPartition = gp;
     int gsi = Array.IndexOf(args, "--grow-gb");
+    // 로그의 모든 크기가 SizeFormatter(1024 기준)이므로 입력도 같은 기준이어야 합니다.
+    // 1000 기준으로 읽으면 로그가 보여 준 숫자를 그대로 넣은 사람이 7% 작은 파티션을 얻습니다.
     if (gsi >= 0 && gsi + 1 < args.Length && double.TryParse(args[gsi + 1], out double ggb))
-        growNewBytes = (long)(ggb * 1_000_000_000);
+        growNewBytes = (long)(ggb * FreeSpacePlanner.BytesPerGb);
 }
 
 if (args.Length < 1 || !int.TryParse(args[0], out int sourceNumber))
