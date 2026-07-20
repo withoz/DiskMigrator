@@ -1220,7 +1220,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (report.GptRepair is { } gpt)
         {
-            details.Add($"GPT: {gpt.Description}");
+            // 라벨을 "GPT"로 박아 두면 MBR 클론에서 "GPT: MBR 파티션 테이블을 다시 썼습니다"가
+            // 됩니다. 내부 필드 이름(GptRepair)을 화면 글자로 그대로 쓴 탓이었습니다.
+            details.Add($"파티션 테이블: {gpt.Description}");
         }
 
         if (report.UniversalRestore is { } ur)
