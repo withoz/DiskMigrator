@@ -175,6 +175,40 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
         ResizablePartitions.Count > 0;
 
+    /// <summary>'고른 파티션 넓히기'가 회색인 이유. 쓸 수 있으면 빈 문자열.</summary>
+    /// <remarks>
+    /// 항목 설명에 "GPT 원본만"이라고 적어 두었지만 막는 조건은 네 가지입니다. 하나만 적어
+    /// 두면 나머지 세 경우에는 왜 회색인지 알 방법이 없고, 적어 둔 그 하나조차 흘려보게 됩니다.
+    /// 지금 고른 디스크에 해당하는 이유를 그 자리에서 말해 줍니다.
+    /// </remarks>
+    public string ResizeBlockedReason
+    {
+        get
+        {
+            if (SelectedSource is null || SelectedTarget is null || CanResize) return "";
+
+            if (SelectedSource.Disk.PartitionStyle != PartitionStyle.Gpt)
+            {
+                return $"원본이 {SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant()} 디스크라 " +
+                       "쓸 수 없습니다 — 이 방식은 파티션을 옮기고 GPT를 다시 씁니다. " +
+                       "'마지막 파티션에 합치기'는 MBR에서도 됩니다.";
+            }
+
+            if (SelectedSource.Disk.LogicalSectorSize != SelectedTarget.Disk.LogicalSectorSize)
+            {
+                return $"원본과 대상의 섹터 크기가 다릅니다(원본 {SelectedSource.Disk.LogicalSectorSize}바이트, " +
+                       $"대상 {SelectedTarget.Disk.LogicalSectorSize}바이트). 파티션 위치가 어긋나 쓸 수 없습니다.";
+            }
+
+            if (ResizablePartitions.Count == 0)
+                return "원본에 넓힐 수 있는 NTFS 파티션이 없습니다.";
+
+            return "대상이 원본보다 크지 않아 넓힐 공간이 없습니다.";
+        }
+    }
+
+    public bool HasResizeBlockedReason => ResizeBlockedReason.Length > 0;
+
     /// <summary>리사이즈로 확대한 파티션 번호(클론 후 "파티션 확장" 버튼이 이 파티션을 넓힘). 없으면 null.</summary>
     private int? _grownPartitionNumber;
 
@@ -487,6 +521,8 @@ public sealed partial class MainViewModel : ObservableObject
             ResizablePartitions.FirstOrDefault(c => c.Number == previous) ?? ResizablePartitions.FirstOrDefault();
 
         OnPropertyChanged(nameof(CanResize));
+        OnPropertyChanged(nameof(ResizeBlockedReason));
+        OnPropertyChanged(nameof(HasResizeBlockedReason));
         OnPropertyChanged(nameof(HasFreeSpace));
         OnPropertyChanged(nameof(FreeSpaceText));
 
