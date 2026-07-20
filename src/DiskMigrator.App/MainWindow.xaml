@@ -83,11 +83,11 @@
                             <StackPanel Orientation="Horizontal" Margin="0,0,14,3" ToolTip="{Binding Tooltip}">
                                 <Border Width="9" Height="9" CornerRadius="2" Background="{Binding Fill}"
                                         VerticalAlignment="Center" Margin="0,0,5,0" />
-                                <TextBlock VerticalAlignment="Center" FontSize="11">
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Micro}" Foreground="{StaticResource TextBrush}">
                                     <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
                                     <Run Text="{Binding SizeText, Mode=OneWay}" Foreground="{StaticResource Muted}" />
                                 </TextBlock>
-                                <TextBlock Text="{Binding UsageText}" VerticalAlignment="Center" FontSize="11"
+                                <TextBlock Text="{Binding UsageText}" VerticalAlignment="Center" Style="{StaticResource Micro}"
                                            Margin="5,0,0,0" Foreground="{StaticResource Muted}"
                                            Visibility="{Binding HasUsage,
                                                         Converter={StaticResource BoolToVisibility}}" />
@@ -96,10 +96,10 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="{Binding SummaryText}" FontSize="11" Margin="0,2,0,0"
+                <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Micro}" Margin="0,2,0,0"
                            Foreground="{StaticResource Muted}" TextWrapping="Wrap" />
 
-                <TextBlock Text="{Binding TrailingFreeText}" FontSize="11" Margin="0,2,0,0"
+                <TextBlock Text="{Binding TrailingFreeText}" Style="{StaticResource Micro}" Margin="0,2,0,0"
                            Foreground="{StaticResource Warning}" TextWrapping="Wrap"
                            Visibility="{Binding TrailingFreeText,
                                         Converter={StaticResource NullToVisibility}}" />
@@ -121,7 +121,7 @@
                 <StackPanel>
                     <TextBlock Text="DiskMigrator" Style="{StaticResource Heading}" />
                     <TextBlock Text="디스크 전체를 섹터 단위로 복제합니다 — 실행 중인 시스템 디스크 포함"
-                               Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" />
+                               Style="{StaticResource Caption}" Margin="0,2,0,0" />
                 </StackPanel>
 
                 <Border HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -129,7 +129,7 @@
                         CornerRadius="4" Padding="10,5"
                         Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Text="관리자 권한 아님 — 클론을 실행할 수 없습니다"
-                               Foreground="{StaticResource Danger}" FontWeight="SemiBold" FontSize="12" />
+                               Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" FontWeight="SemiBold" />
                 </Border>
             </Grid>
         </Border>
@@ -171,7 +171,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0">
                     <TextBlock Text="&#x2192;" FontSize="34" Foreground="{StaticResource Accent}"
                                HorizontalAlignment="Center" FontWeight="Bold" />
-                    <TextBlock Text="복제" FontSize="11" Foreground="{StaticResource Muted}"
+                    <TextBlock Text="복제" Style="{StaticResource Micro}"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
@@ -208,7 +208,7 @@
                             <TextBlock>
                                 <Run Text="VSS 스냅샷 사용 (권장)" FontWeight="SemiBold" />
                                 <Run Text=" — 복제 중 파일이 바뀌어도 일관된 사본을 만듭니다"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -217,7 +217,7 @@
                             <TextBlock>
                                 <Run Text="복제 후 검증" FontWeight="SemiBold" />
                                 <Run Text=" — 다시 읽어 원본과 비교합니다 (시간 약 2배)"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -226,7 +226,7 @@
                             <TextBlock>
                                 <Run Text="불량 섹터 건너뛰기" FontWeight="SemiBold" />
                                 <Run Text=" — 읽지 못한 섹터를 0으로 채우고 계속합니다"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -235,7 +235,7 @@
                             <TextBlock>
                                 <Run Text="스마트 클론 (빈 영역 건너뛰기)" FontWeight="SemiBold" />
                                 <Run Text=" — 사용 중인 블록만 복사해 빠르게 (스냅샷 필요)"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -244,7 +244,7 @@
                             <TextBlock>
                                 <Run Text="마지막 파티션 확장" FontWeight="SemiBold" />
                                 <Run Text=" — 큰 디스크로 복제 시 남는 공간을 마지막 파티션에 합침"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -253,7 +253,7 @@
                             <TextBlock>
                                 <Run Text="새 하드웨어 대비 (Universal Restore)" FontWeight="SemiBold" />
                                 <Run Text=" — 클론한 시스템을 다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
                     </WrapPanel>
@@ -264,7 +264,7 @@
                             <TextBlock>
                                 <Run Text="파티션 리사이즈 (확대)" FontWeight="SemiBold" />
                                 <Run Text=" — 대상이 더 클 때 고른 파티션을 넓히고 뒤 파티션을 밀어냅니다"
-                                     Foreground="{StaticResource Muted}" FontSize="11" />
+                                     Style="{StaticResource Micro}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -272,7 +272,7 @@
                                     Visibility="{Binding ResizeEnabled, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                 <TextBlock Text="확대할 파티션:" VerticalAlignment="Center"
-                                           Margin="0,0,8,0" FontSize="12" />
+                                           Margin="0,0,8,0" Style="{StaticResource Caption}" />
                                 <ComboBox MinWidth="340" ItemsSource="{Binding ResizablePartitions}"
                                           SelectedItem="{Binding SelectedResizePartition}"
                                           DisplayMemberPath="Label" />
@@ -282,16 +282,15 @@
                                 <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeMode"
                                              IsChecked="{Binding ResizeFillRemaining}"
                                              Content="남는 공간 전부" VerticalContentAlignment="Center"
-                                             Margin="0,0,16,0" FontSize="12" />
+                                             Margin="0,0,16,0" Style="{StaticResource Caption}" />
                                 <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeMode"
                                              Content="새 총 크기(GB):" VerticalContentAlignment="Center"
-                                             Margin="0,0,6,0" FontSize="12" />
+                                             Margin="0,0,6,0" Style="{StaticResource Caption}" />
                                 <TextBox Width="70" Text="{Binding ResizeSizeGb}" VerticalContentAlignment="Center"
                                          IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
                             </StackPanel>
 
-                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}"
-                                       FontSize="11" Margin="0,6,0,0"
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,6,0,0"
                                        Text="'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 위 목록의 현재 크기보다 커야 합니다. 클론 중 자동 확장이 안 되면(원본이 함께 연결된 경우), 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 확대할 수 있습니다." />
                         </StackPanel>
                     </StackPanel>
@@ -311,11 +310,11 @@
                                                 HorizontalAlignment="Left" VerticalAlignment="Top"
                                                 Background="{Binding Severity, Converter={StaticResource SeverityToBrush}}">
                                             <TextBlock Text="{Binding Severity, Converter={StaticResource SeverityToLabel}}"
-                                                       Foreground="White" FontSize="10" FontWeight="SemiBold" />
+                                                       Foreground="White" Style="{StaticResource Micro}" FontWeight="SemiBold" />
                                         </Border>
 
                                         <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"
-                                                   FontSize="12" Margin="8,0,0,0"
+                                                   Style="{StaticResource Caption}" Margin="8,0,0,0"
                                                    Foreground="{Binding Severity, Converter={StaticResource SeverityToBrush}}" />
                                     </Grid>
                                 </DataTemplate>
@@ -327,7 +326,7 @@
                     <StackPanel Visibility="{Binding NeedsConfirmation, Converter={StaticResource BoolToVisibility}}"
                                 Margin="0,4,0,10">
                         <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource Danger}" FontSize="12" Margin="0,0,0,6" />
+                                   Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" Margin="0,0,0,6" />
                         <TextBox Text="{Binding ConfirmationText, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="8,6" FontSize="13" MaxWidth="440" HorizontalAlignment="Left"
                                  FontFamily="Consolas, D2Coding" />
@@ -336,7 +335,7 @@
                     <!-- 실행 -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <TextBlock Text="이 작업은 되돌릴 수 없습니다. 대상 디스크를 다시 확인하십시오."
-                                   Foreground="{StaticResource Muted}" FontSize="11"
+                                   Style="{StaticResource Micro}"
                                    VerticalAlignment="Center" Margin="0,0,16,0" />
                         <Button Content="클론 시작" Command="{Binding StartCommand}"
                                 Style="{StaticResource DangerButton}" MinWidth="130" Padding="20,10" />
@@ -356,8 +355,7 @@
                     <TextBlock Text="{Binding ProgressPhase}" Style="{StaticResource Heading}"
                                HorizontalAlignment="Center" />
 
-                    <TextBlock Text="{Binding ProgressRegion}" Foreground="{StaticResource Muted}"
-                               FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,20"
+                    <TextBlock Text="{Binding ProgressRegion}" Style="{StaticResource Caption}" HorizontalAlignment="Center" Margin="0,4,0,20"
                                TextTrimming="CharacterEllipsis" />
 
                     <TextBlock HorizontalAlignment="Center" FontSize="42" FontWeight="Light" Margin="0,0,0,8">
@@ -372,22 +370,22 @@
                     <UniformGrid Columns="4" Margin="0,0,0,20">
                         <StackPanel>
                             <TextBlock Text="복사됨" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
-                            <TextBlock Text="{Binding ProgressBytes}" FontSize="13" HorizontalAlignment="Center"
+                            <TextBlock Text="{Binding ProgressBytes}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="속도" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
-                            <TextBlock Text="{Binding ProgressSpeed}" FontSize="13" HorizontalAlignment="Center"
+                            <TextBlock Text="{Binding ProgressSpeed}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="남은 시간" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
-                            <TextBlock Text="{Binding ProgressEta}" FontSize="13" HorizontalAlignment="Center"
+                            <TextBlock Text="{Binding ProgressEta}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="경과" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
-                            <TextBlock Text="{Binding ProgressElapsed}" FontSize="13" HorizontalAlignment="Center"
+                            <TextBlock Text="{Binding ProgressElapsed}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                     </UniformGrid>
@@ -400,7 +398,7 @@
                     </StackPanel>
 
                     <TextBlock Text="작업 중에는 대상 디스크의 연결을 끊거나 PC를 끄지 마십시오."
-                               Foreground="{StaticResource Muted}" FontSize="11"
+                               Style="{StaticResource Micro}"
                                HorizontalAlignment="Center" Margin="0,16,0,0" />
                 </StackPanel>
             </Border>
@@ -427,12 +425,12 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <TextBlock Text="{Binding ResultMessage}" TextWrapping="Wrap" FontSize="13"
+                    <TextBlock Text="{Binding ResultMessage}" TextWrapping="Wrap" Style="{StaticResource Body}"
                                Margin="0,10,0,20" />
 
                     <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
                             BorderThickness="1" CornerRadius="6" Padding="16">
-                        <TextBlock Text="{Binding ResultDetails}" TextWrapping="Wrap" FontSize="12"
+                        <TextBlock Text="{Binding ResultDetails}" TextWrapping="Wrap" Style="{StaticResource Caption}"
                                    LineHeight="22" />
                     </Border>
 
@@ -442,22 +440,21 @@
                         <StackPanel Orientation="Horizontal">
                             <Button Content="부팅 구성 검사" Command="{Binding BootCheckCommand}"
                                     MinWidth="130" Padding="16,8" />
-                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11"
-                                       Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="440"
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
                                        Text="실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다." />
                         </StackPanel>
 
-                        <TextBlock Text="검사 중..." Margin="0,8,0,0" FontSize="12"
-                                   Foreground="{StaticResource Muted}"
+                        <TextBlock Text="검사 중..." Margin="0,8,0,0" Style="{StaticResource Caption}"
                                    Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
 
                         <!-- 검사 결과 -->
                         <StackPanel Margin="0,12,0,0"
                                     Visibility="{Binding BootCheckRan, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding BootCheckVerdict}" TextWrapping="Wrap"
-                                       FontWeight="SemiBold" FontSize="13">
+                                       FontWeight="SemiBold">
                                 <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
+                                    <!-- 판정에 따라 색이 바뀌므로 인라인 Style을 쓰되, 크기는 스케일에서 상속합니다. -->
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
                                         <Setter Property="Foreground" Value="{StaticResource Danger}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding BootCheckVerdictIsGood}" Value="True">
@@ -484,14 +481,13 @@
                                                             HorizontalAlignment="Left" VerticalAlignment="Top"
                                                             Background="{Binding StatusBrush}">
                                                         <TextBlock Text="{Binding Mark}" Foreground="White"
-                                                                   FontSize="10" FontWeight="SemiBold" />
+                                                                   Style="{StaticResource Micro}" FontWeight="SemiBold" />
                                                     </Border>
 
                                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Body}"
                                                                    FontWeight="SemiBold" TextWrapping="Wrap" />
-                                                        <TextBlock Text="{Binding Detail}" FontSize="11"
-                                                                   Foreground="{StaticResource Muted}"
+                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Micro}"
                                                                    TextWrapping="Wrap" />
                                                     </StackPanel>
                                                 </Grid>
@@ -507,19 +503,17 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="부팅 복구" Command="{Binding RepairBootCommand}"
                                             MinWidth="120" Padding="14,7" />
-                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11"
-                                               Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="420"
+                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
                                                Text="BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다." />
                                 </StackPanel>
-                                <TextBlock Text="복구 중..." Margin="0,6,0,0" FontSize="12"
-                                           Foreground="{StaticResource Muted}"
+                                <TextBlock Text="복구 중..." Margin="0,6,0,0" Style="{StaticResource Caption}"
                                            Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
 
-                            <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"
+                            <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
                                        Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
                                 <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
                                         <Setter Property="Foreground" Value="{StaticResource Danger}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
@@ -538,20 +532,18 @@
                         <StackPanel Orientation="Horizontal">
                             <Button Content="파티션 확장" Command="{Binding ExpandPartitionCommand}"
                                     MinWidth="130" Padding="16,8" />
-                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11"
-                                       Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="440"
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
                                        Text="확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다." />
                         </StackPanel>
 
-                        <TextBlock Text="확장 중..." Margin="0,6,0,0" FontSize="12"
-                                   Foreground="{StaticResource Muted}"
+                        <TextBlock Text="확장 중..." Margin="0,6,0,0" Style="{StaticResource Caption}"
                                    Visibility="{Binding IsExpandingPartition, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
 
-                    <TextBlock Text="{Binding PartitionExpandMessage}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"
+                    <TextBlock Text="{Binding PartitionExpandMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
                                Visibility="{Binding PartitionExpandRan, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
                                 <Setter Property="Foreground" Value="{StaticResource Danger}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding PartitionExpandSuccess}" Value="True">

@@ -131,12 +131,13 @@ public sealed class DiskLayoutViewModel
         return p.FileSystem ?? "RAW";
     }
 
-    // 역할별 색 — 데이터 파티션은 강조색, 시스템 성격은 차분한 색, 미할당은 회색.
-    private static readonly Brush UnallocatedBrush = Frozen("#E5E7EB");
-    private static readonly Brush EfiBrush = Frozen("#D97706");
-    private static readonly Brush ReservedBrush = Frozen("#9CA3AF");
-    private static readonly Brush DataBrush = Frozen("#2563EB");
-    private static readonly Brush OtherBrush = Frozen("#0D9488");
+    // 역할별 색 — 채도를 낮춰 화면과 톤을 맞추되, 색상(hue)은 서로 벌려 둡니다.
+    // 막대에서 조각을 구분하는 것이 이 색의 유일한 일이라 예쁨보다 구별이 우선입니다.
+    private static readonly Brush UnallocatedBrush = Frozen("#E4DED5");   // 밝은 모래빛
+    private static readonly Brush EfiBrush = Frozen("#C3944F");           // 황토
+    private static readonly Brush ReservedBrush = Frozen("#A9A29A");      // 따뜻한 회색
+    private static readonly Brush DataBrush = Frozen("#6E8FAD");          // 청색
+    private static readonly Brush OtherBrush = Frozen("#74A08F");         // 청록
 
     private static Brush BrushFor(PartitionInfo p)
     {

@@ -12,38 +12,97 @@
         <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
         <conv:FractionToWidthConverter x:Key="FractionToWidth" />
 
-        <!-- 팔레트: 위험한 도구인 만큼 경고색을 아껴 써서, 진짜 위험할 때 눈에 띄게 합니다. -->
-        <SolidColorBrush x:Key="Accent" Color="#2563EB" />
+        <!--
+            팔레트 — 채도를 낮추고 회색을 따뜻한 쪽으로 옮겨 화면 전체를 차분하게 두되,
+            위험(Danger)과 정보(Info)만 선명하게 남겼습니다. 주변이 조용할수록 이 둘이 더 튑니다.
+
+            Danger는 일부러 낮추지 않았습니다. 디스크를 통째로 지우는 도구라
+            "대상 삭제"·"차단"은 망설임 없이 빨강이어야 합니다.
+        -->
+        <SolidColorBrush x:Key="Accent" Color="#52738F" />
         <SolidColorBrush x:Key="Danger" Color="#DC2626" />
-        <SolidColorBrush x:Key="Warning" Color="#D97706" />
-        <SolidColorBrush x:Key="Success" Color="#059669" />
-        <SolidColorBrush x:Key="Muted" Color="#6B7280" />
+        <SolidColorBrush x:Key="Info" Color="#2563EB" />
+        <SolidColorBrush x:Key="Warning" Color="#B08541" />
+        <SolidColorBrush x:Key="Success" Color="#6B9478" />
+        <SolidColorBrush x:Key="Muted" Color="#837B72" />
         <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="SurfaceAlt" Color="#F9FAFB" />
-        <SolidColorBrush x:Key="BorderBrushSoft" Color="#E5E7EB" />
-        <SolidColorBrush x:Key="TextBrush" Color="#111827" />
+        <SolidColorBrush x:Key="SurfaceAlt" Color="#FAF8F5" />
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="#E7E1D9" />
+        <SolidColorBrush x:Key="TextBrush" Color="#33302B" />
+        <SolidColorBrush x:Key="SelectionSoft" Color="#EEF3F7" />
+        <SolidColorBrush x:Key="DangerSoft" Color="#FEF2F2" />
+
+        <!--
+            타입 스케일 — 이름으로만 쓰고 화면에서 숫자를 직접 적지 않습니다.
+            예전에는 10·11·12·13이 3px 안에 몰려 있어 크기 차이가 위계로 읽히지 않았습니다.
+        -->
+        <FontFamily x:Key="UiFont">Segoe UI, Malgun Gothic</FontFamily>
 
         <Style TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
 
-        <Style x:Key="Heading" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
-            <Setter Property="FontSize" Value="20" />
+        <!-- 앱 제목 -->
+        <Style x:Key="Display" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="24" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
 
-        <Style x:Key="SubHeading" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+        <!-- 단계·결과 제목 -->
+        <Style x:Key="Title" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <!-- 디스크 모델명 등 -->
+        <Style x:Key="Subtitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <!-- 본문·옵션 라벨 -->
+        <Style x:Key="Body" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <!-- 보조 설명·범례 -->
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        </Style>
+
+        <!-- 배지·메타(S/N, 버스 종류) -->
+        <Style x:Key="Micro" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+        </Style>
+
+        <!-- 섹션 라벨 (원본/대상, 안전/동작) -->
+        <Style x:Key="SectionLabel" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource Muted}" />
         </Style>
 
+        <!-- 이전 이름 유지 (아직 참조하는 곳이 있어 남겨 둡니다) -->
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Display}" />
+        <Style x:Key="SubHeading" TargetType="TextBlock" BasedOn="{StaticResource SectionLabel}" />
+
         <Style TargetType="Button">
-            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="Padding" Value="16,8" />
             <Setter Property="MinWidth" Value="90" />
             <Setter Property="Background" Value="{StaticResource Surface}" />
@@ -92,26 +151,35 @@
             <Border Padding="10,8" Background="Transparent">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Model}" FontWeight="SemiBold" FontSize="13"
+                        <TextBlock Text="{Binding Model}" Style="{StaticResource Subtitle}"
                                    TextTrimming="CharacterEllipsis" MaxWidth="260" />
-                        <TextBlock Text="{Binding SizeText}" Margin="8,0,0,0" FontSize="13"
-                                   Foreground="{StaticResource Accent}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding SizeText}" Margin="8,0,0,0"
+                                   Style="{StaticResource Subtitle}"
+                                   Foreground="{StaticResource Accent}" />
                     </StackPanel>
 
-                    <TextBlock Text="{Binding DetailText}" FontSize="11"
-                               Foreground="{StaticResource Muted}" Margin="0,2,0,0"
-                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding DetailText}" Style="{StaticResource Micro}"
+                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
 
-                    <Border Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
-                            CornerRadius="3" Padding="5,1" Margin="0,4,0,0" HorizontalAlignment="Left"
-                            Visibility="{Binding HasBadges, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="{Binding BadgeText}" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Danger}" />
-                    </Border>
+                    <!-- 지우면 곤란한 디스크는 빨강, 단순 사실은 파랑 -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}"
+                                BorderThickness="1" CornerRadius="3" Padding="5,1" Margin="0,0,5,0"
+                                Visibility="{Binding HasWarningBadges, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding WarningBadgeText}" Style="{StaticResource Micro}"
+                                       FontWeight="SemiBold" Foreground="{StaticResource Danger}" />
+                        </Border>
 
-                    <TextBlock Text="{Binding PartitionSummary}" FontSize="10"
-                               Foreground="{StaticResource Muted}" Margin="0,4,0,0"
-                               TextTrimming="CharacterEllipsis" />
+                        <Border BorderBrush="{StaticResource Info}" BorderThickness="1"
+                                CornerRadius="3" Padding="5,1"
+                                Visibility="{Binding HasInfoBadges, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding InfoBadgeText}" Style="{StaticResource Micro}"
+                                       FontWeight="SemiBold" Foreground="{StaticResource Info}" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding PartitionSummary}" Style="{StaticResource Caption}"
+                               Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
         </DataTemplate>

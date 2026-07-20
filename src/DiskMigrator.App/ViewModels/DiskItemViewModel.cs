@@ -39,8 +39,14 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
         _ => Disk.BusType.ToString().ToUpperInvariant(),
     };
 
-    /// <summary>목록에서 눈에 띄게 표시할 경고 배지들.</summary>
-    public IReadOnlyList<string> Badges
+    /// <summary>
+    /// 지우면 곤란한 디스크임을 알리는 배지 — 빨강으로 표시합니다.
+    /// </summary>
+    /// <remarks>
+    /// 실행 중인 Windows·부팅 요소·페이지 파일이 있는 디스크는 덮어쓰면 이 PC가 못 켜집니다.
+    /// 단순한 사실 표시(<see cref="InfoBadges"/>)와 색을 갈라, 진짜 위험만 빨강이 되게 합니다.
+    /// </remarks>
+    public IReadOnlyList<string> WarningBadges
     {
         get
         {
@@ -50,15 +56,20 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
             if (Disk.IsBootDisk && !Disk.IsSystemDisk) badges.Add("부팅");
             if (Disk.HasPageFile && !Disk.IsSystemDisk) badges.Add("페이지 파일");
             if (Disk.IsReadOnly) badges.Add("읽기 전용");
-            if (Disk.IsRemovable) badges.Add("착탈식");
 
             return badges;
         }
     }
 
-    public bool HasBadges => Badges.Count > 0;
+    /// <summary>위험과 무관한 사실 표시 — 파랑으로 표시합니다.</summary>
+    public IReadOnlyList<string> InfoBadges =>
+        Disk.IsRemovable ? ["착탈식"] : [];
 
-    public string BadgeText => string.Join(" · ", Badges);
+    public bool HasWarningBadges => WarningBadges.Count > 0;
+    public bool HasInfoBadges => InfoBadges.Count > 0;
+
+    public string WarningBadgeText => string.Join(" · ", WarningBadges);
+    public string InfoBadgeText => string.Join(" · ", InfoBadges);
 
     /// <summary>이 디스크를 덮어쓰면 사라지는 것들을 한 줄로 요약합니다.</summary>
     public string PartitionSummary
