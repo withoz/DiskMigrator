@@ -173,6 +173,7 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedSource.Disk.PartitionStyle is PartitionStyle.Gpt or PartitionStyle.Mbr &&
         SelectedSource.Disk.LogicalSectorSize == SelectedTarget.Disk.LogicalSectorSize &&
         SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
+        !SelectedSource.Disk.HasExtendedPartition &&
         !ExceedsMbrLimit &&
         ResizablePartitions.Count > 0;
 
@@ -201,6 +202,12 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 return $"원본이 {SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant()} 형식이라 " +
                        "쓸 수 없습니다 — 이 방식은 파티션을 옮기고 파티션 테이블을 다시 씁니다.";
+            }
+
+            if (SelectedSource.Disk.HasExtendedPartition)
+            {
+                return "원본에 확장 파티션(논리 드라이브)이 있어 쓸 수 없습니다 — 논리 드라이브는 " +
+                       "EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다.";
             }
 
             if (ExceedsMbrLimit)

@@ -25,7 +25,15 @@ internal sealed record DriveLayout(
     /// GPT의 디스크 GUID와 같은 역할을 합니다 — BCD의 장치 참조가 이 값을 내장하므로,
     /// 서명이 달라지면 클론이 부팅하지 못합니다. 부팅 구성 검사가 이를 대조합니다.
     /// </remarks>
-    uint? MbrSignature = null);
+    uint? MbrSignature = null,
+
+    /// <summary>MBR 확장 파티션 컨테이너(0x05/0x0F)가 있는지.</summary>
+    /// <remarks>
+    /// 컨테이너 자체는 <see cref="Partitions"/>에서 빠지므로(데이터 없는 껍데기), 이 표시가
+    /// 없으면 논리 드라이브가 있는 디스크인지 알 수 없습니다. 리사이즈는 EBR 체인을 함께
+    /// 다시 써야 해서 지원하지 않으므로, 클론을 <b>시작하기 전에</b> 알아야 합니다.
+    /// </remarks>
+    bool HasExtendedPartition = false);
 
 /// <summary>
 /// IOCTL_DISK_GET_DRIVE_LAYOUT_EX로 파티션 테이블을 읽습니다.
@@ -68,6 +76,7 @@ internal static class DriveLayoutReader
         var partitions = new List<RawPartition>();
         int entrySize = Unsafe.SizeOf<PARTITION_INFORMATION_EX>();
         int offset = headerSize;
+        bool hasExtended = false;
 
         for (int i = 0; i < header.PartitionCount; i++)
         {
@@ -80,9 +89,11 @@ internal static class DriveLayoutReader
             if (entry.PartitionLength == 0) continue;
 
             // MBR 확장 파티션 컨테이너(타입 0x05/0x0F)는 데이터가 없는 껍데기이므로 제외합니다.
+            // 다만 있었다는 사실은 남깁니다 — 리사이즈 가능 여부를 가르는 정보입니다.
             if (entry.PartitionStyle == PARTITION_STYLE.PARTITION_STYLE_MBR &&
                 entry.Info.Mbr.PartitionType is 0x05 or 0x0F)
             {
+                hasExtended = true;
                 continue;
             }
 
@@ -104,6 +115,7 @@ internal static class DriveLayoutReader
         uint? mbrSignature = style == PartitionStyle.Mbr ? header.Info.Mbr.Signature : null;
 
         return new DriveLayout(
-            style, partitions.OrderBy(p => p.StartingOffset).ToList(), gptDiskId, mbrSignature);
+            style, partitions.OrderBy(p => p.StartingOffset).ToList(),
+            gptDiskId, mbrSignature, hasExtended);
     }
 }

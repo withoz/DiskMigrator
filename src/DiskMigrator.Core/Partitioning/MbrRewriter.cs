@@ -121,9 +121,16 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
 
             long newCount = remap.NewEndLba - remap.NewStartLba + 1;
 
-            if (remap.NewStartLba < 0 || remap.NewEndLba > MaxLba || newCount <= 0)
+            // 0번 섹터는 MBR 자신입니다. 파티션이 거기서 시작하면 파티션 테이블을 덮어씁니다.
+            if (remap.NewStartLba < 1)
                 throw new InvalidOperationException(
-                    $"새 배치가 MBR의 32비트 한계를 넘습니다(끝 LBA {remap.NewEndLba}). " +
+                    $"파티션 시작 LBA가 {remap.NewStartLba}입니다 — 0번 섹터는 MBR 자신이라 쓸 수 없습니다.");
+
+            // 시작·길이 모두 32비트 필드입니다. 길이도 함께 봐야 합니다 — 끝 LBA만 검사하면
+            // 길이가 2^32가 되는 경우 캐스트에서 0으로 잘려 '길이 0' 항목이 조용히 써집니다.
+            if (remap.NewEndLba > MaxLba || newCount <= 0 || newCount > MaxLba)
+                throw new InvalidOperationException(
+                    $"새 배치가 MBR의 32비트 한계를 넘습니다(끝 LBA {remap.NewEndLba}, 길이 {newCount}섹터). " +
                     "MBR 디스크는 약 2 TB까지만 가리킬 수 있습니다.");
 
             BinaryPrimitives.WriteUInt32LittleEndian(
@@ -151,6 +158,19 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
             throw new InvalidOperationException(
                 $"새 파티션 배치가 대상 디스크를 넘습니다(마지막 파티션 끝 LBA {maxNewEndLba} > " +
                 $"디스크 마지막 LBA {lastLba}).");
+
+        // 파티션 테이블을 쓰기 직전 마지막 방어선입니다. 겹친 배치를 쓰면 두 파일시스템이
+        // 같은 섹터를 자기 것으로 알고 서로를 덮어써, 디스크를 통째로 못 읽게 됩니다.
+        // 배치는 ResizePlanner가 계산하고 테스트도 있지만, 되돌릴 수 없는 쓰기 앞에서는
+        // 한 겹 더 봅니다.
+        var ordered = remaps.OrderBy(r => r.NewStartLba).ToList();
+        for (int i = 1; i < ordered.Count; i++)
+        {
+            if (ordered[i].NewStartLba <= ordered[i - 1].NewEndLba)
+                throw new InvalidOperationException(
+                    $"새 파티션 배치가 서로 겹칩니다(앞 파티션 끝 LBA {ordered[i - 1].NewEndLba}, " +
+                    $"뒤 파티션 시작 LBA {ordered[i].NewStartLba}). 파티션 테이블을 쓰지 않았습니다.");
+        }
 
         target.Write(0, mbr);
         target.Flush();

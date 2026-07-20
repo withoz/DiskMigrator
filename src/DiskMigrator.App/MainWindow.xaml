@@ -334,7 +334,7 @@
                                  VerticalContentAlignment="Top" Margin="0,0,0,4">
                         <StackPanel>
                             <TextBlock Text="고른 파티션 넓히기" Style="{StaticResource Body}" />
-                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본"
+                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본 (확장 파티션 제외)"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                     </RadioButton>

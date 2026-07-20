@@ -108,7 +108,8 @@ public sealed class BootRepair(ILogger? logger = null)
             }
 
             return new(true,
-                $"BCD 장치 참조를 이 디스크(ESP {espLetter}:, Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.",
+                $"BCD 장치 참조를 이 디스크({(uefi ? "ESP" : "활성 파티션")} {espLetter}:, " +
+                $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.",
                 steps);
         }
         catch (Exception ex)

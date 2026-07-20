@@ -46,6 +46,15 @@ public sealed class DiskInfo
     /// </remarks>
     public uint? MbrSignature { get; init; }
 
+    /// <summary>MBR 확장 파티션(논리 드라이브)이 있는 디스크인지.</summary>
+    /// <remarks>
+    /// 논리 드라이브는 EBR 체인으로 이어지고 그 안의 오프셋이 상대값이라, 파티션을 옮기려면
+    /// 모든 EBR을 함께 다시 써야 합니다. 지원하지 않으므로 리사이즈를 <b>시작하기 전에</b>
+    /// 막아야 합니다 — 복제가 끝난 뒤 거절하면 파티션은 옮겨졌는데 테이블은 못 고친
+    /// 못 쓰는 디스크가 남습니다.
+    /// </remarks>
+    public bool HasExtendedPartition { get; init; }
+
     public bool IsRemovable { get; init; }
 
     public bool IsReadOnly { get; init; }

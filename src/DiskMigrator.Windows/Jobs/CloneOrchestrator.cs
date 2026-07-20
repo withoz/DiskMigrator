@@ -93,6 +93,17 @@ public sealed class CloneOrchestrator(
                     $"{source.PartitionStyle} 형식이라 리사이즈 옵션을 끄고 클론해야 합니다.");
             }
 
+            // 확장 파티션(논리 드라이브)은 EBR 체인을 함께 다시 써야 해서 지원하지 않습니다.
+            // MbrRewriter도 거절하지만 그 시점은 복제가 끝난 뒤입니다 — 몇 시간을 쓰고 나서
+            // 파티션은 옮겨졌는데 테이블은 못 고친 못 쓰는 디스크가 남습니다. 여기서 막습니다.
+            if (source.HasExtendedPartition)
+            {
+                throw new InvalidOperationException(
+                    "원본에 확장 파티션(논리 드라이브)이 있어 리사이즈할 수 없습니다. " +
+                    "논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다. " +
+                    "'마지막 파티션에 합치기'나 '그대로 둡니다'를 쓰십시오.");
+            }
+
             // MBR의 시작·크기 필드는 32비트 섹터 수라 약 2 TB까지만 가리킬 수 있습니다. 대상이
             // 그보다 크면 뒤로 밀린 파티션이 표현되지 않아 테이블이 깨집니다. 미리 막습니다.
             if (source.PartitionStyle == PartitionStyle.Mbr &&

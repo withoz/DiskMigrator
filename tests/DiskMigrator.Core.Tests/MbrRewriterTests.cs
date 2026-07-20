@@ -210,6 +210,54 @@ public class MbrRewriterTests
     }
 
     [Fact]
+    public void 겹치는_배치는_거절한다()
+    {
+        // 겹친 배치를 쓰면 두 파일시스템이 같은 섹터를 자기 것으로 알고 서로를 덮어씁니다.
+        var dev = BuildDisk();
+        var overlapping = new List<PartitionRemap>
+        {
+            new(2048, 2048, 1_000_000),
+            new(453_838_848, 900_000, 1_200_000),   // 앞 파티션 안에서 시작
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new MbrRewriter().Rewrite(dev, overlapping));
+
+        Assert.Contains("겹칩니다", ex.Message);
+    }
+
+    [Fact]
+    public void 겹침이_발견되면_아무것도_쓰지_않는다()
+    {
+        var dev = BuildDisk();
+        byte[] before = dev.Sector0[..SectorSize].ToArray();
+        var overlapping = new List<PartitionRemap>
+        {
+            new(2048, 2048, 1_000_000),
+            new(453_838_848, 900_000, 1_200_000),
+        };
+
+        Assert.Throws<InvalidOperationException>(() => new MbrRewriter().Rewrite(dev, overlapping));
+
+        Assert.Equal(before, dev.Sector0[..SectorSize].ToArray());
+    }
+
+    [Fact]
+    public void 파티션이_0번_섹터에서_시작하면_거절한다()
+    {
+        // 0번 섹터는 MBR 자신입니다.
+        var dev = BuildDisk();
+        var remaps = new List<PartitionRemap>
+        {
+            new(2048, 0, 1_000_000),
+            new(453_838_848, 2_000_000, 2_100_000),
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new MbrRewriter().Rewrite(dev, remaps));
+
+        Assert.Contains("0번 섹터", ex.Message);
+    }
+
+    [Fact]
     public void 보호_MBR이면_거절한다()
     {
         // GPT 디스크에 MBR 재작성을 적용하면 파티션 테이블을 잃습니다.
