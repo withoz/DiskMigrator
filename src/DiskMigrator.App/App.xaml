@@ -11,6 +11,7 @@
         <conv:SeverityToLabelConverter x:Key="SeverityToLabel" />
         <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
         <conv:FractionToWidthConverter x:Key="FractionToWidth" />
+        <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
 
         <!--
             팔레트 — 채도를 낮추고 회색을 따뜻한 쪽으로 옮겨 화면 전체를 차분하게 두되,
@@ -233,6 +234,43 @@
             정보이므로 직접 그립니다. 항목 사이 가는 선으로 어디까지가 한 디스크인지 가르고,
             고른 항목은 왼쪽 강조색 띠로 표시합니다 — 배경색만으로는 흐린 화면에서 놓칩니다.
         -->
+        <!--
+            칩 라디오 — 동그라미 대신 눌린 상태를 배경·테두리로 보여 줍니다.
+            고를 것이 보통 한둘이라 드롭다운보다 펼쳐 두는 편이 빠릅니다.
+        -->
+        <Style x:Key="ChipRadio" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Chip" CornerRadius="5" BorderThickness="1"
+                                Background="{StaticResource Surface}"
+                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="Label" VerticalAlignment="Center"
+                                              TextElement.FontSize="12"
+                                              TextElement.Foreground="{StaticResource TextBrush}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="BorderBrush"
+                                        Value="{StaticResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chip" Property="Background"
+                                        Value="{StaticResource SelectionSoft}" />
+                                <Setter TargetName="Chip" Property="BorderBrush"
+                                        Value="{StaticResource Accent}" />
+                                <Setter TargetName="Label" Property="TextElement.Foreground"
+                                        Value="{StaticResource Accent}" />
+                                <Setter TargetName="Label" Property="TextElement.FontWeight"
+                                        Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="DiskListItemStyle" TargetType="ListBoxItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Padding" Value="0" />

@@ -558,7 +558,10 @@ public sealed partial class MainViewModel : ObservableObject
                                      p.FileSystem.Equals("NTFS", StringComparison.OrdinalIgnoreCase))
                          .OrderBy(p => p.StartingOffset))
             {
-                ResizablePartitions.Add(new PartitionChoiceViewModel(p));
+                ResizablePartitions.Add(new PartitionChoiceViewModel(p)
+                {
+                    Selected = c => SelectedResizePartition = c,
+                });
             }
         }
 
@@ -632,7 +635,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnFreeSpaceLeaveChanged(bool value) => RefreshFreeSpaceChoice();
     partial void OnFreeSpaceExpandLastChanged(bool value) => RefreshFreeSpaceChoice();
-    partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value) => RefreshFreeSpaceChoice();
+    partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value)
+    {
+        // 칩은 자기가 켜졌을 때만 알려 옵니다(라디오는 꺼질 때도 false를 보내므로). 나머지를
+        // 끄는 것은 여기서 합니다 — 목록 밖에서 선택이 바뀌어도 화면이 따라오게 하려면
+        // 뷰모델이 한 방향을 책임져야 합니다.
+        foreach (var c in ResizablePartitions) c.IsSelected = ReferenceEquals(c, value);
+
+        RefreshFreeSpaceChoice();
+    }
     partial void OnResizeFillRemainingChanged(bool value)
     {
         OnPropertyChanged(nameof(ResizeUseCustomSize));
@@ -709,6 +720,134 @@ public sealed partial class MainViewModel : ObservableObject
         };
 
         TargetAfterLayout = DiskLayoutViewModel.For(preview, DiskRole.TargetAfter);
+        UpdateResizeHandle(plan);
+    }
+
+    // --- 막대에서 끌어 조정 ------------------------------------------------
+    //
+    // 숫자를 입력하는 대신 경계를 끌어서 맞춥니다. 손잡이는 입력 장치일 뿐이고, 값은
+    // ResizeSizeGb로 흘러 기존 배선(FreeSpacePlanner → 미리보기·시작 버튼·엔진)을 그대로
+    // 탑니다. 손잡이가 자기만의 계산으로 미리보기를 그리면 화면과 엔진이 또 갈라집니다.
+
+    /// <summary>손잡이를 보여줄지 — '고른 파티션 넓히기'로 실제 조정이 가능할 때만.</summary>
+    [ObservableProperty] private bool _showResizeHandle;
+
+    /// <summary>손잡이의 가로 위치(막대 너비에 대한 비율 0~1).</summary>
+    [ObservableProperty] private double _resizeHandleFraction;
+
+    /// <summary>
+    /// 막대 너비 비율 1당 몇 바이트인지. 끌린 픽셀을 바이트로 옮길 때 씁니다.
+    /// </summary>
+    /// <remarks>
+    /// 막대는 실제 비율대로 그려지지 않습니다 — 너무 작아 안 보이는 조각에 최소 폭을 주고
+    /// 전체를 다시 정규화하기 때문입니다(<see cref="DiskLayoutMap.MinDisplayFraction"/>).
+    /// 그래서 막대 전체를 선형으로 보면 끌어놓은 위치와 실제 크기가 어긋납니다.
+    ///
+    /// <para>다만 <b>넓힐 파티션과 남는 공간</b>은 둘 다 커서 최소 폭 보정 대상이 아니므로,
+    /// 그 둘이 나눠 갖는 구간 안에서는 픽셀과 바이트가 정확히 비례합니다. 그 구간의
+    /// 비율과 바이트 수로 환산 계수를 만듭니다.</para>
+    /// </remarks>
+    [ObservableProperty] private double _resizeBytesPerFraction;
+
+    private void UpdateResizeHandle(FreeSpacePlan plan)
+    {
+        if (TargetAfterLayout is not { } layout ||
+            plan.Mode != FreeSpaceMode.GrowPartition ||
+            plan.Grow is not { } grow)
+        {
+            ShowResizeHandle = false;
+            return;
+        }
+
+        var segments = layout.Segments;
+        int growIndex = -1;
+        for (int i = 0; i < segments.Count; i++)
+        {
+            if (segments[i].PartitionNumber == grow.PartitionNumber) { growIndex = i; break; }
+        }
+
+        // 넓힐 조각 뒤의 미할당 구간이 조정 여지입니다. 없으면 이미 꽉 찬 상태입니다.
+        var free = growIndex >= 0
+            ? segments.Skip(growIndex + 1).FirstOrDefault(s => s.PartitionNumber is null)
+            : null;
+
+        if (growIndex < 0 || free is null || free.LengthBytes <= 0)
+        {
+            ShowResizeHandle = false;
+            return;
+        }
+
+        double adjustableFraction = segments[growIndex].Fraction + free.Fraction;
+        long adjustableBytes = segments[growIndex].LengthBytes + free.LengthBytes;
+
+        if (adjustableFraction <= 0)
+        {
+            ShowResizeHandle = false;
+            return;
+        }
+
+        ResizeHandleFraction = segments.Take(growIndex + 1).Sum(s => s.Fraction);
+        ResizeBytesPerFraction = adjustableBytes / adjustableFraction;
+        ShowResizeHandle = true;
+    }
+
+    /// <summary>
+    /// 넓힐 파티션 크기를 <paramref name="deltaBytes"/>만큼 옮깁니다(끌기·키보드가 함께 부릅니다).
+    /// </summary>
+    /// <remarks>
+    /// 범위를 벗어나는 값은 <b>만들 수 없게</b> 잘라냅니다. 잘못된 값을 만들게 두고 나중에
+    /// 오류를 띄우는 것보다, 애초에 갈 수 없는 곳으로 손잡이가 가지 않는 편이 낫습니다.
+    /// 1 MiB 단위로 맞추는 것도 여기서 합니다 — 파티션 정렬 단위와 같습니다.
+    /// </remarks>
+    public void NudgeResizeBytes(double deltaBytes)
+    {
+        if (SelectedSource is null || SelectedTarget is null ||
+            SelectedResizePartition is not { } choice) return;
+
+        var bounds = ResizeBounds(choice);
+        if (bounds is not var (min, max) || max <= min) return;
+
+        // '남는 공간 전부'로 시작했다면 현재 값은 최대치입니다. 끌기 시작과 동시에
+        // '새 총 크기' 모드로 넘어갑니다 — 손잡이를 움직였는데 값이 안 바뀌면 안 됩니다.
+        long current = ResizeFillRemaining
+            ? max
+            : FreeSpacePlanner.TryParseSizeGb(ResizeSizeGb, out double gb) && gb > 0
+                ? (long)(gb * FreeSpacePlanner.BytesPerGb)
+                : min;
+
+        long moved = (long)Math.Clamp(current + deltaBytes, min, max);
+
+        // 1 MiB 경계로 맞춘 뒤 다시 한 번 범위 안으로 넣습니다(내림이 min 아래로 갈 수 있음).
+        moved = Math.Clamp(moved / ResizePlanner.Alignment * ResizePlanner.Alignment, min, max);
+
+        ResizeFillRemaining = false;
+        ResizeSizeGb = ((double)moved / FreeSpacePlanner.BytesPerGb)
+            .ToString("0.##", CultureInfo.CurrentCulture);
+    }
+
+    /// <summary>넓힐 수 있는 범위(바이트). 계산할 수 없으면 null.</summary>
+    private (long Min, long Max)? ResizeBounds(PartitionChoiceViewModel choice)
+    {
+        if (SelectedSource is null || SelectedTarget is null) return null;
+
+        var part = SelectedSource.Disk.Partitions.FirstOrDefault(p => p.Number == choice.Number);
+        if (part is null) return null;
+
+        try
+        {
+            // 최대치는 '남는 공간 전부'와 같은 배치입니다 — 엔진이 쓰는 계산을 그대로 씁니다.
+            var full = ResizePlanner.Plan(
+                SelectedSource.Disk.Partitions, SelectedTarget.Disk.SizeBytes,
+                new PartitionGrowRequest(choice.Number, null));
+
+            long max = full.GrownPartition?.LengthBytes ?? part.LengthBytes;
+            return (part.LengthBytes, max);
+        }
+        catch
+        {
+            // 넓힐 수 없는 조합(여유 없음 등)에서는 손잡이도 의미가 없습니다.
+            return null;
+        }
     }
 
     partial void OnConfirmationTextChanged(string value)

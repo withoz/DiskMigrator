@@ -11,6 +11,12 @@ public sealed class DiskSegmentViewModel
     /// <summary>막대에서 이 조각이 차지할 비율(0~1). 모든 조각의 합은 1입니다.</summary>
     public required double Fraction { get; init; }
 
+    /// <summary>이 조각의 실제 크기(바이트). 막대에서 끌어 조정할 때 픽셀↔바이트 환산에 씁니다.</summary>
+    public required long LengthBytes { get; init; }
+
+    /// <summary>파티션 번호. 미할당 구간이면 null.</summary>
+    public int? PartitionNumber { get; init; }
+
     public required string Title { get; init; }
     public required string SizeText { get; init; }
     public required Brush Fill { get; init; }
@@ -93,6 +99,9 @@ public sealed class DiskLayoutViewModel
     /// <summary>막대 테두리 — 역할을 옅은 색으로 한 번 더 되풀이합니다.</summary>
     public required Brush BarBorderBrush { get; init; }
 
+    /// <summary>'변경 후' 막대인지. 끌어서 조정할 수 있는 것은 이 막대뿐입니다.</summary>
+    public required bool IsTargetAfter { get; init; }
+
     /// <summary>"파티션이 차지한 끝 616 MB · 디스크 2.00 GB" 같은 요약.</summary>
     public required string SummaryText { get; init; }
 
@@ -132,6 +141,7 @@ public sealed class DiskLayoutViewModel
             ActionText = actionText,
             ActionBrush = actionBrush,
             BarBorderBrush = lineBrush,
+            IsTargetAfter = role == DiskRole.TargetAfter,
             Segments = spans.Select(ToSegment).ToList(),
             SummaryText = summary,
 
@@ -151,6 +161,7 @@ public sealed class DiskLayoutViewModel
             return new DiskSegmentViewModel
             {
                 Fraction = span.DisplayFraction,
+                LengthBytes = span.LengthBytes,
                 Title = "미할당",
                 SizeText = SizeFormatter.Format(span.LengthBytes),
                 Fill = UnallocatedBrush,
@@ -187,6 +198,8 @@ public sealed class DiskLayoutViewModel
         return new DiskSegmentViewModel
         {
             Fraction = span.DisplayFraction,
+            LengthBytes = span.LengthBytes,
+            PartitionNumber = p.Number,
             Title = title,
             SizeText = SizeFormatter.Format(p.LengthBytes),
             Fill = BrushFor(p),

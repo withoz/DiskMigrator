@@ -111,3 +111,20 @@ public sealed class FractionToWidthConverter : IMultiValueConverter
     public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// 모든 값이 true일 때만 보입니다.
+/// </summary>
+/// <remarks>
+/// 막대 템플릿은 원본·변경 전·변경 후 세 곳에서 같이 쓰입니다. 조정 손잡이는 "변경 후
+/// 막대이면서" "지금 조정 가능한 상태일 때"만 나와야 하는데, 두 조건이 서로 다른 곳
+/// (막대 뷰모델 / 화면 뷰모델)에 있어 한 번에 봅니다.
+/// </remarks>
+public sealed class AllTrueToVisibilityConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values.All(v => v is true) ? Visibility.Visible : Visibility.Collapsed;
+
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

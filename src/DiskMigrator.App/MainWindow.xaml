@@ -55,6 +55,7 @@
 
                 <Border BorderBrush="{Binding BarBorderBrush}" BorderThickness="1" CornerRadius="5"
                         Background="{StaticResource SurfaceAlt}" Padding="2" ClipToBounds="True">
+                  <Grid x:Name="BarArea">
                     <ItemsControl ItemsSource="{Binding Segments}" ClipToBounds="True">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -109,6 +110,49 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!--
+                        끌어서 조정하는 손잡이 — '변경 후' 막대에서만, 그리고 지금 조정할 수 있을
+                        때만 나옵니다. 왼쪽 여백을 비율×막대너비로 밀어 경계 위에 세웁니다.
+                        조각과 같은 계산(FractionToWidth)을 쓰므로 정확히 경계에 붙습니다.
+                    -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <StackPanel.Visibility>
+                            <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                                <Binding Path="IsTargetAfter" />
+                                <Binding Path="DataContext.ShowResizeHandle"
+                                         RelativeSource="{RelativeSource AncestorType=Window}" />
+                            </MultiBinding>
+                        </StackPanel.Visibility>
+
+                        <!-- 경계까지 밀어 주는 빈 칸. 조각과 같은 계산이라 정확히 붙습니다. -->
+                        <Border IsHitTestVisible="False">
+                            <Border.Width>
+                                <MultiBinding Converter="{StaticResource FractionToWidth}">
+                                    <Binding Path="DataContext.ResizeHandleFraction"
+                                             RelativeSource="{RelativeSource AncestorType=Window}" />
+                                    <Binding Path="ActualWidth" ElementName="BarArea" />
+                                </MultiBinding>
+                            </Border.Width>
+                        </Border>
+
+                        <Thumb x:Name="ResizeThumb" Width="16" Margin="-8,0,0,0"
+                               Cursor="SizeWE" Focusable="True"
+                               DragDelta="ResizeThumb_DragDelta"
+                               KeyDown="ResizeThumb_KeyDown"
+                               ToolTip="끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                    <!-- 잡을 곳은 넓게(16px), 보이는 선은 가늘게 — 얇으면 못 잡습니다. -->
+                                    <Border Background="Transparent">
+                                        <Border Width="6" CornerRadius="3" BorderThickness="2"
+                                                BorderBrush="White" Background="{StaticResource Accent}" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </StackPanel>
+                  </Grid>
                 </Border>
 
                 <!--
@@ -353,10 +397,30 @@
 
                     <StackPanel Margin="24,4,0,0"
                                 Visibility="{Binding ShowGrowDetails, Converter={StaticResource BoolToVisibility}}">
-                        <ComboBox MinWidth="240" HorizontalAlignment="Left" Margin="0,0,0,6"
-                                  ItemsSource="{Binding ResizablePartitions}"
-                                  SelectedItem="{Binding SelectedResizePartition}"
-                                  DisplayMemberPath="Label" />
+                        <!--
+                            넓힐 파티션을 칩으로 고릅니다. 드롭다운은 열어야 무엇이 있는지
+                            보이지만, 후보는 보통 한둘이라 펼쳐 두는 편이 낫습니다 —
+                            고를 것이 하나뿐인데 드롭다운을 열게 하는 것은 헛수고입니다.
+                        -->
+                        <ItemsControl ItemsSource="{Binding ResizablePartitions}" Margin="0,0,0,8">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <RadioButton GroupName="GrowTarget" Content="{Binding Label}"
+                                                 Margin="0,0,6,4" Padding="10,4"
+                                                 Style="{StaticResource ChipRadio}">
+                                        <RadioButton.IsChecked>
+                                            <Binding Path="IsSelected" Mode="TwoWay"
+                                                     UpdateSourceTrigger="PropertyChanged" />
+                                        </RadioButton.IsChecked>
+                                    </RadioButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeSize"
