@@ -483,4 +483,18 @@ public class SafetyGuardTests
 
         Assert.DoesNotContain(report.Issues, i => i.Code == SafetyGuard.CodeSourceHibernated);
     }
+
+    [Fact]
+    public void BIOS_전용_판정은_경고와_변환_제안이_함께_쓴다()
+    {
+        // 시작 전 경고(SafetyGuard)와 복제 후 UEFI 변환 제안(UefiConverter)이 같은 근거를
+        // 써야 "경고는 하는데 변환 버튼은 없는" 상태가 생기지 않습니다.
+        var biosOnly = Disk(0, style: PartitionStyle.Mbr, partitions: [Part(1, active: true)]);
+        var uefi = Disk(1, style: PartitionStyle.Gpt, partitions: [Part(1, esp: true)]);
+        var dataOnly = Disk(2, style: PartitionStyle.Mbr, partitions: [Part(1)]);
+
+        Assert.True(biosOnly.IsBiosOnlyBootLayout);
+        Assert.False(uefi.IsBiosOnlyBootLayout);
+        Assert.False(dataOnly.IsBiosOnlyBootLayout);
+    }
 }

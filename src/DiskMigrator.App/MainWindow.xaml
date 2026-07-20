@@ -797,6 +797,53 @@
                     </StackPanel>
 
                     <!--
+                        UEFI 변환 — 원본이 BIOS 전용(MBR·활성 파티션, ESP 없음) 배치였을 때만.
+                        그 사본은 레거시 부팅을 지원하는 하드웨어에서만 켜지고, NVMe M.2에는
+                        레거시 옵션 ROM이 없어 아예 부팅되지 않습니다. 되돌릴 수 없는 변경이라
+                        자동으로 하지 않고 버튼으로 둡니다.
+                    -->
+                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
+                            Background="{StaticResource SurfaceAlt}"
+                            BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                            Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="요즘 PC에서 부팅되게 만들기 (GPT/UEFI 변환)"
+                                       Style="{StaticResource Body}" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Accent}" />
+                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       Text="이 사본은 원본과 같은 BIOS(레거시) 방식이라, 레거시 부팅을 지원하는 PC에서만 켜집니다. NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다. 아래 버튼이 GPT로 바꾸고 EFI 시스템 파티션을 만들어 UEFI로 부팅되게 합니다." />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="UEFI로 변환" Command="{Binding ConvertToUefiCommand}"
+                                        MinWidth="130" Padding="16,8" />
+                                <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
+                                           Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
+                                           Text="되돌릴 수 없습니다. 변환 후에는 BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오." />
+                            </StackPanel>
+
+                            <TextBlock Text="변환 중... (몇 분 걸릴 수 있습니다)" Margin="0,6,0,0"
+                                       Style="{StaticResource Caption}"
+                                       Visibility="{Binding IsConvertingToUefi,
+                                                    Converter={StaticResource BoolToVisibility}}" />
+
+                            <TextBlock Text="{Binding UefiConvertMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Visibility="{Binding UefiConvertRan,
+                                                    Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UefiConvertSuccess}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!--
                         복구 환경 안내 — 리사이즈로 복구 파티션이 밀렸을 때만.
                         부팅은 정상이라 사용자가 알아채지 못하고, 정작 복구가 필요한 순간에야
                         없다는 걸 알게 됩니다. 명령 한 줄이면 되는 일이라 여기서 말해 줍니다.

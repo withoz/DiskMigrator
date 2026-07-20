@@ -164,7 +164,6 @@ public sealed class BootRepair(ILogger? logger = null)
             _logger.LogWarning("임시 마운트 {Letter}: 해제 실패(무해).", letter);
     }
 
-    /// <summary>기본 로더의 resumeobject GUID를 bcdedit 출력에서 파싱합니다. 없으면 null.</summary>
     /// <summary>
     /// 사본이 최대 절전 이미지에서 재개하지 않게 하고, 남은 이미지를 지웁니다.
     /// </summary>
@@ -230,6 +229,7 @@ public sealed class BootRepair(ILogger? logger = null)
         proc?.WaitForExit();
     }
 
+    /// <summary>기본 로더의 resumeobject GUID를 bcdedit 출력에서 파싱합니다. 없으면 null.</summary>
     private string? ReadResumeObject(string bcdPath)
     {
         var (code, output) = RunBcdedit("/store", bcdPath, "/enum", "{default}");

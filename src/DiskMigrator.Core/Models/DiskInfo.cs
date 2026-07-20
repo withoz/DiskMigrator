@@ -73,6 +73,23 @@ public sealed class DiskInfo
 
     public IReadOnlyList<PartitionInfo> Partitions { get; init; } = [];
 
+    /// <summary>
+    /// BIOS(레거시)로만 부팅되는 배치인지 — MBR이면서 활성 파티션이 있고 EFI 시스템 파티션이 없음.
+    /// </summary>
+    /// <remarks>
+    /// 이 배치의 사본은 레거시(CSM) 부팅을 지원하는 하드웨어에서만 켜집니다. UEFI 펌웨어는
+    /// ESP의 부트로더를 찾는데 그것이 없으므로 <b>아무 말 없이 다음 장치로 넘어갑니다</b>.
+    /// NVMe는 특히 확정적입니다 — 레거시 부팅용 옵션 ROM이 사실상 존재하지 않아 어떤 모드로도
+    /// 부팅되지 않습니다(실기에서 규명).
+    ///
+    /// <para>시작 전 경고와 복제 후 UEFI 변환 제안이 <b>같은 판정</b>을 써야 합니다. 따로
+    /// 계산하면 한쪽만 조건이 바뀌었을 때 "경고는 하는데 변환 버튼은 없는" 상태가 됩니다.</para>
+    /// </remarks>
+    public bool IsBiosOnlyBootLayout =>
+        PartitionStyle == PartitionStyle.Mbr &&
+        Partitions.Any(p => p.IsActive) &&
+        !Partitions.Any(p => p.IsEfiSystemPartition);
+
     /// <summary>파티션 테이블이 있고 파티션이 하나라도 있으면 "기존 데이터가 있다"고 봅니다.</summary>
     public bool HasExistingData => PartitionStyle is PartitionStyle.Mbr or PartitionStyle.Gpt && Partitions.Count > 0;
 

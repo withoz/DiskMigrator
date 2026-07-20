@@ -415,6 +415,25 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _partitionExpandMessage = "";
     [ObservableProperty] private bool _partitionExpandSuccess;
 
+    // --- UEFI 변환 ---------------------------------------------------------
+    //
+    // MBR·활성 파티션 배치의 사본은 레거시(CSM) 부팅을 지원하는 하드웨어에서만 켜집니다.
+    // NVMe에는 레거시 부팅용 옵션 ROM이 사실상 없어, 요즘 PC로 옮기려면 GPT/UEFI로
+    // 바꿔야 합니다. 실기에서 이 변환을 손으로 하느라 여러 시간을 썼습니다.
+
+    /// <summary>대상이 BIOS 전용 배치라 UEFI 변환 버튼을 보여줄지.</summary>
+    [ObservableProperty] private bool _uefiConvertAvailable;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertToUefiCommand))]
+    private bool _isConvertingToUefi;
+
+    public bool CanConvertToUefi => !IsConvertingToUefi;
+
+    [ObservableProperty] private bool _uefiConvertRan;
+    [ObservableProperty] private string _uefiConvertMessage = "";
+    [ObservableProperty] private bool _uefiConvertSuccess;
+
     // --- 명령 --------------------------------------------------------------
 
     [RelayCommand]
@@ -928,6 +947,10 @@ public sealed partial class MainViewModel : ObservableObject
         BootRepairMessage = "";
         PartitionExpandAvailable = false;
         PartitionExpandRan = false;
+        UefiConvertAvailable = false;
+        UefiConvertRan = false;
+        UefiConvertMessage = "";
+        UefiConvertSuccess = false;
         PartitionExpandMessage = "";
         PartitionExpandSuccess = false;
     }
@@ -1095,6 +1118,57 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             IsExpandingPartition = false;
+        }
+    }
+
+    /// <summary>
+    /// BIOS/MBR로 복제된 대상을 GPT/UEFI로 부팅 가능하게 바꿉니다.
+    /// </summary>
+    /// <remarks>
+    /// 되돌릴 수 없는 변경이라 사용자가 직접 눌러야 합니다. 복제 자체는 원본을 그대로 옮기는
+    /// 일이고, 이것은 "다른 방식으로 부팅되게 만드는" 별개의 결정입니다.
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanConvertToUefi))]
+    private async Task ConvertToUefiAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsConvertingToUefi = true;
+        UefiConvertRan = false;
+        try
+        {
+            var target = await ResolveCurrentTargetAsync();
+            if (target is null)
+            {
+                UefiConvertMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                UefiConvertSuccess = false;
+                UefiConvertRan = true;
+                return;
+            }
+
+            var converter = new UefiConverter(_diskService, _loggerFactory.CreateLogger<UefiConverter>());
+            var result = await converter.ConvertAsync(target);
+
+            UefiConvertMessage = result.Message;
+            UefiConvertSuccess = result.Success;
+            UefiConvertRan = true;
+
+            foreach (string step in result.Steps) _logger.LogInformation("UEFI 변환 단계: {Step}", step);
+            _logger.LogInformation("UEFI 변환: 성공={Success} {Message}", result.Success, result.Message);
+
+            // 성공했으면 이미 GPT이므로 더 변환할 것이 없습니다.
+            if (result.Success) UefiConvertAvailable = false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "UEFI 변환에 실패했습니다.");
+            UefiConvertMessage = $"변환에 실패했습니다: {ex.Message}";
+            UefiConvertSuccess = false;
+            UefiConvertRan = true;
+        }
+        finally
+        {
+            IsConvertingToUefi = false;
         }
     }
 
@@ -1273,6 +1347,10 @@ public sealed partial class MainViewModel : ObservableObject
                                    report.Target.SizeBytes > report.Source.SizeBytes &&
                                    !alreadyExpanded;
 
+        // 원본이 BIOS 전용 배치였으면 사본도 그렇습니다. 요즘 PC(특히 NVMe)에서는 부팅하지
+        // 않으므로 GPT/UEFI 변환을 제안합니다. 되돌릴 수 없는 변경이라 자동으로 하지 않습니다.
+        UefiConvertAvailable = ResultIsSuccess && UefiConverter.NeedsConversion(report.Source);
+
         (ResultTitle, ResultMessage) = result.Outcome switch
         {
             CloneOutcome.Completed => (
@@ -1301,6 +1379,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             ResultIsSuccess = false;
             PartitionExpandAvailable = false;
+            UefiConvertAvailable = false;
             ResultTitle = "클론했지만 파티션 배치가 깨졌습니다 — 이 디스크로 부팅하지 마십시오";
             ResultMessage =
                 $"[{report.Target.DeviceNumber}] {report.Target.Model} 에 데이터는 복사됐지만, " +
