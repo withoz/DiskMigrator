@@ -39,6 +39,17 @@ public sealed class PartitionInfo
     /// <summary>MBR 활성(부팅) 파티션 여부.</summary>
     public bool IsActive { get; init; }
 
+    /// <summary>Windows 복구 환경(WinRE) 파티션 여부 — GPT 타입 GUID 또는 MBR 타입 0x27.</summary>
+    /// <remarks>
+    /// 리사이즈로 이 파티션이 옮겨지면 <c>ReAgent.xml</c>이 기억하는 위치와 달라져, 클론한
+    /// 디스크에서 복구 환경을 찾지 못합니다(Windows 부팅 자체는 정상). 그래서 옮겼는지
+    /// 알아야 사용자에게 알려 줄 수 있습니다.
+    /// </remarks>
+    public bool IsWindowsRecovery =>
+        GptPartitionType == WindowsRecoveryType || MbrPartitionType == 0x27;
+
+    private static readonly Guid WindowsRecoveryType = new("de94bba4-06d1-4d40-a16a-bfd50179d6ac");
+
     public long? FreeSpaceBytes { get; init; }
 
     public long? UsedSpaceBytes =>

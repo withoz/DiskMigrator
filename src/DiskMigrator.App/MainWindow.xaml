@@ -732,6 +732,23 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!--
+                        복구 환경 안내 — 리사이즈로 복구 파티션이 밀렸을 때만.
+                        부팅은 정상이라 사용자가 알아채지 못하고, 정작 복구가 필요한 순간에야
+                        없다는 걸 알게 됩니다. 명령 한 줄이면 되는 일이라 여기서 말해 줍니다.
+                    -->
+                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
+                            Background="{StaticResource SurfaceAlt}"
+                            BorderBrush="{StaticResource Warning}" BorderThickness="1"
+                            Visibility="{Binding HasRecoveryHint, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="복구 환경(WinRE) 다시 연결하기" Style="{StaticResource Body}"
+                                       FontWeight="SemiBold" Foreground="{StaticResource Warning}" />
+                            <TextBlock Text="{Binding RecoveryHint}" Style="{StaticResource Caption}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+
                     <!-- 파티션 확장 (대상에 남는 공간이 있을 때) -->
                     <StackPanel Margin="0,20,0,0"
                                 Visibility="{Binding PartitionExpandAvailable, Converter={StaticResource BoolToVisibility}}">

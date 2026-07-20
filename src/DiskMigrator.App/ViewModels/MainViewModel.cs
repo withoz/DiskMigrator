@@ -227,6 +227,27 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>리사이즈로 확대한 파티션 번호(클론 후 "파티션 확장" 버튼이 이 파티션을 넓힘). 없으면 null.</summary>
     private int? _grownPartitionNumber;
 
+    /// <summary>이번 클론에서 복구 파티션이 뒤로 밀렸는지. 완료 화면 안내에 씁니다.</summary>
+    private bool _recoveryPartitionMoved;
+
+    /// <summary>
+    /// 복구 환경(WinRE)이 끊어졌음을 알리는 안내. 해당 없으면 빈 문자열.
+    /// </summary>
+    /// <remarks>
+    /// Windows는 <c>ReAgent.xml</c>에 복구 파티션의 위치를 적어 두고 그 자리를 찾아갑니다.
+    /// 리사이즈로 복구 파티션이 밀리면 그 위치가 달라져 복구 환경만 사라진 것처럼 보입니다 —
+    /// <b>부팅은 정상</b>이라 사용자가 알아채기 어렵고, 정작 필요할 때(복구가 필요한 순간)
+    /// 없다는 걸 알게 됩니다. 명령 한 줄이면 되는 일이므로 여기서 말해 줍니다.
+    /// </remarks>
+    public string RecoveryHint =>
+        _recoveryPartitionMoved && ResultIsSuccess
+            ? "복구 파티션이 뒤로 밀려 Windows가 기억하던 위치와 달라졌습니다. 복제한 디스크로 부팅한 뒤 " +
+              "관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다. " +
+              "(Windows 부팅 자체는 정상입니다.)"
+            : "";
+
+    public bool HasRecoveryHint => RecoveryHint.Length > 0;
+
     // --- 안전 점검 ---------------------------------------------------------
 
     public ObservableCollection<SafetyIssue> SafetyIssues { get; } = [];
@@ -328,7 +349,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _resultTitle = "";
     [ObservableProperty] private string _resultMessage = "";
-    [ObservableProperty] private bool _resultIsSuccess;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RecoveryHint))]
+    [NotifyPropertyChangedFor(nameof(HasRecoveryHint))]
+    private bool _resultIsSuccess;
     [ObservableProperty] private string _resultDetails = "";
     [ObservableProperty] private string? _logFilePath;
 
@@ -931,6 +955,13 @@ public sealed partial class MainViewModel : ObservableObject
         var freeSpaceMode = plan.Mode;
         var growRequest = plan.Grow;
         _grownPartitionNumber = growRequest?.PartitionNumber;
+
+        // 넓힌 파티션보다 뒤에 있는 것들은 오른쪽으로 밀립니다. 그 안에 복구 파티션이 있으면
+        // 위치가 달라져 WinRE가 끊어지므로, 끝난 뒤 알려 주려고 지금 기억해 둡니다.
+        _recoveryPartitionMoved =
+            growRequest is not null &&
+            source.Partitions.FirstOrDefault(p => p.Number == growRequest.PartitionNumber) is { } grown &&
+            source.Partitions.Any(p => p.IsWindowsRecovery && p.StartingOffset > grown.StartingOffset);
 
         _cts = new CancellationTokenSource();
         _pause = new PauseController();

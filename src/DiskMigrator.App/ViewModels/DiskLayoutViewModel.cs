@@ -210,19 +210,19 @@ public sealed class DiskLayoutViewModel
     {
         if (p.IsEfiSystemPartition) return "EFI";
         if (p.GptPartitionType == MicrosoftReserved) return "MSR";
-        if (p.GptPartitionType == WindowsRecovery) return "복구";
+        if (p.IsWindowsRecovery) return "복구";
         return p.FileSystem ?? "RAW";
     }
 
     // 잘 알려진 GPT 타입 GUID. Windows 프로젝트에도 같은 표가 있지만 internal이라 여기서 다시 둡니다.
+    // 복구 파티션 판별은 MBR(0x27)도 함께 봐야 해서 PartitionInfo.IsWindowsRecovery로 옮겼습니다.
     private static readonly Guid MicrosoftReserved = new("e3c9e316-0b5c-4db8-817d-f92df00215ae");
-    private static readonly Guid WindowsRecovery = new("de94bba4-06d1-4d40-a16a-bfd50179d6ac");
 
     private static string DescribeRole(PartitionInfo p)
     {
         if (p.IsEfiSystemPartition) return "EFI 시스템";
         if (p.GptPartitionType == MicrosoftReserved) return "MSR (예약)";
-        if (p.GptPartitionType == WindowsRecovery) return "복구";
+        if (p.IsWindowsRecovery) return "복구";
         return p.FileSystem ?? "RAW";
     }
 
