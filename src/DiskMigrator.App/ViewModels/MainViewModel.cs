@@ -808,18 +808,25 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         // 넓힐 조각 뒤의 미할당 구간이 조정 여지입니다. 없으면 이미 꽉 찬 상태입니다.
+        // 뒤에 남은 미할당 구간. '남는 공간 전부'를 고르면 <b>이것이 없습니다</b> — 넓힌
+        // 파티션이 끝까지 차지하기 때문입니다. 그때도 손잡이는 나와야 합니다. 없으면 기본
+        // 상태에서 손잡이가 영영 안 보여 사용자가 이 기능을 발견할 수 없습니다.
         var free = growIndex >= 0
             ? segments.Skip(growIndex + 1).FirstOrDefault(s => s.PartitionNumber is null)
             : null;
 
-        if (growIndex < 0 || free is null || free.LengthBytes <= 0)
+        // 실제로 움직일 수 있는지는 배치가 아니라 범위가 정합니다 — 이미 최대치여도
+        // 왼쪽으로는 줄일 수 있습니다.
+        if (growIndex < 0 ||
+            SelectedResizePartition is not { } choice ||
+            ResizeBounds(choice) is not var (min, max) || max <= min)
         {
             ShowResizeHandle = false;
             return;
         }
 
-        double adjustableFraction = segments[growIndex].Fraction + free.Fraction;
-        long adjustableBytes = segments[growIndex].LengthBytes + free.LengthBytes;
+        double adjustableFraction = segments[growIndex].Fraction + (free?.Fraction ?? 0);
+        long adjustableBytes = segments[growIndex].LengthBytes + (free?.LengthBytes ?? 0);
 
         if (adjustableFraction <= 0)
         {
