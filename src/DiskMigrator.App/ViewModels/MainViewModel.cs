@@ -479,6 +479,22 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 남는 공간 선택이 성립하지 않는 이유. 없으면 빈 문자열.
+    /// </summary>
+    /// <remarks>
+    /// 같은 문구가 시작 버튼 아래(<see cref="BlockedReason"/>)에도 뜨지만, 그곳은 화면 한참
+    /// 아래입니다. 설정을 만지는 사람의 눈은 막대와 라디오에 있으므로, 사라진 "변경 후" 막대
+    /// 자리에서 바로 이유를 말해 줘야 합니다. 그림이 소리 없이 없어지는 것은 아무 설명도
+    /// 아닙니다.
+    /// </remarks>
+    public string FreeSpaceError =>
+        SelectedSource is null || SelectedTarget is null
+            ? ""
+            : ResolveFreeSpacePlan().Error ?? "";
+
+    public bool HasFreeSpaceError => FreeSpaceError.Length > 0;
+
     /// <summary>대상이 원본보다 커서 남는 공간이 생기는지.</summary>
     public bool HasFreeSpace =>
         SelectedSource is not null && SelectedTarget is not null &&
@@ -518,6 +534,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         UpdateAfterLayout();
 
+        OnPropertyChanged(nameof(FreeSpaceError));
+        OnPropertyChanged(nameof(HasFreeSpaceError));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(BlockedReason));
         OnPropertyChanged(nameof(HasBlockedReason));

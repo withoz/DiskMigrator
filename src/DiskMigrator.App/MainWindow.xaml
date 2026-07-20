@@ -296,6 +296,18 @@
                                     Visibility="{Binding TargetAfterLayout,
                                                  Converter={StaticResource NullToVisibility}}" />
 
+                    <!--
+                        막대가 사라진 자리에서 이유를 말합니다. 같은 문구가 시작 버튼 아래에도
+                        뜨지만 그곳은 화면 한참 아래라, 설정을 만지는 동안에는 보이지 않습니다.
+                    -->
+                    <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}"
+                            BorderThickness="1" CornerRadius="5" Padding="10,7" Margin="0,0,0,10"
+                            Visibility="{Binding HasFreeSpaceError,
+                                         Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding FreeSpaceError}" Style="{StaticResource Caption}"
+                                   Foreground="{StaticResource Danger}" TextWrapping="Wrap" />
+                    </Border>
+
                     <TextBlock Text="{Binding FreeSpaceText}" Style="{StaticResource StepTitle}"
                                Margin="0,0,0,10" TextWrapping="Wrap" />
 
