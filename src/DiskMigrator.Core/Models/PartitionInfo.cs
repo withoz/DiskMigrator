@@ -1,3 +1,5 @@
+using DiskMigrator.Core.Util;
+
 namespace DiskMigrator.Core.Models;
 
 /// <summary>디스크 위의 파티션 하나에 대한 정보.</summary>
@@ -44,7 +46,11 @@ public sealed class PartitionInfo
 
     public override string ToString()
     {
+        // 크기 표기는 반드시 SizeFormatter를 거칩니다. 직접 GB로 나누면 화면 다른 곳과
+        // 어긋납니다 — 같은 디스크가 막대에는 "3.64 TB", 안전 문구에는 "4000.8 GB"로
+        // 나오고, 16 MB짜리 파티션은 "0.0 GB"로 뭉개집니다.
         var letter = DriveLetter is null ? "" : $"{DriveLetter}: ";
-        return $"#{Number} {letter}{FileSystem ?? "?"} {LengthBytes / 1_000_000_000.0:F1} GB";
+        var fs = FileSystem ?? (IsEfiSystemPartition ? "EFI" : "RAW");
+        return $"#{Number} {letter}{fs} {SizeFormatter.Format(LengthBytes)}";
     }
 }
