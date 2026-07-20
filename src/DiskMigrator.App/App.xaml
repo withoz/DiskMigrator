@@ -216,6 +216,14 @@
             <Setter Property="ItemTemplate" Value="{StaticResource DiskItemTemplate}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+
+            <!--
+                원본·대상 목록이 같은 Disks 컬렉션을 씁니다. WPF는 컬렉션마다 기본
+                CollectionView를 하나만 만들어 공유하는데, 이 값이 기본(null)이면 선택이
+                그 CurrentItem을 따라가므로 한쪽에서 고른 디스크가 다른 쪽에서도 선택됩니다.
+                디스크를 지우는 도구에서 원본과 대상이 저절로 같아지는 건 위험합니다.
+            -->
+            <Setter Property="IsSynchronizedWithCurrentItem" Value="False" />
         </Style>
 
     </Application.Resources>
