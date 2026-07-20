@@ -143,6 +143,88 @@ public class GptRewriterTests
         Assert.Equal(expectedLastUsable, GptImageBuilder.ReadLastUsableLba(primary));
     }
 
+    // --- 맞춤 클론: 더 작은 대상 (v0.4.0) ------------------------------------
+    //
+    // 원본보다 작은 대상에 "파티션만" 복제한 상태를 만듭니다. 실제 맞춤 클론이 만드는 대상과
+    // 같습니다 — 파티션 테이블과 각 파티션은 제자리에 복사되고, 원본 끝에 있던 백업 GPT는
+    // 대상 크기를 넘으므로 아예 복사되지 않습니다. 그 상태에서 재작성이 백업 헤더를 줄어든
+    // 끝에 새로 만들고 경계를 맞춰야 합니다.
+
+    /// <summary>파티션이 앞쪽에만 있는 원본을, 더 작은 대상에 앞부분만 복사한 상태를 만듭니다.</summary>
+    private static FaultyBlockDevice FitCloneToSmallerTarget(long sourceSize, long targetSize)
+    {
+        var source = GptImageBuilder.Build(sourceSize,
+            new GptImageBuilder.PartitionSpec(34, 99, G1, Name: "ESP"),
+            new GptImageBuilder.PartitionSpec(100, 199, G2, Name: "C"),
+            new GptImageBuilder.PartitionSpec(200, 299, G3, Name: "Recovery"));
+
+        var target = new FaultyBlockDevice(targetSize, Sector, id: "target");
+        // 대상 크기만큼만 복사 — 원본 끝의 백업 GPT는 넘어오지 않습니다.
+        source.AsSpan(0, (int)targetSize).CopyTo(target.Data);
+        return target;
+    }
+
+    /// <summary>파티션을 옮기지 않는 항등 remap(맞춤 클론이 쓰는 배치).</summary>
+    private static PartitionRemap[] IdentityRemaps() =>
+    [
+        new PartitionRemap(34, 34, 99),
+        new PartitionRemap(100, 100, 199),
+        new PartitionRemap(200, 200, 299),
+    ];
+
+    [Fact]
+    public void 작은_대상에서도_파티션_위치와_GUID가_그대로다()
+    {
+        // 원본 4MB → 대상 2MB. 파티션은 앞쪽 300섹터뿐이라 그대로 들어간다.
+        var target = FitCloneToSmallerTarget(8192 * Sector, 4096 * Sector);
+
+        var result = new GptRewriter().Rewrite(target, IdentityRemaps());
+
+        Assert.True(result.Rewritten);
+        Assert.Equal(34, GptImageBuilder.ReadEntryStartLba(target.Data, 2, 0));
+        Assert.Equal(99, GptImageBuilder.ReadEntryEndLba(target.Data, 2, 0));
+        Assert.Equal(200, GptImageBuilder.ReadEntryStartLba(target.Data, 2, 2));
+        Assert.Equal(299, GptImageBuilder.ReadEntryEndLba(target.Data, 2, 2));
+        // BCD가 GUID로 파티션을 참조하므로 보존이 핵심.
+        Assert.Equal(G1, GptImageBuilder.ReadEntryUniqueGuid(target.Data, 2, 0));
+        Assert.Equal(G2, GptImageBuilder.ReadEntryUniqueGuid(target.Data, 2, 1));
+        Assert.Equal(G3, GptImageBuilder.ReadEntryUniqueGuid(target.Data, 2, 2));
+    }
+
+    [Fact]
+    public void 작은_대상의_백업_헤더가_새_끝에_생기고_유효하다()
+    {
+        long targetSize = 4096 * Sector;
+        var target = FitCloneToSmallerTarget(8192 * Sector, targetSize);
+        long expectedLastLba = (targetSize / Sector) - 1;
+
+        new GptRewriter().Rewrite(target, IdentityRemaps());
+
+        var backup = target.Data.AsSpan((int)(expectedLastLba * Sector), Sector);
+        Assert.True(GptImageBuilder.HasGptSignature(backup));
+        Assert.True(GptImageBuilder.IsHeaderCrcValid(backup));
+        Assert.True(GptImageBuilder.IsEntriesCrcValid(target.Data, backup));
+        Assert.Equal(expectedLastLba, GptImageBuilder.ReadMyLba(backup));
+        Assert.Equal(1, GptImageBuilder.ReadAlternateLba(backup));
+
+        // 주 헤더도 줄어든 끝을 가리켜야 한다 — 아니면 Windows가 디스크를 손상으로 본다.
+        var primary = target.Data.AsSpan(Sector, Sector);
+        Assert.True(GptImageBuilder.IsHeaderCrcValid(primary));
+        Assert.Equal(expectedLastLba, GptImageBuilder.ReadAlternateLba(primary));
+        Assert.Equal(expectedLastLba - GptImageBuilder.EntryArrayLbaCount - 1,
+                     GptImageBuilder.ReadLastUsableLba(primary));
+    }
+
+    [Fact]
+    public void 파티션이_작은_대상을_넘으면_재작성이_거부된다()
+    {
+        // 대상을 파티션 끝(299섹터)조차 못 담을 만큼 작게 — 조용히 잘라내면 안 된다.
+        var target = FitCloneToSmallerTarget(8192 * Sector, 320 * Sector);
+
+        Assert.Throws<InvalidOperationException>(
+            () => new GptRewriter().Rewrite(target, IdentityRemaps()));
+    }
+
     [Fact]
     public void 대응_remap이_없는_사용중_파티션은_거부된다()
     {
