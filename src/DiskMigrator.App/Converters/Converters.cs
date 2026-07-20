@@ -85,3 +85,29 @@ public sealed class SeverityToLabelConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// 비율(0~1)과 컨테이너 실제 폭을 받아 픽셀 폭으로 바꿉니다 — 파티션 배치 막대에 씁니다.
+/// </summary>
+/// <remarks>
+/// WPF에는 "부모 폭의 N%"를 직접 지정하는 방법이 없어(Grid의 star 크기는 정적 선언이 필요),
+/// 데이터로 만들어지는 가변 개수의 조각에는 이 방식이 가장 단순합니다.
+/// </remarks>
+public sealed class FractionToWidthConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Length < 2 ||
+            values[0] is not double fraction ||
+            values[1] is not double available ||
+            double.IsNaN(available) || available <= 0)
+        {
+            return 0d;
+        }
+
+        return Math.Max(0d, fraction * available);
+    }
+
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

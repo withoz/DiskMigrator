@@ -10,6 +10,7 @@
         <conv:SeverityToBrushConverter x:Key="SeverityToBrush" />
         <conv:SeverityToLabelConverter x:Key="SeverityToLabel" />
         <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <conv:FractionToWidthConverter x:Key="FractionToWidth" />
 
         <!-- 팔레트: 위험한 도구인 만큼 경고색을 아껴 써서, 진짜 위험할 때 눈에 띄게 합니다. -->
         <SolidColorBrush x:Key="Accent" Color="#2563EB" />

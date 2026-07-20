@@ -12,6 +12,102 @@
         Background="{StaticResource SurfaceAlt}"
         FontFamily="Segoe UI, Malgun Gothic">
 
+    <Window.Resources>
+
+        <!--
+            파티션 배치 막대 — 디스크가 실제로 어떻게 나뉘어 있고 어디가 비어 있는지 한눈에 봅니다.
+            "더 작은 디스크로 옮길 수 있는가"는 결국 파티션이 차지한 끝의 문제이므로(맞춤 클론),
+            뒤쪽 빈 공간을 눈으로 확인할 수 있게 하는 것이 핵심입니다.
+
+            조각 폭은 부모 폭 × 비율로 계산합니다. WPF에는 데이터로 만들어지는 가변 개수 요소에
+            "부모의 N%"를 주는 선언적 방법이 없어서 컨버터를 씁니다.
+        -->
+        <DataTemplate x:Key="DiskLayoutTemplate">
+            <StackPanel Margin="0,10,0,0">
+
+                <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" CornerRadius="4"
+                        Background="{StaticResource SurfaceAlt}" Padding="2" ClipToBounds="True">
+                    <ItemsControl ItemsSource="{Binding Segments}" ClipToBounds="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Height="44" Margin="0,0,1,0" CornerRadius="2"
+                                        Background="{Binding Fill}" ToolTip="{Binding Tooltip}">
+                                    <Border.Width>
+                                        <MultiBinding Converter="{StaticResource FractionToWidth}">
+                                            <Binding Path="Fraction" />
+                                            <Binding Path="ActualWidth"
+                                                     RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                        </MultiBinding>
+                                    </Border.Width>
+
+                                    <Grid>
+                                        <!-- 사용 중인 만큼을 아래쪽에 짙은 띠로 겹쳐 그립니다. -->
+                                        <Border VerticalAlignment="Bottom" Height="6" Margin="3,0,3,3"
+                                                CornerRadius="1" Background="#33000000"
+                                                Visibility="{Binding HasUsage,
+                                                             Converter={StaticResource BoolToVisibility}}"
+                                                HorizontalAlignment="Stretch" />
+                                        <Border VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                                                Height="6" Margin="3,0,3,3" CornerRadius="1" Background="#B3FFFFFF"
+                                                Visibility="{Binding HasUsage,
+                                                             Converter={StaticResource BoolToVisibility}}">
+                                            <Border.Width>
+                                                <MultiBinding Converter="{StaticResource FractionToWidth}">
+                                                    <Binding Path="UsedFraction" />
+                                                    <Binding Path="ActualWidth"
+                                                             RelativeSource="{RelativeSource AncestorType=Border}" />
+                                                </MultiBinding>
+                                            </Border.Width>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- 범례: 조각이 좁아 글자를 못 넣으므로 아래에 목록으로 풉니다. -->
+                <ItemsControl ItemsSource="{Binding Segments}" Margin="0,6,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,3" ToolTip="{Binding Tooltip}">
+                                <Border Width="9" Height="9" CornerRadius="2" Background="{Binding Fill}"
+                                        VerticalAlignment="Center" Margin="0,0,5,0" />
+                                <TextBlock VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
+                                    <Run Text="{Binding SizeText, Mode=OneWay}" Foreground="{StaticResource Muted}" />
+                                </TextBlock>
+                                <TextBlock Text="{Binding UsageText}" VerticalAlignment="Center" FontSize="11"
+                                           Margin="5,0,0,0" Foreground="{StaticResource Muted}"
+                                           Visibility="{Binding HasUsage,
+                                                        Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{Binding SummaryText}" FontSize="11" Margin="0,2,0,0"
+                           Foreground="{StaticResource Muted}" TextWrapping="Wrap" />
+
+                <TextBlock Text="{Binding TrailingFreeText}" FontSize="11" Margin="0,2,0,0"
+                           Foreground="{StaticResource Warning}" TextWrapping="Wrap"
+                           Visibility="{Binding TrailingFreeText,
+                                        Converter={StaticResource NullToVisibility}}" />
+            </StackPanel>
+        </DataTemplate>
+
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -61,6 +157,12 @@
                                 Padding="8,3" MinWidth="0" FontSize="11" Margin="12,0,0,0" />
                     </StackPanel>
 
+                    <ContentControl DockPanel.Dock="Bottom"
+                                    Content="{Binding SourceLayout}"
+                                    ContentTemplate="{StaticResource DiskLayoutTemplate}"
+                                    Visibility="{Binding SourceLayout,
+                                                 Converter={StaticResource NullToVisibility}}" />
+
                     <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedSource}"
                              Style="{StaticResource DiskListStyle}" />
                 </DockPanel>
@@ -78,6 +180,12 @@
                     <TextBlock DockPanel.Dock="Top" Text="대상 (모든 데이터가 삭제됨)"
                                Style="{StaticResource SubHeading}" Foreground="{StaticResource Danger}"
                                Margin="0,0,0,8" />
+
+                    <ContentControl DockPanel.Dock="Bottom"
+                                    Content="{Binding TargetLayout}"
+                                    ContentTemplate="{StaticResource DiskLayoutTemplate}"
+                                    Visibility="{Binding TargetLayout,
+                                                 Converter={StaticResource NullToVisibility}}" />
 
                     <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
                              Style="{StaticResource DiskListStyle}" />

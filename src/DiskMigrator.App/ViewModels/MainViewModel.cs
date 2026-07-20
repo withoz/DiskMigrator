@@ -112,6 +112,11 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>확대할 후보 파티션 목록(원본의 NTFS 파티션).</summary>
     public ObservableCollection<PartitionChoiceViewModel> ResizablePartitions { get; } = [];
 
+    /// <summary>선택한 원본/대상의 파티션 배치 막대. 고른 디스크가 없으면 null(화면에서 숨김).</summary>
+    [ObservableProperty] private DiskLayoutViewModel? _sourceLayout;
+
+    [ObservableProperty] private DiskLayoutViewModel? _targetLayout;
+
     /// <summary>파티션 리사이즈(확대)를 사용할지. 대상이 원본보다 클 때만 켤 수 있습니다.</summary>
     [ObservableProperty] private bool _resizeEnabled;
 
@@ -337,6 +342,10 @@ public sealed partial class MainViewModel : ObservableObject
         SafetyIssues.Clear();
         CanProceed = false;
         NeedsConfirmation = false;
+
+        // 배치 막대는 한쪽만 골라도 보여줍니다 — 고르는 중에 디스크 구성을 확인하는 것이 목적입니다.
+        SourceLayout = DiskLayoutViewModel.For(SelectedSource?.Disk);
+        TargetLayout = DiskLayoutViewModel.For(SelectedTarget?.Disk);
 
         if (SelectedSource is null || SelectedTarget is null)
         {
