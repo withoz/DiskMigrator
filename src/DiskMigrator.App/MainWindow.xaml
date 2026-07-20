@@ -208,7 +208,7 @@
                             <TextBlock>
                                 <Run Text="VSS 스냅샷 사용 (권장)" FontWeight="SemiBold" />
                                 <Run Text=" — 복제 중 파일이 바뀌어도 일관된 사본을 만듭니다"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -217,7 +217,7 @@
                             <TextBlock>
                                 <Run Text="복제 후 검증" FontWeight="SemiBold" />
                                 <Run Text=" — 다시 읽어 원본과 비교합니다 (시간 약 2배)"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -226,7 +226,7 @@
                             <TextBlock>
                                 <Run Text="불량 섹터 건너뛰기" FontWeight="SemiBold" />
                                 <Run Text=" — 읽지 못한 섹터를 0으로 채우고 계속합니다"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -235,7 +235,7 @@
                             <TextBlock>
                                 <Run Text="스마트 클론 (빈 영역 건너뛰기)" FontWeight="SemiBold" />
                                 <Run Text=" — 사용 중인 블록만 복사해 빠르게 (스냅샷 필요)"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -244,7 +244,7 @@
                             <TextBlock>
                                 <Run Text="마지막 파티션 확장" FontWeight="SemiBold" />
                                 <Run Text=" — 큰 디스크로 복제 시 남는 공간을 마지막 파티션에 합침"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -253,7 +253,7 @@
                             <TextBlock>
                                 <Run Text="새 하드웨어 대비 (Universal Restore)" FontWeight="SemiBold" />
                                 <Run Text=" — 클론한 시스템을 다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
                     </WrapPanel>
@@ -264,7 +264,7 @@
                             <TextBlock>
                                 <Run Text="파티션 리사이즈 (확대)" FontWeight="SemiBold" />
                                 <Run Text=" — 대상이 더 클 때 고른 파티션을 넓히고 뒤 파티션을 밀어냅니다"
-                                     Style="{StaticResource Micro}" />
+                                     FontSize="11" Foreground="{StaticResource Muted}" />
                             </TextBlock>
                         </CheckBox>
 
@@ -282,10 +282,10 @@
                                 <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeMode"
                                              IsChecked="{Binding ResizeFillRemaining}"
                                              Content="남는 공간 전부" VerticalContentAlignment="Center"
-                                             Margin="0,0,16,0" Style="{StaticResource Caption}" />
+                                             Margin="0,0,16,0" FontSize="12" />
                                 <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeMode"
                                              Content="새 총 크기(GB):" VerticalContentAlignment="Center"
-                                             Margin="0,0,6,0" Style="{StaticResource Caption}" />
+                                             Margin="0,0,6,0" FontSize="12" />
                                 <TextBox Width="70" Text="{Binding ResizeSizeGb}" VerticalContentAlignment="Center"
                                          IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
                             </StackPanel>
