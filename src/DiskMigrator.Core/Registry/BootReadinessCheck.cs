@@ -219,6 +219,8 @@ public static class BootReadinessCheck
         items.Add(new($"OS 로더 ({loaderName})", hasLoader, BootCheckSeverity.Fatal,
             hasLoader ? loader : $"없음 — BCD가 가리키는 OS 로더가 실제로 없습니다."));
 
+        CheckHibernationImage(input.WindowsRoot, items);
+
         string systemHive = Path.Combine(sys32, "config", "SYSTEM");
         if (!SafeFileExists(systemHive))
         {
@@ -227,6 +229,34 @@ public static class BootReadinessCheck
             return;
         }
         AnalyzeSystemHive(systemHive, input.Uefi, items);
+    }
+
+    /// <summary>
+    /// 최대 절전 이미지(<c>hiberfil.sys</c>)가 남아 있는지 — 사본에서는 부팅을 막습니다.
+    /// </summary>
+    /// <remarks>
+    /// Windows는 기본값인 <b>빠른 시작</b>으로 종료할 때 커널 상태를 <c>hiberfil.sys</c>에
+    /// 저장하고, 다음 부팅에서 정상 부팅 대신 <c>winresume.exe</c>로 그 상태를 복원합니다.
+    ///
+    /// <para>저장된 커널 상태는 <b>원래 하드웨어를 전제</b>합니다. 사본을 다른 메인보드에서
+    /// 켜면 복원 도중 그대로 멈춥니다 — 오류 문구도 없이 검은 화면이라, 부트로더·BCD·드라이버가
+    /// 모두 정상인데도 원인을 찾을 수 없습니다(실기에서 규명).</para>
+    ///
+    /// <para>같은 하드웨어라도 위험합니다. 원본은 복제 후에도 계속 돌아가므로, 사본의 이미지가
+    /// 기억하는 파일시스템 상태와 실제 디스크 내용이 어긋나 손상될 수 있습니다.
+    /// <b>사본에서는 언제나 꺼야 합니다.</b></para>
+    /// </remarks>
+    private static void CheckHibernationImage(string windowsRoot, List<BootCheckItem> items)
+    {
+        string hiberfil = Path.Combine(windowsRoot, "hiberfil.sys");
+        bool exists = SafeFileExists(hiberfil);
+
+        items.Add(new("최대 절전 이미지 (빠른 시작)", !exists, BootCheckSeverity.Fatal,
+            exists
+                ? "hiberfil.sys 가 남아 있습니다 — 원본이 빠른 시작으로 종료된 사본입니다. " +
+                  "이대로 부팅하면 저장된 커널 상태를 다른 하드웨어에서 복원하려다 " +
+                  "오류 문구 없이 검은 화면에서 멈춥니다. '부팅 복구'가 재개를 끄고 이미지를 지웁니다."
+                : "없음 — 정상 부팅합니다."));
     }
 
     private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, uint? mbrSignature, List<BootCheckItem> items)

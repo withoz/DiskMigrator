@@ -107,9 +107,11 @@ public sealed class BootRepair(ILogger? logger = null)
                     return new(false, $"bcdedit 설정 실패: {id} {element}. {output.Trim()}", steps);
             }
 
+            string hibernation = DisableResume(bcd, winLetter, steps);
+
             return new(true,
                 $"BCD 장치 참조를 이 디스크({(uefi ? "ESP" : "활성 파티션")} {espLetter}:, " +
-                $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.",
+                $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.{hibernation}",
                 steps);
         }
         catch (Exception ex)
@@ -117,6 +119,7 @@ public sealed class BootRepair(ILogger? logger = null)
             _logger.LogError(ex, "부팅 복구 중 오류.");
             return new(false, $"복구 중 오류: {ex.Message}", steps);
         }
+
         finally
         {
             if (espTemp is { } e) TryRemoveLetter(e);
@@ -162,6 +165,71 @@ public sealed class BootRepair(ILogger? logger = null)
     }
 
     /// <summary>기본 로더의 resumeobject GUID를 bcdedit 출력에서 파싱합니다. 없으면 null.</summary>
+    /// <summary>
+    /// 사본이 최대 절전 이미지에서 재개하지 않게 하고, 남은 이미지를 지웁니다.
+    /// </summary>
+    /// <remarks>
+    /// Windows는 기본값인 빠른 시작으로 종료할 때 커널 상태를 <c>hiberfil.sys</c>에 저장하고
+    /// 다음 부팅에서 그것을 복원합니다. 저장된 상태는 원래 하드웨어를 전제하므로, 사본을 다른
+    /// 메인보드에서 켜면 <b>오류 문구 없이 검은 화면에서 멈춥니다</b> — 부트로더·BCD·드라이버가
+    /// 모두 정상인데도 원인을 알 수 없는 상태가 됩니다(실기에서 규명).
+    ///
+    /// <para><c>hiberboot</c>도 함께 끕니다. 켜 둔 채로 두면 사본에서 한 번 종료할 때 이미지가
+    /// 다시 생겨 같은 문제가 되돌아옵니다.</para>
+    ///
+    /// <para>실패해도 복구 전체를 실패로 만들지 않습니다 — 장치 참조 복구는 이미 끝났고,
+    /// 이쪽은 그 위의 추가 조치입니다.</para>
+    /// </remarks>
+    private string DisableResume(string bcdPath, char winLetter, List<string> steps)
+    {
+        try
+        {
+            foreach (string element in new[] { "resume", "hiberboot" })
+            {
+                var (code, output) = RunBcdedit("/store", bcdPath, "/set", "{bootmgr}", element, "No");
+                steps.Add($"set {{bootmgr}} {element} No → {(code == 0 ? "OK" : $"실패({code}): {output.Trim()}")}");
+            }
+
+            string hiberfil = Path.Combine($"{winLetter}:\\", "hiberfil.sys");
+            if (!File.Exists(hiberfil))
+            {
+                steps.Add("hiberfil.sys 없음");
+                return " 재개(빠른 시작)도 껐습니다.";
+            }
+
+            // 시스템·숨김 속성과 소유권 때문에 그냥은 지워지지 않습니다.
+            RunProcess("takeown.exe", "/F", hiberfil, "/A");
+            RunProcess("icacls.exe", hiberfil, "/grant", "*S-1-5-32-544:(F)");
+            File.SetAttributes(hiberfil, FileAttributes.Normal);
+            File.Delete(hiberfil);
+
+            steps.Add("hiberfil.sys 삭제");
+            return " 재개(빠른 시작)를 끄고 최대 절전 이미지를 지웠습니다.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "최대 절전 이미지 정리에 실패했습니다.");
+            steps.Add($"최대 절전 정리 실패: {ex.Message}");
+            return " (최대 절전 이미지는 정리하지 못했습니다 — 사본이 검은 화면에서 멈추면 " +
+                   "hiberfil.sys 를 지우십시오.)";
+        }
+    }
+
+    private static void RunProcess(string exe, params string[] args)
+    {
+        var psi = new ProcessStartInfo(exe)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (string a in args) psi.ArgumentList.Add(a);
+
+        using var proc = Process.Start(psi);
+        proc?.WaitForExit();
+    }
+
     private string? ReadResumeObject(string bcdPath)
     {
         var (code, output) = RunBcdedit("/store", bcdPath, "/enum", "{default}");

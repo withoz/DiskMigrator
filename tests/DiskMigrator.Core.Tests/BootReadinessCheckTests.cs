@@ -99,6 +99,37 @@ public class BootReadinessCheckTests
         Assert.Null(item.Passed);
     }
 
+    /// <summary>
+    /// 실기에서 가장 진단하기 어려웠던 실패입니다. 부트로더·BCD·드라이버가 전부 정상인데
+    /// 사본이 오류 문구 하나 없이 검은 화면에서 멈췄습니다 — 원본이 빠른 시작으로 종료돼
+    /// 저장된 커널 상태를 다른 하드웨어에서 복원하려던 것이었습니다.
+    /// </summary>
+    [Fact]
+    public void 최대_절전_이미지가_남아_있으면_부팅_불가로_판정된다()
+    {
+        using var layout = DiskLayout.CreateHealthyUefi();
+        File.WriteAllText(Path.Combine(layout.WindowsRoot, "hiberfil.sys"), "saved kernel state");
+
+        var report = BootReadinessCheck.Inspect(layout.Input);
+
+        Assert.False(report.WouldBoot);
+        var item = report.Items.Single(i => i.Name.StartsWith("최대 절전"));
+        Assert.False(item.Passed);
+        Assert.Equal(BootCheckSeverity.Fatal, item.Severity);
+        Assert.Contains("검은 화면", item.Detail);
+    }
+
+    [Fact]
+    public void 최대_절전_이미지가_없으면_통과한다()
+    {
+        using var layout = DiskLayout.CreateHealthyUefi();
+
+        var report = BootReadinessCheck.Inspect(layout.Input);
+
+        var item = report.Items.Single(i => i.Name.StartsWith("최대 절전"));
+        Assert.True(item.Passed);
+    }
+
     [Fact]
     public void 부트로더가_없으면_부팅_불가로_판정된다()
     {
