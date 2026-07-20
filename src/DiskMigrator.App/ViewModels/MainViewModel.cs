@@ -159,25 +159,27 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStart))]
+    [NotifyPropertyChangedFor(nameof(BlockedReason))]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     private bool _canProceed;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStart))]
     [NotifyPropertyChangedFor(nameof(ConfirmationPrompt))]
+    [NotifyPropertyChangedFor(nameof(BlockedReason))]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     private bool _needsConfirmation;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStart))]
+    [NotifyPropertyChangedFor(nameof(BlockedReason))]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     private string _confirmationText = "";
 
     public string ConfirmationPrompt =>
         SelectedTarget is null
             ? ""
-            : $"위 디스크의 모든 데이터가 영구히 삭제됩니다. 계속하려면 대상 디스크의 모델명을 " +
-              $"그대로 입력하십시오:  {SelectedTarget.Model}";
+            : $"계속하려면 대상 디스크의 모델명을 그대로 입력하십시오 — {SelectedTarget.Model}";
 
     /// <summary>
     /// 시작 버튼을 누를 수 있는지. 차단 사유가 없고, 확인이 필요하면 모델명이 정확히 입력돼야 합니다.
@@ -193,6 +195,38 @@ public sealed partial class MainViewModel : ObservableObject
                    SafetyGuard.IsConfirmationValid(SelectedTarget.Disk, ConfirmationText);
         }
     }
+
+    /// <summary>
+    /// 시작 버튼이 비활성인 이유. 회색 버튼만 보여주고 이유를 말하지 않으면 사용자는
+    /// 무엇을 더 해야 하는지 알 수 없습니다. 누를 수 있으면 빈 문자열입니다.
+    /// </summary>
+    public string BlockedReason
+    {
+        get
+        {
+            if (SelectedSource is null && SelectedTarget is null) return "원본과 대상 디스크를 고르십시오.";
+            if (SelectedSource is null) return "원본 디스크를 고르십시오.";
+            if (SelectedTarget is null) return "대상 디스크를 고르십시오.";
+
+            if (!CanProceed)
+            {
+                var blocker = SafetyIssues.FirstOrDefault(i => i.Severity == SafetySeverity.Blocker);
+                return blocker is null
+                    ? "안전 검사를 통과하지 못했습니다."
+                    : $"차단됨 — {blocker.Message}";
+            }
+
+            if (NeedsConfirmation &&
+                !SafetyGuard.IsConfirmationValid(SelectedTarget.Disk, ConfirmationText))
+            {
+                return "확인 입력이 아직 완료되지 않아 시작할 수 없습니다.";
+            }
+
+            return "";
+        }
+    }
+
+    public bool HasBlockedReason => BlockedReason.Length > 0;
 
     // --- 진행 상황 ---------------------------------------------------------
 
@@ -360,7 +394,10 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (SelectedSource is null || SelectedTarget is null)
         {
+            // "원본 디스크를 고르십시오" 같은 안내도 여기서 갱신돼야 합니다.
             OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(BlockedReason));
+            OnPropertyChanged(nameof(HasBlockedReason));
             StartCommand.NotifyCanExecuteChanged();
             return;
         }
@@ -376,6 +413,10 @@ public sealed partial class MainViewModel : ObservableObject
 
         CanProceed = report.CanProceed;
         NeedsConfirmation = report.NeedsTypedConfirmation;
+
+        // 차단 사유 문구는 SafetyIssues 내용에 따라 달라지므로 목록을 채운 뒤 알립니다.
+        OnPropertyChanged(nameof(BlockedReason));
+        OnPropertyChanged(nameof(HasBlockedReason));
 
         UpdateResizeChoices();
 
