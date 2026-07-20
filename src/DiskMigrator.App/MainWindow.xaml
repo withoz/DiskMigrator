@@ -50,7 +50,7 @@
                     </StackPanel>
                 </DockPanel>
 
-                <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" CornerRadius="4"
+                <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1" CornerRadius="6"
                         Background="{StaticResource SurfaceAlt}" Padding="2" ClipToBounds="True">
                     <ItemsControl ItemsSource="{Binding Segments}" ClipToBounds="True">
                         <ItemsControl.ItemsPanel>
@@ -60,7 +60,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Height="44" Margin="0,0,1,0" CornerRadius="2"
+                                <Border Height="44" Margin="0,0,1,0" CornerRadius="3"
                                         Background="{Binding Fill}" ToolTip="{Binding Tooltip}">
                                     <Border.Width>
                                         <MultiBinding Converter="{StaticResource FractionToWidth}">
@@ -106,7 +106,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="0,0,14,3" ToolTip="{Binding Tooltip}">
-                                <Border Width="9" Height="9" CornerRadius="2" Background="{Binding Fill}"
+                                <Border Width="9" Height="9" CornerRadius="3" Background="{Binding Fill}"
                                         VerticalAlignment="Center" Margin="0,0,5,0" />
                                 <TextBlock VerticalAlignment="Center" Style="{StaticResource Micro}" Foreground="{StaticResource TextBrush}">
                                     <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
@@ -151,7 +151,7 @@
 
                 <Border HorizontalAlignment="Right" VerticalAlignment="Center"
                         Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
-                        CornerRadius="4" Padding="10,5"
+                        CornerRadius="6" Padding="10,5"
                         Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Text="관리자 권한 아님 — 클론을 실행할 수 없습니다"
                                Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" FontWeight="SemiBold" />
@@ -394,7 +394,7 @@
 
             <!-- 하단 패널 -->
             <Border Grid.Row="1" Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
-                    BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,16,0,0">
+                    BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,16,0,0">
                 <StackPanel>
 
                     <TextBlock Text="{Binding LoadError}" Foreground="{StaticResource Danger}"
@@ -443,7 +443,7 @@
                         무엇을 더 해야 하는지 알 수 없었습니다 — 이제 이유를 바로 옆에 적습니다.
                     -->
                     <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
-                            CornerRadius="8" Padding="14" Margin="0,6,0,0">
+                            CornerRadius="10" Padding="14" Margin="0,6,0,0">
                         <StackPanel>
                             <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
                                        Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,9"
@@ -482,7 +482,7 @@
         <Grid Grid.Row="1" Margin="24"
               Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Running}">
             <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
-                    BorderThickness="1" CornerRadius="8" Padding="40"
+                    BorderThickness="1" CornerRadius="10" Padding="40"
                     VerticalAlignment="Center" MaxWidth="720">
                 <StackPanel>
                     <TextBlock Text="{Binding ProgressPhase}" Style="{StaticResource Heading}"
@@ -541,7 +541,7 @@
         <Grid Grid.Row="1" Margin="24"
               Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Finished}">
             <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
-                    BorderThickness="1" CornerRadius="8" Padding="40"
+                    BorderThickness="1" CornerRadius="10" Padding="40"
                     VerticalAlignment="Center" MaxWidth="760">
                 <StackPanel>
                     <TextBlock Text="{Binding ResultTitle}" TextWrapping="Wrap">

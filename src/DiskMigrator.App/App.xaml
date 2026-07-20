@@ -175,36 +175,42 @@
         <DataTemplate x:Key="DiskItemTemplate">
             <Border Padding="10,8" Background="Transparent">
                 <StackPanel>
+                    <!--
+                        배지를 이름·용량과 같은 줄에 둡니다. 따로 줄을 차지하면 항목마다 한 줄이
+                        늘어나 목록에 보이는 디스크 수가 줄어듭니다 — 이 화면에서 가장 중요한 게
+                        목록이므로 세로 공간을 아낍니다.
+                        지우면 곤란한 디스크는 빨강, 단순 사실은 파랑으로 성격을 가릅니다.
+                    -->
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Model}" Style="{StaticResource Subtitle}"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                                   TextTrimming="CharacterEllipsis" MaxWidth="260"
+                                   VerticalAlignment="Center" />
                         <TextBlock Text="{Binding SizeText}" Margin="8,0,0,0"
                                    Style="{StaticResource Subtitle}"
-                                   Foreground="{StaticResource Accent}" />
-                    </StackPanel>
+                                   Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
 
-                    <TextBlock Text="{Binding DetailText}" Style="{StaticResource Micro}"
-                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-
-                    <!-- 지우면 곤란한 디스크는 빨강, 단순 사실은 파랑 -->
-                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}"
-                                BorderThickness="1" CornerRadius="3" Padding="5,1" Margin="0,0,5,0"
+                                BorderThickness="1" CornerRadius="3" Padding="5,0" Margin="8,0,0,0"
+                                VerticalAlignment="Center"
                                 Visibility="{Binding HasWarningBadges, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding WarningBadgeText}" Style="{StaticResource Micro}"
                                        FontWeight="SemiBold" Foreground="{StaticResource Danger}" />
                         </Border>
 
                         <Border BorderBrush="{StaticResource Info}" BorderThickness="1"
-                                CornerRadius="3" Padding="5,1"
+                                CornerRadius="3" Padding="5,0" Margin="5,0,0,0"
+                                VerticalAlignment="Center"
                                 Visibility="{Binding HasInfoBadges, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding InfoBadgeText}" Style="{StaticResource Micro}"
                                        FontWeight="SemiBold" Foreground="{StaticResource Info}" />
                         </Border>
                     </StackPanel>
 
+                    <TextBlock Text="{Binding DetailText}" Style="{StaticResource Micro}"
+                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+
                     <TextBlock Text="{Binding PartitionSummary}" Style="{StaticResource Caption}"
-                               Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
         </DataTemplate>
