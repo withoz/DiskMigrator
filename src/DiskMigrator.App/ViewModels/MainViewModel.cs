@@ -100,14 +100,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _universalRestore;
 
-    /// <summary>
-    /// 작은 디스크를 큰 디스크로 복제한 뒤, 남는 미할당 공간을 마지막 파티션에 합칠지.
-    /// 클론 중에는 대상 볼륨 접근 제약으로 best-effort이며, 안 되면 미할당 공간이 남습니다
-    /// (대상을 단독 연결한 뒤 디스크 관리의 '볼륨 확장'으로 마무리).
-    /// </summary>
-    [ObservableProperty] private bool _expandLastPartition;
-
-    // --- 파티션 리사이즈 (확대) --------------------------------------------
+    // --- 남는 공간 처리 ----------------------------------------------------
+    //
+    // 세 방법은 같은 질문("남는 공간을 누구에게?")의 답이라 배타적입니다. 예전에는 별개
+    // 체크박스라 둘 다 켤 수 있었고, 그러면 하나가 조용히 무시됐습니다.
 
     /// <summary>확대할 후보 파티션 목록(원본의 NTFS 파티션).</summary>
     public ObservableCollection<PartitionChoiceViewModel> ResizablePartitions { get; } = [];
@@ -117,8 +113,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private DiskLayoutViewModel? _targetLayout;
 
-    /// <summary>파티션 리사이즈(확대)를 사용할지. 대상이 원본보다 클 때만 켤 수 있습니다.</summary>
-    [ObservableProperty] private bool _resizeEnabled;
+    /// <summary>남는 공간을 미할당으로 남길지(기본).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGrowDetails))]
+    private bool _freeSpaceLeave = true;
+
+    /// <summary>남는 공간을 마지막 파티션에 합칠지.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGrowDetails))]
+    private bool _freeSpaceExpandLast;
+
+    /// <summary>고른 파티션을 넓힐지. GPT 원본이고 대상이 더 클 때만 고를 수 있습니다.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGrowDetails))]
+    private bool _freeSpaceGrowPartition;
+
+    /// <summary>'고른 파티션 넓히기'를 골랐을 때만 파티션·크기 입력을 보여줍니다.</summary>
+    public bool ShowGrowDetails => FreeSpaceGrowPartition;
 
     [ObservableProperty] private PartitionChoiceViewModel? _selectedResizePartition;
 
@@ -395,12 +406,43 @@ public sealed partial class MainViewModel : ObservableObject
             ResizablePartitions.FirstOrDefault(c => c.Number == previous) ?? ResizablePartitions.FirstOrDefault();
 
         OnPropertyChanged(nameof(CanResize));
+        OnPropertyChanged(nameof(HasFreeSpace));
+        OnPropertyChanged(nameof(FreeSpaceText));
 
-        // 대상이 더 이상 크지 않거나 후보가 없으면 리사이즈를 끕니다.
-        if (ResizeEnabled && !CanResize) ResizeEnabled = false;
+        // 대상이 더 이상 크지 않거나 후보가 없으면 '고른 파티션 넓히기'를 끄고 기본으로 되돌립니다.
+        // 고를 수 없게 된 방식이 선택된 채로 남으면 시작할 때 엉뚱하게 실패합니다.
+        if (FreeSpaceGrowPartition && !CanResize)
+        {
+            FreeSpaceGrowPartition = false;
+            FreeSpaceLeave = true;
+        }
+
+        // 남는 공간이 아예 없으면 선택 자체가 의미 없으므로 기본으로 되돌립니다.
+        if (!HasFreeSpace && !FreeSpaceLeave)
+        {
+            FreeSpaceExpandLast = false;
+            FreeSpaceGrowPartition = false;
+            FreeSpaceLeave = true;
+        }
     }
 
-    partial void OnResizeEnabledChanged(bool value)
+    /// <summary>대상이 원본보다 커서 남는 공간이 생기는지.</summary>
+    public bool HasFreeSpace =>
+        SelectedSource is not null && SelectedTarget is not null &&
+        SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes;
+
+    /// <summary>"남는 공간 2.73 TB 를 어떻게 할까요" — 무엇에 대한 선택인지 바로 알 수 있게.</summary>
+    public string FreeSpaceText
+    {
+        get
+        {
+            if (!HasFreeSpace) return "";
+            long free = SelectedTarget!.Disk.SizeBytes - SelectedSource!.Disk.SizeBytes;
+            return $"남는 공간 {SizeFormatter.Format(free)} 를 어떻게 할까요";
+        }
+    }
+
+    partial void OnFreeSpaceGrowPartitionChanged(bool value)
     {
         // 켰는데 아무 것도 안 골랐으면 첫 후보를 선택해 줍니다.
         if (value && SelectedResizePartition is null)
@@ -641,11 +683,18 @@ public sealed partial class MainViewModel : ObservableObject
         var source = SelectedSource.Disk;
         var target = SelectedTarget.Disk;
 
-        // 파티션 리사이즈(확대) 요청을 먼저 구성합니다. 입력이 잘못됐으면 대상에 아무것도 쓰지 않고
+        // 남는 공간 처리 방식을 먼저 정합니다. 입력이 잘못됐으면 대상에 아무것도 쓰지 않고
         // 여기서 멈춥니다 — 몇 시간짜리 작업을 시작한 뒤 잘못을 알리는 것보다 낫습니다.
+        var freeSpaceMode = FreeSpaceMode.Leave;
+        if (HasFreeSpace)
+        {
+            if (FreeSpaceGrowPartition && CanResize) freeSpaceMode = FreeSpaceMode.GrowPartition;
+            else if (FreeSpaceExpandLast) freeSpaceMode = FreeSpaceMode.ExpandLast;
+        }
+
         PartitionGrowRequest? growRequest = null;
         _grownPartitionNumber = null;
-        if (ResizeEnabled && CanResize && SelectedResizePartition is { } choice)
+        if (freeSpaceMode == FreeSpaceMode.GrowPartition && SelectedResizePartition is { } choice)
         {
             long? newBytes = null;
 
@@ -671,6 +720,17 @@ public sealed partial class MainViewModel : ObservableObject
             growRequest = new PartitionGrowRequest(choice.Number, newBytes);
             _grownPartitionNumber = choice.Number;
         }
+        else if (freeSpaceMode == FreeSpaceMode.GrowPartition)
+        {
+            // 넓히기를 골랐는데 파티션이 없는 상태로는 시작하지 않습니다.
+            // 그냥 두면 아무 일도 안 하면서 사용자는 넓혀졌다고 믿게 됩니다.
+            Stage = AppStage.Finished;
+            ShowFailure(
+                "넓힐 파티션을 고르지 않았습니다",
+                "'고른 파티션 넓히기'를 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.",
+                "대상 디스크에는 아무것도 쓰지 않았습니다.");
+            return;
+        }
 
         _cts = new CancellationTokenSource();
         _pause = new PauseController();
@@ -691,7 +751,7 @@ public sealed partial class MainViewModel : ObservableObject
                 : BadSectorPolicy.Abort,
             VerifyAfterClone = VerifyAfterClone,
             SkipUnusedBlocks = SkipUnusedBlocks,
-            ExpandLastPartition = ExpandLastPartition,
+            FreeSpace = freeSpaceMode,
             GrowRequest = growRequest,
         };
 

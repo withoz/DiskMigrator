@@ -238,6 +238,72 @@
                 </DockPanel>
 
                 <!--
+                    남는 공간 처리 — 대상 막대 바로 아래(오른쪽 칸). 디스크를 보는 자리와
+                    결정하는 자리를 같게 둡니다. 옵션 영역까지 내려가면 무엇에 대한 선택인지
+                    다시 떠올려야 합니다.
+
+                    세 방법은 같은 질문의 답이라 라디오로 묶었습니다. 예전에는 별개 체크박스라
+                    둘 다 켤 수 있었고, 그러면 하나가 조용히 무시됐습니다.
+                    남는 공간이 없으면 묶음 전체를 숨깁니다 — 고를 이유가 없습니다.
+                -->
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,18,0,0"
+                            Visibility="{Binding HasFreeSpace, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding FreeSpaceText}" Style="{StaticResource StepTitle}"
+                               Margin="0,0,0,10" TextWrapping="Wrap" />
+
+                    <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceLeave}"
+                                 VerticalContentAlignment="Top" Margin="0,0,0,9">
+                        <StackPanel>
+                            <TextBlock Text="그대로 둡니다" Style="{StaticResource Body}" />
+                            <TextBlock Text="미할당으로 남겨 두고, 나중에 디스크 관리에서 씁니다"
+                                       Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceExpandLast}"
+                                 VerticalContentAlignment="Top" Margin="0,0,0,9">
+                        <StackPanel>
+                            <TextBlock Text="마지막 파티션에 합치기" Style="{StaticResource Body}" />
+                            <TextBlock Text="간단하고 안전합니다 · MBR 디스크도 가능. 다만 맨 뒤가 복구 파티션이면 그것이 커집니다"
+                                       Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceGrowPartition}"
+                                 IsEnabled="{Binding CanResize}"
+                                 VerticalContentAlignment="Top" Margin="0,0,0,4">
+                        <StackPanel>
+                            <TextBlock Text="고른 파티션 넓히기" Style="{StaticResource Body}" />
+                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT 원본만"
+                                       Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <StackPanel Margin="24,4,0,0"
+                                Visibility="{Binding ShowGrowDetails, Converter={StaticResource BoolToVisibility}}">
+                        <ComboBox MinWidth="240" HorizontalAlignment="Left" Margin="0,0,0,6"
+                                  ItemsSource="{Binding ResizablePartitions}"
+                                  SelectedItem="{Binding SelectedResizePartition}"
+                                  DisplayMemberPath="Label" />
+
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeSize"
+                                         IsChecked="{Binding ResizeFillRemaining}"
+                                         Content="남는 공간 전부" VerticalContentAlignment="Center"
+                                         Margin="0,0,14,0" FontSize="12" />
+                            <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeSize"
+                                         Content="새 총 크기(GB):" VerticalContentAlignment="Center"
+                                         Margin="0,0,6,0" FontSize="12" />
+                            <TextBox Width="70" Text="{Binding ResizeSizeGb}" VerticalContentAlignment="Center"
+                                     IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
+                        </StackPanel>
+
+                        <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,6,0,0"
+                                   Text="'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 클론 중 자동 확장이 안 되면 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 넓힐 수 있습니다." />
+                    </StackPanel>
+                </StackPanel>
+
+                <!--
                     ② 옵션 — 원본 막대 아래(왼쪽 칸). 원본 쪽은 볼 것만 있어 세로 공간이 남고,
                     결정할 것이 있는 대상 쪽만 길어지던 불균형을 여기서 해소합니다.
                     설명을 라벨 아래로 내려 행이 화면 끝까지 늘어나지 않게 했습니다.
@@ -308,53 +374,9 @@
                                 </StackPanel>
                             </CheckBox>
 
-                            <CheckBox IsChecked="{Binding ExpandLastPartition}"
-                                      VerticalContentAlignment="Top" Margin="0,0,0,9">
-                                <StackPanel>
-                                    <TextBlock Text="마지막 파티션 확장" Style="{StaticResource Body}" />
-                                    <TextBlock Text="큰 디스크로 복제 시 남는 공간을 마지막 파티션에 합침"
-                                               Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
-                                </StackPanel>
-                            </CheckBox>
                         </StackPanel>
                     </Grid>
 
-                    <!-- 파티션 리사이즈 (확대) — 대상이 원본보다 클 때만 -->
-                    <StackPanel Margin="0,4,0,0" IsEnabled="{Binding CanResize}">
-                        <CheckBox IsChecked="{Binding ResizeEnabled}" VerticalContentAlignment="Top">
-                            <StackPanel>
-                                <TextBlock Text="파티션 리사이즈 (확대)" Style="{StaticResource Body}" />
-                                <TextBlock Text="대상이 더 클 때 고른 파티션을 넓히고 뒤 파티션을 밀어냅니다"
-                                           Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
-                            </StackPanel>
-                        </CheckBox>
-
-                        <StackPanel Margin="24,8,0,0"
-                                    Visibility="{Binding ResizeEnabled, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="확대할 파티션:" VerticalAlignment="Center"
-                                           Margin="0,0,8,0" Style="{StaticResource Caption}" />
-                                <ComboBox MinWidth="260" ItemsSource="{Binding ResizablePartitions}"
-                                          SelectedItem="{Binding SelectedResizePartition}"
-                                          DisplayMemberPath="Label" />
-                            </StackPanel>
-
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeMode"
-                                             IsChecked="{Binding ResizeFillRemaining}"
-                                             Content="남는 공간 전부" VerticalContentAlignment="Center"
-                                             Margin="0,0,16,0" FontSize="12" />
-                                <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeMode"
-                                             Content="새 총 크기(GB):" VerticalContentAlignment="Center"
-                                             Margin="0,0,6,0" FontSize="12" />
-                                <TextBox Width="70" Text="{Binding ResizeSizeGb}" VerticalContentAlignment="Center"
-                                         IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
-                            </StackPanel>
-
-                            <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,6,0,0"
-                                       Text="'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 클론 중 자동 확장이 안 되면 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 확대할 수 있습니다." />
-                        </StackPanel>
-                    </StackPanel>
                 </StackPanel>
             </Grid>
 

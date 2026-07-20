@@ -71,8 +71,16 @@ public sealed class CloneOrchestrator(
 
         // 리사이즈 요청이 있으면 지금(원본 최신 상태)에 맞춰 배치를 계산합니다. 대상이 원본보다
         // 커야 하고, 계획기가 확대 규칙(정렬·겹침·초과)을 검증합니다.
+        // 남는 공간 처리 방식이 GrowPartition이면 어느 파티션을 넓힐지 반드시 있어야 합니다.
+        // 없는 채로 진행하면 아무 일도 안 하면서 사용자는 넓혀졌다고 믿게 됩니다.
+        if (options.FreeSpace == FreeSpaceMode.GrowPartition && options.GrowRequest is null)
+        {
+            throw new InvalidOperationException(
+                "넓힐 파티션을 고르지 않았습니다. 파티션을 고르거나 다른 방식을 선택하십시오.");
+        }
+
         ResizeLayout? resizeLayout = null;
-        if (options.GrowRequest is { } growRequest)
+        if (options.FreeSpace == FreeSpaceMode.GrowPartition && options.GrowRequest is { } growRequest)
         {
             // 리사이즈는 GPT 전용입니다. MBR은 파티션 테이블을 다시 쓰는 GptRewriter가 동작하지
             // 않아, 파티션을 새 위치로 옮겨 놓고도 테이블은 옛 위치를 가리켜 배치가 깨집니다.
@@ -186,15 +194,16 @@ public sealed class CloneOrchestrator(
             }
         }
 
-        // 클론이 성공했으면 파티션을 확장합니다.
-        // - 리사이즈: 확대한 파티션의 NTFS를 시프트로 확보한 뒤 공간까지 늘립니다.
-        // - 일반: 요청 시 남는 공간을 마지막 파티션에 합칩니다(GPT 보정이 만든 미할당 공간).
-        // 배치가 깨진 리사이즈 클론에서는 파티션을 확장하지 않습니다. 파티션 테이블이 옛 위치를
-        // 가리키는 디스크에 extend를 걸면 엉뚱한 파티션을 건드릴 수 있고, 어차피 못 쓰는 사본입니다.
+        // 남는 공간 처리 — 고른 방식 하나만 실행합니다.
+        //
+        // 예전에는 "리사이즈"와 "마지막 파티션 확장"이 별개 불리언이라 둘 다 켜면 리사이즈가
+        // 이기고 다른 하나는 조용히 버려졌습니다. 이제 모드가 하나뿐이라 그 조합이 없습니다.
+        //
+        // 배치가 깨진 리사이즈 클론에서는 확장하지 않습니다. 파티션 테이블이 옛 위치를 가리키는
+        // 디스크에 extend를 걸면 엉뚱한 파티션을 건드릴 수 있고, 어차피 못 쓰는 사본입니다.
         PartitionExpandResult? partitionExpand = null;
         bool cloneOk = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
-        if (cloneOk && !resizeLayoutCorrupted &&
-            (resizeLayout?.GrownPartition is not null || options.ExpandLastPartition))
+        if (cloneOk && !resizeLayoutCorrupted && options.FreeSpace != FreeSpaceMode.Leave)
         {
             try
             {

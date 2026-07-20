@@ -3,6 +3,31 @@ using DiskMigrator.Core.Partitioning;
 
 namespace DiskMigrator.Core.Engine;
 
+/// <summary>
+/// 큰 대상으로 복제했을 때 남는 공간을 어떻게 할지 — 하나만 고를 수 있습니다.
+/// </summary>
+/// <remarks>
+/// 세 방법은 같은 질문의 답이라 <b>배타적</b>입니다. 별개 스위치로 두면 동시에 켤 수 있고,
+/// 그러면 하나가 조용히 무시되어 사용자가 고른 것과 다른 결과가 나옵니다.
+/// </remarks>
+public enum FreeSpaceMode
+{
+    /// <summary>미할당으로 남깁니다. 나중에 디스크 관리에서 쓸 수 있습니다.</summary>
+    Leave,
+
+    /// <summary>
+    /// 빈 공간 <b>바로 앞</b>(마지막) 파티션을 늘립니다. 파티션을 옮기지 않아 간단하고 MBR도 됩니다.
+    /// 다만 마지막 파티션이 복구 파티션이면 엉뚱한 것이 커지므로 주의해야 합니다.
+    /// </summary>
+    ExpandLast,
+
+    /// <summary>
+    /// <b>고른 파티션</b>을 넓히고 그 뒤 파티션들을 오른쪽으로 밉니다. C: 처럼 중간에 있는
+    /// 파티션도 넓힐 수 있지만, GPT를 다시 써야 하므로 GPT 원본만 지원합니다.
+    /// </summary>
+    GrowPartition,
+}
+
 public sealed class CloneOptions
 {
     /// <summary>
@@ -36,10 +61,14 @@ public sealed class CloneOptions
     public bool SkipUnusedBlocks { get; init; }
 
     /// <summary>
-    /// 작은 디스크를 큰 디스크로 복제한 뒤, 남는 미할당 공간을 <b>마지막 파티션에 합칠지</b>.
-    /// GPT 파티션 엔트리를 디스크 끝까지 늘리고 NTFS 볼륨을 그 크기까지 확장합니다.
+    /// 대상에 남는 공간을 어떻게 할지. <see cref="GrowRequest"/>와 짝을 이룹니다.
     /// </summary>
-    public bool ExpandLastPartition { get; init; }
+    /// <remarks>
+    /// 예전에는 "마지막 파티션 확장"과 "파티션 리사이즈"가 <b>별개 불리언</b>이었습니다. 사실은
+    /// 같은 질문("남는 공간을 누구에게?")의 답인데 둘 다 켤 수 있었고, 그러면 리사이즈가 이기고
+    /// 다른 하나는 <b>조용히 무시</b>됐습니다. 하나의 모드로 합쳐 그 조합 자체를 없앴습니다.
+    /// </remarks>
+    public FreeSpaceMode FreeSpace { get; init; } = FreeSpaceMode.Leave;
 
     /// <summary>
     /// 스마트 클론에서 건너뛴 여유 공간을 대상에서 0으로 채울지. 켜지 않으면 대상의 그 영역엔
@@ -48,11 +77,14 @@ public sealed class CloneOptions
     public bool ZeroFreeSpace { get; init; }
 
     /// <summary>
-    /// 지정한 파티션을 <b>확대</b>하며 복제할지(파티션 리사이즈). 설정하면 대상에서 이 파티션을
-    /// 넓히고 그 뒤 파티션들을 오른쪽으로 밀어 배치합니다. 대상이 원본보다 커야 하며, 확대된
-    /// 파티션은 클론 후 NTFS를 그 크기까지 확장합니다. <c>null</c>이면 원본 레이아웃 그대로 복제.
+    /// 넓힐 파티션과 크기. <see cref="FreeSpace"/>가 <see cref="FreeSpaceMode.GrowPartition"/>일 때만
+    /// 쓰이며, 그 경우 반드시 지정해야 합니다.
     /// </summary>
-    /// <remarks>축소(대상 &lt; 원본)는 지원하지 않습니다(파일시스템 인식 축소는 다음 버전).</remarks>
+    /// <remarks>
+    /// 설정하면 대상에서 이 파티션을 넓히고 그 뒤 파티션들을 오른쪽으로 밀어 배치합니다.
+    /// 대상이 원본보다 커야 하며, 확대된 파티션은 클론 후 NTFS를 그 크기까지 확장합니다.
+    /// 축소(대상 &lt; 원본)는 지원하지 않습니다(파일시스템 인식 축소는 다음 버전).
+    /// </remarks>
     public PartitionGrowRequest? GrowRequest { get; init; }
 
     /// <summary>진행률 콜백 최소 간격. UI 스레드를 초당 수천 번 깨우지 않기 위함.</summary>

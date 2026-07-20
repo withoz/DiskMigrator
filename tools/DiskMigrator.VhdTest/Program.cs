@@ -265,7 +265,8 @@ var options = new CloneOptions
     BufferSize = 4 * 1024 * 1024,
     VerifyAfterClone = verify,
     SkipUnusedBlocks = skipUnused,
-    ExpandLastPartition = expandLast,
+    FreeSpace = growPartition >= 0 ? FreeSpaceMode.GrowPartition
+            : expandLast ? FreeSpaceMode.ExpandLast : FreeSpaceMode.Leave,
     GrowRequest = growPartition >= 0 ? new PartitionGrowRequest(growPartition, growNewBytes) : null,
     BadSectorPolicy = BadSectorPolicy.Abort,
     ProgressInterval = TimeSpan.FromMilliseconds(500),
