@@ -46,6 +46,9 @@ public sealed partial class MainViewModel : ObservableObject
         IsElevated = _diskService.IsElevated;
         IsSnapshotAvailable = _snapshotProvider.IsAvailable;
         UseSnapshot = IsSnapshotAvailable;
+
+        // 스마트 클론은 스냅샷 볼륨의 할당 정보를 읽어야 하므로 스냅샷이 있을 때만 켭니다.
+        SkipUnusedBlocks = IsSnapshotAvailable;
     }
 
     // --- 상태 -------------------------------------------------------------
@@ -92,13 +95,18 @@ public sealed partial class MainViewModel : ObservableObject
     /// 빈 영역을 건너뛰고 사용 중인 블록만 복사할지(스마트 클론). 실데이터가 적으면 크게
     /// 빨라집니다. 스냅샷 모드에서만 효과가 있습니다.
     /// </summary>
+    /// <remarks>
+    /// 기본으로 켭니다. 대부분의 디스크는 실데이터가 용량보다 훨씬 적어 복제 시간이 크게
+    /// 줄고, 결과물은 통째 복사와 다르지 않습니다. 스냅샷이 없으면 엔진이 통째 복사로
+    /// 안전하게 되돌아가므로 켜 둬서 나빠질 것이 없습니다.
+    /// </remarks>
     [ObservableProperty] private bool _skipUnusedBlocks;
 
     /// <summary>
     /// 클론 후 대상 Windows를 하드웨어 독립화(Universal Restore)할지. 시스템 디스크를
     /// 다른 PC로 옮길 때 켭니다. 표준 저장소 드라이버를 부팅 시작으로 설정해 0x7B를 예방합니다.
     /// </summary>
-    [ObservableProperty] private bool _universalRestore;
+    [ObservableProperty] private bool _universalRestore = true;
 
     // --- 남는 공간 처리 ----------------------------------------------------
     //
@@ -134,7 +142,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowGrowDetails))]
     private bool _freeSpaceGrowPartition;
 
-    /// <summary>'고른 파티션 넓히기'를 골랐을 때만 파티션·크기 입력을 보여줍니다.</summary>
+    /// <summary>'파티션 조정'을 골랐을 때만 파티션·크기 입력을 보여줍니다.</summary>
     public bool ShowGrowDetails => FreeSpaceGrowPartition;
 
     [ObservableProperty] private PartitionChoiceViewModel? _selectedResizePartition;
@@ -186,7 +194,7 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedSource.Disk.PartitionStyle == PartitionStyle.Mbr &&
         (SelectedTarget.Disk.SizeBytes / SelectedTarget.Disk.LogicalSectorSize) - 1 > uint.MaxValue;
 
-    /// <summary>'고른 파티션 넓히기'가 회색인 이유. 쓸 수 있으면 빈 문자열.</summary>
+    /// <summary>'파티션 조정'이 회색인 이유. 쓸 수 있으면 빈 문자열.</summary>
     /// <remarks>
     /// 항목 설명에 "GPT 원본만"이라고 적어 두었지만 막는 조건은 네 가지입니다. 하나만 적어
     /// 두면 나머지 세 경우에는 왜 회색인지 알 방법이 없고, 적어 둔 그 하나조차 흘려보게 됩니다.
@@ -616,7 +624,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(HasFreeSpace));
         OnPropertyChanged(nameof(FreeSpaceText));
 
-        // 대상이 더 이상 크지 않거나 후보가 없으면 '고른 파티션 넓히기'를 끄고 기본으로 되돌립니다.
+        // 대상이 더 이상 크지 않거나 후보가 없으면 '파티션 조정'을 끄고 기본으로 되돌립니다.
         // 고를 수 없게 된 방식이 선택된 채로 남으면 시작할 때 엉뚱하게 실패합니다.
         if (FreeSpaceGrowPartition && !CanResize)
         {
@@ -770,7 +778,7 @@ public sealed partial class MainViewModel : ObservableObject
     // ResizeSizeGb로 흘러 기존 배선(FreeSpacePlanner → 미리보기·시작 버튼·엔진)을 그대로
     // 탑니다. 손잡이가 자기만의 계산으로 미리보기를 그리면 화면과 엔진이 또 갈라집니다.
 
-    /// <summary>손잡이를 보여줄지 — '고른 파티션 넓히기'로 실제 조정이 가능할 때만.</summary>
+    /// <summary>손잡이를 보여줄지 — '파티션 조정'으로 실제 조정이 가능할 때만.</summary>
     [ObservableProperty] private bool _showResizeHandle;
 
     /// <summary>손잡이의 가로 위치(막대 너비에 대한 비율 0~1).</summary>

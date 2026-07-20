@@ -143,10 +143,14 @@
                                ToolTip="끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)">
                             <Thumb.Template>
                                 <ControlTemplate TargetType="Thumb">
-                                    <!-- 잡을 곳은 넓게(16px), 보이는 선은 가늘게 — 얇으면 못 잡습니다. -->
+                                    <!--
+                                        잡을 곳은 넓게(16px), 보이는 선은 가늘게 — 얇으면 못 잡습니다.
+                                        색은 빨강입니다. 막대의 파티션 색들이 차분한 계열이라
+                                        강조색으로는 손잡이가 묻혀 "끌 수 있다"는 것이 안 보였습니다.
+                                    -->
                                     <Border Background="Transparent">
                                         <Border Width="6" CornerRadius="3" BorderThickness="2"
-                                                BorderBrush="White" Background="{StaticResource Accent}" />
+                                                BorderBrush="White" Background="{StaticResource Danger}" />
                                     </Border>
                                 </ControlTemplate>
                             </Thumb.Template>
@@ -377,7 +381,7 @@
                                  IsEnabled="{Binding CanResize}"
                                  VerticalContentAlignment="Top" Margin="0,0,0,4">
                         <StackPanel>
-                            <TextBlock Text="고른 파티션 넓히기" Style="{StaticResource Body}" />
+                            <TextBlock Text="파티션 조정" Style="{StaticResource Body}" />
                             <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본 (확장 파티션 제외)"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>

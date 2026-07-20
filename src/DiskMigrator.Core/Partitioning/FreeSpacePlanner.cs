@@ -58,7 +58,7 @@ public static class FreeSpacePlanner
         if (growPartitionNumber is not { } number)
         {
             return new FreeSpacePlan(mode, null,
-                "'고른 파티션 넓히기'를 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.");
+                "'파티션 조정'을 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.");
         }
 
         if (fillRemaining) return Feasible(mode, new PartitionGrowRequest(number, null), source, targetSizeBytes);
