@@ -71,6 +71,28 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
     public string WarningBadgeText => string.Join(" · ", WarningBadges);
     public string InfoBadgeText => string.Join(" · ", InfoBadges);
 
+    /// <summary>이 디스크가 가진 드라이브 문자 — 목록에서 디스크를 알아보는 가장 빠른 단서입니다.</summary>
+    /// <remarks>
+    /// 파티션 요약 안에 섞어 두면 앞에 EFI·MSR이 있는 디스크는 문자가 줄 한가운데로 밀려
+    /// 위치가 항목마다 달라집니다. 눈이 훑을 기준선이 없어져 알아보기 어려우므로
+    /// 요약에서 떼어내 항상 줄 맨 앞에 둡니다.
+    /// </remarks>
+    public string DriveLetterText
+    {
+        get
+        {
+            var letters = Disk.Partitions
+                .Select(p => p.DriveLetter)
+                .Where(l => l is not null)
+                .Select(l => $"{l}:");
+
+            return string.Join(" ", letters);
+        }
+    }
+
+    /// <summary>드라이브 문자가 없는 디스크도 칸 너비는 유지해 아래 줄이 어긋나지 않게 합니다.</summary>
+    public bool HasDriveLetters => DriveLetterText.Length > 0;
+
     /// <summary>이 디스크를 덮어쓰면 사라지는 것들을 한 줄로 요약합니다.</summary>
     public string PartitionSummary
     {
@@ -80,9 +102,8 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
 
             var parts = Disk.Partitions.Select(p =>
             {
-                string letter = p.DriveLetter is not null ? $"{p.DriveLetter}: " : "";
                 string label = p.VolumeLabel is not null ? $"“{p.VolumeLabel}” " : "";
-                return $"{letter}{label}{p.FileSystem ?? "RAW"} {SizeFormatter.Format(p.LengthBytes)}";
+                return $"{label}{p.FileSystem ?? "RAW"} {SizeFormatter.Format(p.LengthBytes)}";
             });
 
             return string.Join("   |   ", parts);

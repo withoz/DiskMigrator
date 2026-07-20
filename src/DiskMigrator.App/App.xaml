@@ -209,8 +209,20 @@
                     <TextBlock Text="{Binding DetailText}" Style="{StaticResource Micro}"
                                Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
 
-                    <TextBlock Text="{Binding PartitionSummary}" Style="{StaticResource Caption}"
-                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    <!--
+                        드라이브 문자를 요약 앞 고정 칸으로 뺍니다. 요약 안에 섞으면 앞에
+                        EFI·MSR이 있는 디스크는 문자가 줄 한가운데로 밀려 항목마다 위치가
+                        달라집니다 — 눈이 훑을 기준선이 사라져 알아보기 어렵습니다.
+                        문자가 없는 디스크도 칸은 비워 두어 아래 줄이 어긋나지 않게 합니다.
+                    -->
+                    <DockPanel Margin="0,3,0,0" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding DriveLetterText}"
+                                   Style="{StaticResource Caption}" FontWeight="Bold"
+                                   Foreground="{StaticResource Accent}"
+                                   MinWidth="34" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding PartitionSummary}" Style="{StaticResource Caption}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
                 </StackPanel>
             </Border>
         </DataTemplate>
