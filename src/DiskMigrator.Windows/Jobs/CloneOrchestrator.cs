@@ -310,18 +310,34 @@ public sealed class CloneOrchestrator(
 
         try
         {
+            string description;
             if (isMbr)
             {
-                var r = new MbrRewriter(_loggerFactory.CreateLogger<MbrRewriter>())
-                    .Rewrite(session.TargetDevice, remaps);
-                return new GptRepairResult(r.Rewritten, r.Description);
+                description = new MbrRewriter(_loggerFactory.CreateLogger<MbrRewriter>())
+                    .Rewrite(session.TargetDevice, remaps).Description;
             }
             else
             {
-                var r = new GptRewriter(_loggerFactory.CreateLogger<GptRewriter>())
-                    .Rewrite(session.TargetDevice, remaps);
-                return new GptRepairResult(r.Rewritten, r.Description);
+                description = new GptRewriter(_loggerFactory.CreateLogger<GptRewriter>())
+                    .Rewrite(session.TargetDevice, remaps).Description;
             }
+
+            // 옮겨진 파티션의 부트 섹터에는 자기 시작 위치가 적혀 있는데, 복사된 그대로면
+            // 옛 위치를 가리킵니다. 파티션 테이블과 어긋난 값을 남겨 둘 이유가 없습니다.
+            // 실패해도 데이터·배치는 온전하므로 전체를 실패로 만들지 않습니다.
+            try
+            {
+                int fixedVbrs = VbrFixer.FixMovedPartitions(
+                    session.TargetDevice, remaps, _loggerFactory.CreateLogger("VbrFixer"));
+
+                if (fixedVbrs > 0) description += $" 옮겨진 볼륨 {fixedVbrs}개의 시작 위치도 갱신했습니다.";
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "옮겨진 파티션의 VBR 시작 위치를 고치지 못했습니다.");
+            }
+
+            return new GptRepairResult(true, description);
         }
         catch (Exception ex)
         {
