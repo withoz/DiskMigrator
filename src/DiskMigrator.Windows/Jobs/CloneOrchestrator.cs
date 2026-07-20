@@ -84,6 +84,18 @@ public sealed class CloneOrchestrator(
                     "형식이라 리사이즈 옵션을 끄고 클론해야 합니다. (MBR 리사이즈는 아직 지원하지 않습니다.)");
             }
 
+            // GPT 엔트리의 위치는 LBA(섹터 번호)로 저장됩니다. 리사이즈는 원본 GPT를 대상에 그대로
+            // 복사한 뒤 엔트리의 LBA만 새 배치로 고치는데, 원본과 대상의 논리 섹터 크기가 다르면
+            // 그 LBA가 서로 다른 단위가 되어 재배치 대응(옛 StartingLBA 매칭)이 어긋납니다. 그러면
+            // 데이터는 새 위치에 있는데 GPT 재작성은 실패해 배치가 깨지므로, 미리 막습니다.
+            if (source.LogicalSectorSize != target.LogicalSectorSize)
+            {
+                throw new InvalidOperationException(
+                    "파티션 리사이즈(확대)는 원본과 대상의 논리 섹터 크기가 같아야 합니다. " +
+                    $"원본 {source.LogicalSectorSize}바이트, 대상 {target.LogicalSectorSize}바이트라 " +
+                    "리사이즈 옵션을 끄고 클론해야 합니다.");
+            }
+
             resizeLayout = ResizePlanner.Plan(source.Partitions, target.SizeBytes, growRequest);
             logger.LogInformation(
                 "파티션 리사이즈: 파티션 {Num} 확대, 뒤 파티션 시프트.", growRequest.PartitionNumber);

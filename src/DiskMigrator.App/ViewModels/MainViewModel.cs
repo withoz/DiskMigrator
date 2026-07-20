@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.Versioning;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -121,10 +122,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _resizeSizeGb = "";
 
-    /// <summary>대상이 원본보다 커서 확대할 여지가 있는지. 리사이즈는 GPT 원본만 지원합니다.</summary>
+    /// <summary>
+    /// 대상이 원본보다 커서 확대할 여지가 있는지. 리사이즈는 <b>GPT 원본</b>만, 그리고 원본과
+    /// 대상의 <b>논리 섹터 크기가 같을 때</b>만 지원합니다(GPT 엔트리 위치가 LBA 단위라
+    /// 섹터 크기가 다르면 재배치가 어긋납니다).
+    /// </summary>
     public bool CanResize =>
         SelectedSource is not null && SelectedTarget is not null &&
         SelectedSource.Disk.PartitionStyle == PartitionStyle.Gpt &&
+        SelectedSource.Disk.LogicalSectorSize == SelectedTarget.Disk.LogicalSectorSize &&
         SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
         ResizablePartitions.Count > 0;
 
@@ -626,6 +632,37 @@ public sealed partial class MainViewModel : ObservableObject
         var source = SelectedSource.Disk;
         var target = SelectedTarget.Disk;
 
+        // 파티션 리사이즈(확대) 요청을 먼저 구성합니다. 입력이 잘못됐으면 대상에 아무것도 쓰지 않고
+        // 여기서 멈춥니다 — 몇 시간짜리 작업을 시작한 뒤 잘못을 알리는 것보다 낫습니다.
+        PartitionGrowRequest? growRequest = null;
+        _grownPartitionNumber = null;
+        if (ResizeEnabled && CanResize && SelectedResizePartition is { } choice)
+        {
+            long? newBytes = null;
+
+            if (!ResizeFillRemaining)
+            {
+                // '새 총 크기' 모드인데 입력이 숫자가 아니면 조용히 null(= 남는 공간 전부)로
+                // 넘어가면 안 됩니다. 사용자가 지정한 것과 전혀 다른 크기(남는 공간 전체)로
+                // 파티션이 커져 버립니다. 명시적으로 막고 알립니다.
+                if (!TryParseSizeGb(ResizeSizeGb, out double gb) || gb <= 0)
+                {
+                    Stage = AppStage.Finished;
+                    ShowFailure(
+                        "리사이즈 크기가 올바르지 않습니다",
+                        $"'새 총 크기(GB)'에 0보다 큰 숫자를 입력하십시오(입력값: \"{ResizeSizeGb}\"). " +
+                        "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.",
+                        "대상 디스크에는 아무것도 쓰지 않았습니다.");
+                    return;
+                }
+
+                newBytes = (long)(gb * 1_000_000_000);
+            }
+
+            growRequest = new PartitionGrowRequest(choice.Number, newBytes);
+            _grownPartitionNumber = choice.Number;
+        }
+
         _cts = new CancellationTokenSource();
         _pause = new PauseController();
 
@@ -637,21 +674,6 @@ public sealed partial class MainViewModel : ObservableObject
         ProgressPhase = "준비 중";
         ProgressRegion = UseSnapshot ? "스냅샷 생성 중... (최대 수십 초)" : "대상 볼륨 잠금 중...";
         ProgressBytes = ProgressSpeed = ProgressEta = ProgressElapsed = "";
-
-        // 파티션 리사이즈(확대) 요청을 구성합니다. 대상이 원본보다 클 때만, 고른 파티션에 대해.
-        PartitionGrowRequest? growRequest = null;
-        _grownPartitionNumber = null;
-        if (ResizeEnabled && CanResize && SelectedResizePartition is { } choice)
-        {
-            long? newBytes = null;
-            if (!ResizeFillRemaining &&
-                double.TryParse(ResizeSizeGb, out double gb) && gb > 0)
-            {
-                newBytes = (long)(gb * 1_000_000_000);
-            }
-            growRequest = new PartitionGrowRequest(choice.Number, newBytes);
-            _grownPartitionNumber = choice.Number;
-        }
 
         var options = new CloneOptions
         {
@@ -816,6 +838,19 @@ public sealed partial class MainViewModel : ObservableObject
                 "가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. " +
                 "리사이즈를 끄고 다시 클론하십시오.";
         }
+    }
+
+    /// <summary>
+    /// 리사이즈 크기 입력(GB)을 읽습니다. 사용자의 지역 설정과 마침표 표기를 모두 받아들입니다
+    /// (예: "1.5"와 "1,5"). 어느 쪽으로도 읽히지 않으면 false — 호출자가 작업을 막습니다.
+    /// </summary>
+    private static bool TryParseSizeGb(string? text, out double gb)
+    {
+        gb = 0;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        return double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out gb)
+            || double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out gb);
     }
 
     private void ShowFailure(string title, string message, string details)
