@@ -113,6 +113,33 @@
                     </ItemsControl>
 
                     <!--
+                        최소 크기(현재 파티션) 한계선 — 이 왼쪽으로는 줄일 수 없습니다.
+                        빨간 점선으로 "여기까지가 데이터 용량"임을 표시합니다. 손잡이와 같은
+                        조건(변경 후 막대 · 조정 가능)에서만 보이고, 클릭은 통과시킵니다.
+                    -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                VerticalAlignment="Top" IsHitTestVisible="False">
+                        <StackPanel.Visibility>
+                            <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                                <Binding Path="IsTargetAfter" />
+                                <Binding Path="DataContext.ShowResizeHandle"
+                                         RelativeSource="{RelativeSource AncestorType=Window}" />
+                            </MultiBinding>
+                        </StackPanel.Visibility>
+                        <Border IsHitTestVisible="False">
+                            <Border.Width>
+                                <MultiBinding Converter="{StaticResource FractionToWidth}">
+                                    <Binding Path="DataContext.ResizeMinFraction"
+                                             RelativeSource="{RelativeSource AncestorType=Window}" />
+                                    <Binding Path="ActualWidth" ElementName="BarArea" />
+                                </MultiBinding>
+                            </Border.Width>
+                        </Border>
+                        <Line X1="0" Y1="0" X2="0" Y2="40" Stroke="{StaticResource Danger}"
+                              StrokeThickness="1.5" StrokeDashArray="2,2" />
+                    </StackPanel>
+
+                    <!--
                         끌어서 조정하는 손잡이 — '변경 후' 막대에서만, 그리고 지금 조정할 수 있을
                         때만 나옵니다. 왼쪽 여백을 비율×막대너비로 밀어 경계 위에 세웁니다.
                         조각과 같은 계산(FractionToWidth)을 쓰므로 정확히 경계에 붙습니다.

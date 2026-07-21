@@ -167,7 +167,7 @@ public class FreeSpacePlannerTests
         source[^1].StartingOffset + source[^1].LengthBytes + slackBytes;
 
     [Fact]
-    public void 현재보다_작은_크기를_넣으면_시작_전에_이유를_알려준다()
+    public void 현재보다_작은_크기를_넣으면_현재_크기로_올려_맞춘다()
     {
         var source = Windows930();
         long target = TargetWithSlack(source, 10L << 30);
@@ -177,9 +177,11 @@ public class FreeSpacePlannerTests
             growPartitionNumber: 3, fillRemaining: false, sizeText: "600",
             source: source, targetSizeBytes: target);
 
-        Assert.NotNull(plan.Error);
-        Assert.Contains("작습니다", plan.Error);
-        Assert.Null(plan.Grow);
+        // 축소는 지원하지 않습니다. 현재 크기(930 GiB)보다 작은 입력은 오류 대신 현재 크기로
+        // 올려 맞춰, 데이터(현재 파티션) 용량 아래로는 내려가지 않게 합니다.
+        Assert.Null(plan.Error);
+        Assert.NotNull(plan.Grow);
+        Assert.Equal(930L << 30, plan.Grow!.NewLengthBytes);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using DiskMigrator.Core.Engine;
 
 namespace DiskMigrator.Core.Partitioning;
@@ -72,7 +73,15 @@ public static class FreeSpacePlanner
                 "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.");
         }
 
-        return Feasible(mode, new PartitionGrowRequest(number, (long)(gb * BytesPerGb)), source, targetSizeBytes);
+        long requested = (long)(gb * BytesPerGb);
+
+        // 이 버전은 축소를 지원하지 않습니다. 현재 크기보다 작은 값은 현재 크기로 올려 맞춰,
+        // 화면에 표시된 값(반올림)을 그대로 입력해도 미세하게 작아져 "현재보다 작습니다"로
+        // 거부되는 일을 없앱니다. 즉, 데이터(현재 파티션) 용량 이하로는 내려가지 않습니다.
+        long? currentLen = source?.FirstOrDefault(p => p.Number == number)?.LengthBytes;
+        if (currentLen is { } cur && requested < cur) requested = cur;
+
+        return Feasible(mode, new PartitionGrowRequest(number, requested), source, targetSizeBytes);
     }
 
     /// <summary>

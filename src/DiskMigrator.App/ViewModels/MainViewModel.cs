@@ -804,6 +804,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private double _resizeHandleFraction;
 
     /// <summary>
+    /// 넓힐 파티션이 <b>현재(최소) 크기</b>일 때 경계의 가로 위치(비율). 이 아래로는 줄일 수
+    /// 없으므로 막대에 빨간 점선으로 표시해 "여기까지가 데이터 용량"임을 알립니다.
+    /// </summary>
+    [ObservableProperty] private double _resizeMinFraction;
+
+    /// <summary>
     /// 막대 너비 비율 1당 몇 바이트인지. 끌린 픽셀을 바이트로 옮길 때 씁니다.
     /// </summary>
     /// <remarks>
@@ -863,6 +869,14 @@ public sealed partial class MainViewModel : ObservableObject
 
         ResizeHandleFraction = segments.Take(growIndex + 1).Sum(s => s.Fraction);
         ResizeBytesPerFraction = adjustableBytes / adjustableFraction;
+
+        // 현재(최소) 크기 경계 = 넓힐 파티션 왼쪽 시작 + 현재 크기만큼의 비율.
+        // 손잡이는 이 왼쪽으로 못 가며, 막대에 빨간 점선으로 이 위치를 표시합니다.
+        double startFraction = segments.Take(growIndex).Sum(s => s.Fraction);
+        ResizeMinFraction = ResizeBytesPerFraction > 0
+            ? startFraction + min / ResizeBytesPerFraction
+            : startFraction;
+
         ShowResizeHandle = true;
     }
 
