@@ -231,30 +231,22 @@
                 -->
                 <StackPanel Orientation="Horizontal">
                     <!--
-                        캔버스는 아티팩트 SVG의 viewBox(-25 -25 400 272)를 그대로 옮긴 것입니다.
-                        내용(0..350, 0..222)을 (25,25) 밀어 사방 25 여백을 줍니다 — 여백이 없으면
-                        마크가 답답하고 M 꼭짓점이 테두리에 닿아 모양이 다르게 보입니다.
+                        DM 마크 (docs/brand/app-icon.svg와 같은 확정 형태). D는 채움(카운터 뚫림),
+                        M은 각진 획(오른쪽 위 꼭지는 miterlimit 2.2로 평평하게 잘림). 헤더는 밝은
+                        바탕이라 LogoInk 색을 씁니다. Canvas(256x165)에 마크의 viewBox(56,95)를
+                        (-56,-95) 밀어 담습니다 — mark.svg의 viewBox와 같은 틀입니다.
                     -->
                     <Viewbox Height="45" VerticalAlignment="Center" Margin="0,0,14,0">
-                        <!--
-                            Clip 사각형으로 M 봉우리의 뾰족한 끝을 잘라 평평하게 만듭니다.
-                            자르는 높이(Rect의 Y=21)는 D 윗변(내용 y=25, 여기 캔버스 좌표) 바로 위라,
-                            봉우리가 D와 거의 같은 높이에서 직각으로 잘립니다. 값을 키우면 더 아래로,
-                            줄이면 봉우리가 더 남습니다.
-                        -->
-                        <Canvas Width="400" Height="272">
-                            <Canvas.Clip>
-                                <RectangleGeometry Rect="0,21,400,251" />
-                            </Canvas.Clip>
-                            <Canvas>
-                                <Canvas.RenderTransform>
-                                    <TranslateTransform X="25" Y="25" />
-                                </Canvas.RenderTransform>
-                                <Path Stroke="{StaticResource LogoInk}" StrokeThickness="44" StrokeLineJoin="Round"
-                                      Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
-                                <Path Stroke="{StaticResource LogoInk}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
-                                      Data="M182,100 L255,178 L328,22 V200" />
-                            </Canvas>
+                        <Canvas Width="256" Height="165">
+                            <Canvas.RenderTransform>
+                                <TranslateTransform X="-56" Y="-95" />
+                            </Canvas.RenderTransform>
+                            <Path Fill="{StaticResource LogoInk}"
+                                  Data="F0 M 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z" />
+                            <Path Stroke="{StaticResource LogoInk}" StrokeThickness="36"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Miter" StrokeMiterLimit="2.2"
+                                  Data="M 180.03125,138.04688 213.39063,229.34375 284,120 280.01563,232" />
                         </Canvas>
                     </Viewbox>
 

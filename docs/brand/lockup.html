@@ -26,11 +26,11 @@
     - 마크 폭 150px 기준. 워드마크 글자 크기 23px.
     - 마크와 워드마크 사이 간격 1.375rem, 구분선 왼쪽 여백도 1.375rem.
     - 워드마크는 전부 대문자, 자간 0.34em.
+    - 마크는 D=채움 / M=획이라 색을 color(currentColor)로 한 번에 줍니다.
   */
   .lockup { display: flex; align-items: center; gap: 1.375rem; }
-  .mark { width: 150px; flex: none; }
+  .mark { width: 150px; flex: none; color: var(--ink); }
   .mark svg { display: block; width: 100%; height: auto; }
-  .mark svg path { stroke: var(--ink); }
   .wordmark { border-left: 1px solid var(--rule); padding-left: 1.375rem; }
   .wordmark .name {
     font-size: 23px;
@@ -45,9 +45,12 @@
 <body>
   <div class="lockup">
     <div class="mark">
-      <svg viewBox="-25 -25 400 272" xmlns="http://www.w3.org/2000/svg" aria-label="DiskMigrator">
-        <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" fill="none" stroke-width="44" stroke-linejoin="round"/>
-        <path d="M182,100 L255,178 L328,22 V200" fill="none" stroke-width="44" stroke-linejoin="miter" stroke-miterlimit="10"/>
+      <svg viewBox="56 95 256 165" xmlns="http://www.w3.org/2000/svg" aria-label="DiskMigrator">
+        <path fill="currentColor" fill-rule="evenodd"
+          d="m 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/>
+        <path fill="none" stroke="currentColor" stroke-width="36" stroke-linecap="round"
+              stroke-linejoin="miter" stroke-miterlimit="2.2"
+              d="M 180.03125,138.04688 213.39063,229.34375 284,120 280.01563,232"/>
       </svg>
     </div>
     <div class="wordmark"><span class="name">DiskMigrator</span></div>
