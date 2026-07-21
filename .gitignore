@@ -38,3 +38,8 @@ Thumbs.db
 .DS_Store
 desktop.ini
 *_wpftmp.csproj
+
+# 저장소 루트에 실수로 놓인 로고 캡처 이미지
+*.png
+!src/**/*.png
+!docs/**/*.png
