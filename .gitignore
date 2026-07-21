@@ -47,3 +47,8 @@ desktop.ini
 # 설치 프로그램 빌드 생성물 (installer\build.ps1 로 재생성)
 installer/output/
 installer/EULA-license.txt
+
+# 코드 서명 인증서·비밀 (절대 커밋 금지)
+*.pfx
+*.p12
+installer/test-cert.pfx
