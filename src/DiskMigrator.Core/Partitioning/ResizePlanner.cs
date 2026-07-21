@@ -172,9 +172,19 @@ public static class ResizePlanner
                     "이 버전은 확대만 지원합니다.");
             delta = newLen - oldLen;
             if (delta > maxDelta)
-                throw new InvalidOperationException(
-                    $"요청한 크기가 대상 용량을 넘습니다. 이 파티션은 최대 {SizeGb(oldLen + maxDelta)}까지 " +
-                    $"확대할 수 있습니다(요청 {SizeGb(newLen)}).");
+            {
+                // '새 총 크기'는 GB 단위(표시 정밀도)라, 실제 최대치가 예컨대 1861.99 GB인데 화면에
+                // 1862로 반올림되어 다시 입력되면 바이트로는 최대치를 근소하게 넘깁니다. 그 정도의
+                // 초과(1 GiB 이내)는 "최대로 채움"으로 처리합니다 — 반올림 때문에 최대 확장이 거부되면
+                // 사용자는 원인을 알 수 없습니다. 진짜로 크게 넘는 요청은 그대로 거부합니다.
+                const long RoundingTolerance = 1L << 30; // 1 GiB
+                if (delta - maxDelta <= RoundingTolerance)
+                    delta = maxDelta;
+                else
+                    throw new InvalidOperationException(
+                        $"요청한 크기가 대상 용량을 넘습니다. 이 파티션은 최대 {SizeGb(oldLen + maxDelta)}까지 " +
+                        $"확대할 수 있습니다(요청 {SizeGb(newLen)}).");
+            }
         }
         else
         {
