@@ -328,7 +328,7 @@
                         -->
                         <Button Command="{Binding RefreshDisksCommand}"
                                 Padding="8,3" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="새로고침" FontSize="8" Foreground="{StaticResource Success}" />
+                            <TextBlock Text="새로고침" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
                         </Button>
                     </StackPanel>
 
