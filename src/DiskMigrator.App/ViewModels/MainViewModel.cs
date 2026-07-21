@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.Versioning;
@@ -1411,4 +1412,47 @@ public sealed partial class MainViewModel : ObservableObject
         ResultMessage = message;
         ResultDetails = details;
     }
+
+    // --- 업데이트 확인 -----------------------------------------------------
+
+    private string? _latestReleaseUrl;
+
+    /// <summary>새 버전이 있는지. 화면 상단 배너 표시 여부.</summary>
+    [ObservableProperty]
+    private bool _updateAvailable;
+
+    /// <summary>알림에 보여줄 최신 버전 문자열(예: "0.8.0").</summary>
+    [ObservableProperty]
+    private string _updateVersionText = "";
+
+    /// <summary>GitHub Releases에서 새 버전을 조용히 확인합니다. 실패는 무시합니다.</summary>
+    public async Task CheckForUpdatesAsync()
+    {
+        Version current = typeof(MainViewModel).Assembly.GetName().Version ?? new Version(0, 0, 0);
+        UpdateInfo info = await UpdateChecker.CheckAsync(current);
+        if (!info.Available) return;
+
+        _latestReleaseUrl = info.ReleaseUrl;
+        UpdateVersionText = info.LatestVersion ?? "";
+        UpdateAvailable = true;
+        _logger.LogInformation("새 버전 발견: {Version}", info.LatestVersion);
+    }
+
+    /// <summary>최신 릴리스 페이지를 기본 브라우저로 엽니다(다운로드는 사용자가 진행).</summary>
+    [RelayCommand]
+    private void OpenUpdatePage()
+    {
+        if (string.IsNullOrEmpty(_latestReleaseUrl)) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(_latestReleaseUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "업데이트 페이지를 열지 못했습니다.");
+        }
+    }
+
+    [RelayCommand]
+    private void DismissUpdate() => UpdateAvailable = false;
 }

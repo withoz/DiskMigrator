@@ -87,6 +87,7 @@ public partial class App : Application
         window.Show();
 
         _ = viewModel.RefreshDisksAsync();
+        _ = viewModel.CheckForUpdatesAsync();
     }
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

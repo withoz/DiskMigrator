@@ -114,4 +114,8 @@
   <data name="EulaAgreeCheck" xml:space="preserve"><value>위 내용을 읽고 이해했으며, 이에 동의합니다.</value></data>
   <data name="EulaDecline" xml:space="preserve"><value>동의하지 않음 (종료)</value></data>
   <data name="EulaAccept" xml:space="preserve"><value>동의하고 시작</value></data>
+
+  <data name="UpdateAvailable" xml:space="preserve"><value>새 버전이 있습니다</value></data>
+  <data name="UpdateDownload" xml:space="preserve"><value>다운로드</value></data>
+  <data name="UpdateLater" xml:space="preserve"><value>나중에</value></data>
 </root>

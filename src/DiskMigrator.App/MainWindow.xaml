@@ -219,8 +219,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ===== 헤더 ===== -->
-        <Border Grid.Row="0" Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
+        <!-- ===== 헤더 + 업데이트 배너 ===== -->
+        <StackPanel Grid.Row="0">
+        <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
                 BorderThickness="0,0,0,1" Padding="40,13">
             <Grid>
                 <!--
@@ -271,6 +272,31 @@
                 </Border>
             </Grid>
         </Border>
+
+        <!-- 업데이트 알림 배너 — 새 버전이 있을 때만 보입니다. 자동으로 내려받지 않고
+             릴리스 페이지 링크만 엽니다(다운로드·설치는 사용자가 결정). -->
+        <Border Background="{StaticResource SelectionSoft}" BorderBrush="{StaticResource Info}"
+                BorderThickness="0,0,0,1" Padding="40,8"
+                Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenUpdatePageCommand}" Style="{StaticResource AccentButton}"
+                            Padding="14,5" Margin="0,0,8,0">
+                        <TextBlock Text="{loc:Loc UpdateDownload}" Foreground="White" />
+                    </Button>
+                    <Button Command="{Binding DismissUpdateCommand}" Padding="12,5">
+                        <TextBlock Text="{loc:Loc UpdateLater}" />
+                    </Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:Loc UpdateAvailable}" Foreground="{StaticResource Info}"
+                               FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding UpdateVersionText}" Foreground="{StaticResource Info}"
+                               FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        </StackPanel>
 
         <!-- ===== 1단계: 선택 =====
              내용이 창 높이를 넘으면 스크롤합니다. 예전에는 남는 높이를 목록이 가져가는

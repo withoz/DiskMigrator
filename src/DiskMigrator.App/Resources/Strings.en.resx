@@ -114,4 +114,8 @@
   <data name="EulaAgreeCheck" xml:space="preserve"><value>I have read and understood the above, and I agree.</value></data>
   <data name="EulaDecline" xml:space="preserve"><value>Decline and exit</value></data>
   <data name="EulaAccept" xml:space="preserve"><value>Agree and continue</value></data>
+
+  <data name="UpdateAvailable" xml:space="preserve"><value>A new version is available</value></data>
+  <data name="UpdateDownload" xml:space="preserve"><value>Download</value></data>
+  <data name="UpdateLater" xml:space="preserve"><value>Later</value></data>
 </root>
