@@ -230,19 +230,29 @@
                     (WPF에는 letter-spacing이 없어 얇은 공백 U+2009로 자간을 줍니다.)
                 -->
                 <StackPanel Orientation="Horizontal">
-                    <Viewbox Height="44" VerticalAlignment="Center" Margin="0,0,18,0">
-                        <Canvas Width="350" Height="222">
-                            <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Round"
-                                  Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
-                            <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
-                                  Data="M182,100 L255,178 L328,22 V200" />
+                    <!--
+                        캔버스는 아티팩트 SVG의 viewBox(-25 -25 400 272)를 그대로 옮긴 것입니다.
+                        내용(0..350, 0..222)을 (25,25) 밀어 사방 25 여백을 줍니다 — 여백이 없으면
+                        마크가 답답하고 M 꼭짓점이 테두리에 닿아 모양이 다르게 보입니다.
+                    -->
+                    <Viewbox Height="64" VerticalAlignment="Center" Margin="0,0,14,0">
+                        <Canvas Width="400" Height="272">
+                            <Canvas>
+                                <Canvas.RenderTransform>
+                                    <TranslateTransform X="25" Y="25" />
+                                </Canvas.RenderTransform>
+                                <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Round"
+                                      Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
+                                <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
+                                      Data="M182,100 L255,178 L328,22 V200" />
+                            </Canvas>
                         </Canvas>
                     </Viewbox>
 
                     <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1,0,0,0"
-                            Padding="18,0,0,0" VerticalAlignment="Center">
+                            Padding="14,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
-                                   FontSize="21" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                                   FontSize="15" FontWeight="Normal" Foreground="{StaticResource Muted}" />
                     </Border>
                 </StackPanel>
 
