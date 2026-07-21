@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using DiskMigrator.App.Localization;
 using DiskMigrator.App.ViewModels;
 using DiskMigrator.Core.Models;
 
@@ -76,10 +77,10 @@ public sealed class SeverityToLabelConverter : IValueConverter
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value switch
         {
-            SafetySeverity.Blocker => "차단",
-            SafetySeverity.RequiresConfirmation => "확인 필요",
-            SafetySeverity.Warning => "경고",
-            _ => "참고",
+            SafetySeverity.Blocker => Strings.Get("SevBlocker"),
+            SafetySeverity.RequiresConfirmation => Strings.Get("SevRequiresConfirmation"),
+            SafetySeverity.Warning => Strings.Get("SevWarning"),
+            _ => Strings.Get("SevInfo"),
         };
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

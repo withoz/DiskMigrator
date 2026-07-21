@@ -214,4 +214,9 @@
   <data name="FailNoPrivDetail" xml:space="preserve"><value>Restart the program as administrator.</value></data>
   <data name="FailSeeLog" xml:space="preserve"><value>Check the log file for details.</value></data>
   <data name="EtaCalculating" xml:space="preserve"><value>Calculating…</value></data>
+
+  <data name="SevBlocker" xml:space="preserve"><value>Blocked</value></data>
+  <data name="SevRequiresConfirmation" xml:space="preserve"><value>Needs confirmation</value></data>
+  <data name="SevWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="SevInfo" xml:space="preserve"><value>Note</value></data>
 </root>
