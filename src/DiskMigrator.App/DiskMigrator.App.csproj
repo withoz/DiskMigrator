@@ -6,7 +6,26 @@
     <RootNamespace>DiskMigrator.App</RootNamespace>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+
+    <!--
+      exe 속성·작업표시줄·설치 프로그램이 읽는 제품 정보. 회사/제품명은 상표·서명 인증서와
+      같아야 하므로 배포 주체가 정해지면 맞춰 바꾸십시오(지금은 제품명을 그대로 씁니다).
+    -->
+    <Product>DiskMigrator</Product>
     <AssemblyTitle>DiskMigrator</AssemblyTitle>
+    <Company>DiskMigrator</Company>
+    <Authors>DiskMigrator</Authors>
+    <Description>Windows 시스템 디스크를 통째로 복제해 다른 PC로 옮기는 도구</Description>
+    <Copyright>Copyright © 2026 DiskMigrator</Copyright>
+
+    <!-- 마케팅 버전. 릴리스 태그(v0.7.0)와 맞춥니다. -->
+    <Version>0.7.0</Version>
+    <FileVersion>0.7.0.0</FileVersion>
+    <AssemblyVersion>0.7.0.0</AssemblyVersion>
+    <!-- 제품 버전에 git 커밋 해시가 붙지 않도록. 파일 속성에 "0.7.0"만 보입니다. -->
+    <InformationalVersion>0.7.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <!-- GitHub Releases 배포용: 런타임 미설치 PC에서도 실행되는 단일 exe -->
