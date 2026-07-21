@@ -1,7 +1,8 @@
-<svg viewBox="-25 -25 400 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DiskMigrator DM 마크 (흰색)">
+<svg viewBox="56 95 256 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DiskMigrator DM 마크 (흰색)">
   <title>DiskMigrator DM 마크 · 흰색 (어두운 바탕용)</title>
-  <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z"
-        fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linejoin="round"/>
-  <path d="M182,100 L255,178 L328,22 V200"
-        fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linejoin="miter" stroke-miterlimit="10"/>
+  <path fill="#FFFFFF" fill-rule="evenodd"
+    d="m 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round"
+        stroke-linejoin="miter" stroke-miterlimit="2.2"
+        d="M 180.03125,138.04688 213.39063,229.34375 284,120 280.01563,232"/>
 </svg>
