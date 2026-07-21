@@ -1,5 +1,9 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using DiskMigrator.App.Localization;
 using DiskMigrator.App.ViewModels;
 
 namespace DiskMigrator.App;
@@ -9,6 +13,31 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        UpdateLanguageToggle();
+    }
+
+    // --- 언어 전환 --------------------------------------------------------
+    //
+    // 헤더의 "한국어 · English"를 누르면 선택을 저장하고(App.SwitchLanguage) 창을 새 언어로
+    // 다시 그립니다. XAML 문자열은 로드 시점에 언어가 잡히므로 창을 새로 만들어야 합니다.
+
+    private void LangKo_Click(object sender, MouseButtonEventArgs e) =>
+        (Application.Current as App)?.SwitchLanguage("ko");
+
+    private void LangEn_Click(object sender, MouseButtonEventArgs e) =>
+        (Application.Current as App)?.SwitchLanguage("en");
+
+    /// <summary>현재 언어를 굵게·진하게, 나머지는 흐리게 표시합니다.</summary>
+    private void UpdateLanguageToggle()
+    {
+        bool ko = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko";
+        var active = (Brush)FindResource("TextBrush");
+        var inactive = (Brush)FindResource("Muted");
+
+        LangKo.FontWeight = ko ? FontWeights.SemiBold : FontWeights.Normal;
+        LangEn.FontWeight = ko ? FontWeights.Normal : FontWeights.SemiBold;
+        LangKo.Foreground = ko ? active : inactive;
+        LangEn.Foreground = ko ? inactive : active;
     }
 
     /// <summary>
@@ -21,10 +50,10 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel { Stage: AppStage.Running })
         {
             var answer = MessageBox.Show(
-                "클론이 진행 중입니다.\n\n" +
-                "지금 닫으면 대상 디스크는 불완전한 상태로 남고, 그 디스크의 데이터를 " +
-                "사용할 수 없습니다.\n\n정말 닫으시겠습니까?",
-                "작업이 진행 중입니다",
+                Strings.Get("CloseRunningMsg1") + "\n\n" +
+                Strings.Get("CloseRunningMsg2") + "\n\n" +
+                Strings.Get("CloseRunningMsg3"),
+                Strings.Get("CloseRunningTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
                 MessageBoxResult.No);

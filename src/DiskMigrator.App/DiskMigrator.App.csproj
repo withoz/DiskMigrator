@@ -63,6 +63,11 @@
 
   <!-- 최초 실행 EULA 동의 화면이 읽는 사용권 계약 본문(한/영). exe에 내장합니다.
        Strings.resx / Strings.en.resx 는 SDK가 자동으로 포함·위성 어셈블리로 만듭니다. -->
+  <!-- 시작 화면: 앱이 로드되는 동안 다크 로고를 즉시 띄웁니다(WPF 기본 스플래시). -->
+  <ItemGroup>
+    <SplashScreen Include="Resources\splash.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\EULA.txt" />
     <!-- 파일명의 ".en."을 MSBuild가 위성(언어) 리소스로 오인하지 않게 WithCulture=false로

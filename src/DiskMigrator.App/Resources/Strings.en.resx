@@ -219,4 +219,9 @@
   <data name="SevRequiresConfirmation" xml:space="preserve"><value>Needs confirmation</value></data>
   <data name="SevWarning" xml:space="preserve"><value>Warning</value></data>
   <data name="SevInfo" xml:space="preserve"><value>Note</value></data>
+
+  <data name="CloseRunningTitle" xml:space="preserve"><value>An operation is in progress</value></data>
+  <data name="CloseRunningMsg1" xml:space="preserve"><value>A clone is in progress.</value></data>
+  <data name="CloseRunningMsg2" xml:space="preserve"><value>If you close now, the target disk will be left incomplete and its data will be unusable.</value></data>
+  <data name="CloseRunningMsg3" xml:space="preserve"><value>Are you sure you want to close?</value></data>
 </root>

@@ -19,21 +19,60 @@ public partial class App : Application
         "DiskMigrator", "logs");
 
     /// <summary>
-    /// 이번 실행의 UI 언어를 정합니다. 환경변수 <c>DM_LANG</c>(예: en, ko)가 있으면 그것을,
-    /// 없으면 OS UI 언어를 씁니다 — 한국어면 한국어, 그 외는 영어. 창이 로드되기 전에
+    /// 이번 실행의 UI 언어를 정합니다. 우선순위: 저장된 사용자 선택(LanguagePreference) >
+    /// 환경변수 <c>DM_LANG</c> > OS UI 언어(한국어면 ko, 그 외 en). 창이 로드되기 전에
     /// 호출해야 문자열이 올바른 언어로 잡힙니다.
     /// </summary>
     private static void ApplyCulture()
     {
-        string? env = Environment.GetEnvironmentVariable("DM_LANG");
-        CultureInfo culture = !string.IsNullOrWhiteSpace(env)
-            ? new CultureInfo(env)
-            : (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko"
-                ? new CultureInfo("ko")
-                : new CultureInfo("en"));
-
+        string lang = ResolveLanguage();
+        var culture = new CultureInfo(lang);
         Thread.CurrentThread.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
+    }
+
+    /// <summary>이번 실행에 쓸 언어 코드("ko"/"en")를 우선순위에 따라 정합니다.</summary>
+    private static string ResolveLanguage()
+    {
+        if (LanguagePreference.Load() is { } pref) return pref;
+
+        string? env = Environment.GetEnvironmentVariable("DM_LANG");
+        if (!string.IsNullOrWhiteSpace(env))
+            return env.Trim().StartsWith("ko", StringComparison.OrdinalIgnoreCase) ? "ko" : "en";
+
+        return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko" ? "ko" : "en";
+    }
+
+    /// <summary>
+    /// UI 언어를 바꾸고 메인 창을 새 언어로 다시 그립니다 — 재시작·UAC 없이. 선택은 저장돼
+    /// 다음 실행에도 유지됩니다. XAML 문자열은 로드 시점에 언어가 잡히므로 창을 새로 만듭니다.
+    /// </summary>
+    public void SwitchLanguage(string lang)
+    {
+        LanguagePreference.Save(lang);
+
+        // 이미 그 언어면 선택만 저장하고 다시 그리지 않습니다.
+        if (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == lang) return;
+
+        ApplyCulture();
+
+        // 새 창을 먼저 띄운 뒤 옛 창을 닫습니다 — 마지막 창이 아니라 앱이 꺼지지 않습니다.
+        var old = MainWindow;
+        ShowMainWindow();
+        old?.Close();
+        Log.Information("UI 언어를 {Lang}로 전환했습니다.", lang);
+    }
+
+    /// <summary>메인 창(뷰모델 포함)을 만들어 띄우고 초기 작업을 시작합니다.</summary>
+    private void ShowMainWindow()
+    {
+        var viewModel = new MainViewModel(_loggerFactory!);
+        var window = new MainWindow { DataContext = viewModel };
+        MainWindow = window;
+        window.Show();
+
+        _ = viewModel.RefreshDisksAsync();
+        _ = viewModel.CheckForUpdatesAsync();
     }
 
     protected override void OnStartup(StartupEventArgs e)

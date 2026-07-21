@@ -290,13 +290,22 @@
                     </Border>
                 </StackPanel>
 
-                <Border HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
-                        CornerRadius="6" Padding="10,5"
-                        Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
-                    <TextBlock Text="{loc:Loc NotAdminBadge}"
-                               Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" FontWeight="SemiBold" />
-                </Border>
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <!-- 언어 전환: 한국어 · English. 고른 언어는 저장되고 창이 즉시 새 언어로 다시 그려집니다. -->
+                    <TextBlock x:Name="LangKo" Text="한국어" Cursor="Hand" VerticalAlignment="Center"
+                               FontSize="12.5" MouseLeftButtonUp="LangKo_Click" />
+                    <TextBlock Text="·" FontSize="12.5" Margin="7,0" VerticalAlignment="Center"
+                               Foreground="{StaticResource BorderBrushSoft}" />
+                    <TextBlock x:Name="LangEn" Text="English" Cursor="Hand" VerticalAlignment="Center"
+                               FontSize="12.5" MouseLeftButtonUp="LangEn_Click" />
+
+                    <Border Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
+                            CornerRadius="6" Padding="10,5" Margin="14,0,0,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock Text="{loc:Loc NotAdminBadge}"
+                                   Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
