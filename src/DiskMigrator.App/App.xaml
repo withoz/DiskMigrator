@@ -298,9 +298,9 @@
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Root" Property="Background"
-                                        Value="{StaticResource SelectionSoft}" />
+                                        Value="{StaticResource DangerSoft}" />
                                 <Setter TargetName="Marker" Property="Background"
-                                        Value="{StaticResource Accent}" />
+                                        Value="{StaticResource Danger}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
