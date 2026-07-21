@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
 
@@ -53,7 +54,7 @@ public static class SafetyGuard
         if (!isElevated)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeNotElevated,
-                "관리자 권한이 없습니다. 원시 디스크 접근에는 관리자 권한이 필요합니다."));
+                Strings.Get("SafeNotElevated")));
         }
 
         // --- 절대 차단 규칙 ---------------------------------------------------
@@ -62,32 +63,31 @@ public static class SafetyGuard
         if (IsSameDisk(source, target))
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeSameDisk,
-                "원본과 대상이 같은 디스크입니다. 자기 자신에게 복제할 수 없습니다."));
+                Strings.Get("SafeSameDisk")));
         }
 
         if (target.IsSystemDisk)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetIsSystemDisk,
-                $"대상 [{target.DeviceNumber}] {target.Model} 은(는) 현재 실행 중인 Windows가 설치된 " +
-                "시스템 디스크입니다. 덮어쓰면 이 PC가 부팅되지 않습니다."));
+                Strings.Format("SafeTargetIsSystemFmt", target.DeviceNumber, target.Model)));
         }
 
         if (target.IsBootDisk)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetIsBootDisk,
-                $"대상 [{target.DeviceNumber}] {target.Model} 에는 이 PC의 부팅 요소가 들어 있습니다."));
+                Strings.Format("SafeTargetIsBootFmt", target.DeviceNumber, target.Model)));
         }
 
         if (target.HasPageFile)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetHasPageFile,
-                $"대상 [{target.DeviceNumber}] {target.Model} 에 페이지 파일이 있어 사용 중입니다."));
+                Strings.Format("SafeTargetHasPageFileFmt", target.DeviceNumber, target.Model)));
         }
 
         if (target.IsReadOnly)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetReadOnly,
-                "대상 디스크가 읽기 전용 상태입니다. 쓰기 방지를 해제해야 합니다."));
+                Strings.Get("SafeTargetReadOnly")));
         }
 
         // 대상이 원본보다 작아도, 원본의 파티션이 모두 대상 안에 들어가면 복제할 수 있습니다.
@@ -107,31 +107,27 @@ public static class SafetyGuard
             {
                 var dropped = source.SizeBytes - ResizePlanner.MinimumTargetSize(source.Partitions);
                 issues.Add(new SafetyIssue(SafetySeverity.RequiresConfirmation, CodeTargetSmallerLayoutFits,
-                    $"대상이 원본보다 작지만 원본의 파티션은 모두 들어갑니다. " +
-                    $"(원본 {FormatSize(source.SizeBytes)} / 대상 {FormatSize(target.SizeBytes)}) " +
-                    $"마지막 파티션 뒤의 빈 공간 {FormatSize(dropped)}는 복제되지 않습니다. " +
-                    "파티션 위치와 내용은 그대로이며 원본에는 쓰지 않습니다."));
+                    Strings.Format("SafeTargetSmallerLayoutFitsFmt",
+                        FormatSize(source.SizeBytes), FormatSize(target.SizeBytes), FormatSize(dropped))));
             }
             else
             {
                 var shortfall = source.SizeBytes - target.SizeBytes;
                 string detail = source.PartitionStyle == PartitionStyle.Gpt && source.Partitions.Count > 0
-                    ? $"원본 파티션이 {FormatSize(ResizePlanner.MinimumTargetSize(source.Partitions))}까지 " +
-                      "차지하므로 대상에 들어가지 않습니다. 파티션을 줄이려면 원본에서 먼저 볼륨을 축소하십시오."
-                    : "전체 섹터 복제는 대상 용량이 원본 이상일 때만 가능합니다.";
+                    ? Strings.Format("SafeTooSmallDetailShrinkFmt",
+                        FormatSize(ResizePlanner.MinimumTargetSize(source.Partitions)))
+                    : Strings.Get("SafeTooSmallDetailSectors");
 
                 issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetTooSmall,
-                    $"대상이 원본보다 {FormatSize(shortfall)} 작습니다. " +
-                    $"(원본 {FormatSize(source.SizeBytes)} / 대상 {FormatSize(target.SizeBytes)}) " +
-                    detail));
+                    Strings.Format("SafeTargetTooSmallFmt",
+                        FormatSize(shortfall), FormatSize(source.SizeBytes), FormatSize(target.SizeBytes), detail)));
             }
         }
 
         if (source.LogicalSectorSize != target.LogicalSectorSize)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeSectorSizeMismatch,
-                $"논리 섹터 크기가 다릅니다 (원본 {source.LogicalSectorSize}바이트 / " +
-                $"대상 {target.LogicalSectorSize}바이트). 섹터 단위 복제 결과가 부팅되지 않습니다."));
+                Strings.Format("SafeSectorSizeMismatchFmt", source.LogicalSectorSize, target.LogicalSectorSize)));
         }
 
         // --- 사용자 확인이 필요한 사항 ----------------------------------------
@@ -140,8 +136,8 @@ public static class SafetyGuard
         {
             var partitionSummary = string.Join(", ", target.Partitions.Select(p => p.ToString()));
             issues.Add(new SafetyIssue(SafetySeverity.RequiresConfirmation, CodeTargetHasData,
-                $"대상 [{target.DeviceNumber}] {target.Model} 의 모든 데이터가 삭제됩니다. " +
-                $"현재 이 디스크에는 파티션 {target.Partitions.Count}개가 있습니다: {partitionSummary}"));
+                Strings.Format("SafeTargetHasDataFmt",
+                    target.DeviceNumber, target.Model, target.Partitions.Count, partitionSummary)));
         }
 
         // --- 절대 차단: 실행 중 시스템 디스크를 스냅샷 없이 복제 --------------
@@ -157,31 +153,26 @@ public static class SafetyGuard
         if (source.IsSystemDisk && !useSnapshot)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeSourceIsLiveSystem,
-                "원본이 현재 실행 중인 시스템 디스크인데 VSS 스냅샷을 쓸 수 없습니다. " +
-                "스냅샷 없이 복제하면 복제 중 파일이 계속 바뀌어, 앞뒤 시점이 어긋난 " +
-                "일관되지 않은 클론이 만들어지고 대개 부팅되지 않습니다. " +
-                "VSS를 사용할 수 있는 환경에서 스냅샷을 켜고 진행하거나, 시스템을 다른 매체(WinPE 등)로 " +
-                "부팅해 이 디스크가 실행 중이 아닌 상태에서 복제하십시오."));
+                Strings.Get("SafeSourceLiveSystem")));
         }
 
         if (target.SizeBytes > source.SizeBytes)
         {
             var surplus = target.SizeBytes - source.SizeBytes;
             issues.Add(new SafetyIssue(SafetySeverity.Info, CodeTargetLarger,
-                $"대상이 원본보다 {FormatSize(surplus)} 큽니다. 남는 공간은 할당되지 않은 상태로 " +
-                "남습니다. 클론 후 디스크 관리에서 마지막 파티션을 확장할 수 있습니다."));
+                Strings.Format("SafeTargetLargerFmt", FormatSize(surplus))));
         }
 
         if (source.BusType == DiskBusType.Usb)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Info, CodeSourceOverUsb,
-                "원본이 USB로 연결돼 있어 속도가 제한됩니다."));
+                Strings.Get("SafeSourceOverUsb")));
         }
 
         if (target.BusType == DiskBusType.Usb)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Info, CodeTargetOverUsb,
-                "대상이 USB로 연결돼 있어 속도가 제한됩니다. 작업 중 연결이 끊기지 않도록 주의하십시오."));
+                Strings.Get("SafeTargetOverUsb")));
         }
 
         // --- 복제는 되지만 부팅이 안 될 조합 ----------------------------------
@@ -193,19 +184,13 @@ public static class SafetyGuard
         if (source.IsBiosOnlyBootLayout)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Warning, CodeSourceBiosOnly,
-                "원본이 MBR·활성 파티션(BIOS 방식)이고 EFI 시스템 파티션이 없습니다. " +
-                "사본은 레거시(CSM) 부팅을 지원하는 하드웨어에서만 부팅합니다 — " +
-                "NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다(NVMe에는 레거시 부팅 " +
-                "옵션 ROM이 없습니다). 그런 곳으로 옮기려면 복제 후 mbr2gpt로 GPT/UEFI 변환이 필요합니다."));
+                Strings.Get("SafeSourceBiosOnly")));
         }
 
         if (sourceHibernated)
         {
             issues.Add(new SafetyIssue(SafetySeverity.Warning, CodeSourceHibernated,
-                "원본에 최대 절전 이미지(hiberfil.sys)가 있습니다 — 빠른 시작으로 종료된 " +
-                "Windows입니다. 사본은 저장된 커널 상태를 다른 하드웨어에서 복원하려다 " +
-                "오류 문구 없이 검은 화면에서 멈춥니다. 복제 후 완료 화면의 '부팅 복구'가 " +
-                "재개를 끄고 이미지를 지웁니다."));
+                Strings.Get("SafeSourceHibernated")));
         }
 
         return new SafetyReport { Issues = issues };
@@ -289,8 +274,7 @@ public static class SafetyGuard
         if (freshTarget is null)
         {
             throw new SafetyViolationException(
-                $"확인했던 대상 디스크 [{confirmedTarget.DeviceNumber}] {confirmedTarget.Model} 이(가) " +
-                "더 이상 존재하지 않습니다. 작업을 중단합니다.");
+                Strings.Format("SafeAssertTargetGoneFmt", confirmedTarget.DeviceNumber, confirmedTarget.Model));
         }
 
         if (freshTarget.SizeBytes != confirmedTarget.SizeBytes ||
@@ -298,10 +282,10 @@ public static class SafetyGuard
             !string.Equals(freshTarget.SerialNumber?.Trim() ?? "", confirmedTarget.SerialNumber?.Trim() ?? "", StringComparison.OrdinalIgnoreCase))
         {
             throw new SafetyViolationException(
-                $"장치 번호 {confirmedTarget.DeviceNumber} 의 디스크가 확인 시점과 달라졌습니다. " +
-                $"확인 당시: {confirmedTarget.Model} ({FormatSize(confirmedTarget.SizeBytes)}), " +
-                $"현재: {freshTarget.Model} ({FormatSize(freshTarget.SizeBytes)}). " +
-                "다른 디스크를 지울 위험이 있어 작업을 중단합니다.");
+                Strings.Format("SafeAssertTargetChangedFmt",
+                    confirmedTarget.DeviceNumber,
+                    confirmedTarget.Model, FormatSize(confirmedTarget.SizeBytes),
+                    freshTarget.Model, FormatSize(freshTarget.SizeBytes)));
         }
 
         // 열거 시점과 쓰기 시점 사이에 시스템 디스크가 되는 일은 없어야 하지만,
@@ -309,8 +293,7 @@ public static class SafetyGuard
         if (freshTarget.IsSystemDisk || freshTarget.IsBootDisk || freshTarget.HasPageFile)
         {
             throw new SafetyViolationException(
-                $"대상 [{freshTarget.DeviceNumber}] {freshTarget.Model} 이(가) 시스템/부팅 디스크로 " +
-                "재판정되었습니다. 작업을 중단합니다.");
+                Strings.Format("SafeAssertTargetReclassifiedFmt", freshTarget.DeviceNumber, freshTarget.Model));
         }
     }
 

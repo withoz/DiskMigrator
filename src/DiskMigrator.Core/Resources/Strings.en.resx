@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="SafeNotElevated" xml:space="preserve"><value>Not running as administrator. Raw disk access requires administrator rights.</value></data>
+  <data name="SafeSameDisk" xml:space="preserve"><value>The source and target are the same disk. You can’t clone a disk onto itself.</value></data>
+  <data name="SafeTargetIsSystemFmt" xml:space="preserve"><value>Target [{0}] {1} is the system disk holding the currently running Windows. Overwriting it will stop this PC from booting.</value></data>
+  <data name="SafeTargetIsBootFmt" xml:space="preserve"><value>Target [{0}] {1} holds this PC’s boot files.</value></data>
+  <data name="SafeTargetHasPageFileFmt" xml:space="preserve"><value>Target [{0}] {1} has a page file that is currently in use.</value></data>
+  <data name="SafeTargetReadOnly" xml:space="preserve"><value>The target disk is read-only. You’ll need to clear its write protection first.</value></data>
+  <data name="SafeTargetSmallerLayoutFitsFmt" xml:space="preserve"><value>The target is smaller than the source, but all of the source’s partitions still fit. (Source {0} / Target {1}) The empty space after the last partition, {2}, won’t be cloned. Partition positions and contents stay the same, and nothing is written to the source.</value></data>
+  <data name="SafeTooSmallDetailShrinkFmt" xml:space="preserve"><value>The source’s partitions extend to {0}, so they don’t fit on the target. To make them smaller, shrink the volumes on the source first.</value></data>
+  <data name="SafeTooSmallDetailSectors" xml:space="preserve"><value>A full sector-by-sector clone is only possible when the target is at least as large as the source.</value></data>
+  <data name="SafeTargetTooSmallFmt" xml:space="preserve"><value>The target is {0} smaller than the source. (Source {1} / Target {2}) {3}</value></data>
+  <data name="SafeSectorSizeMismatchFmt" xml:space="preserve"><value>The logical sector sizes differ (source {0} bytes / target {1} bytes). A sector-by-sector clone between them won’t boot.</value></data>
+  <data name="SafeTargetHasDataFmt" xml:space="preserve"><value>Everything on target [{0}] {1} will be erased. It currently has {2} partition(s): {3}</value></data>
+  <data name="SafeSourceLiveSystem" xml:space="preserve"><value>The source is the currently running system disk, but a VSS snapshot isn’t available. Cloning without a snapshot copies files while they keep changing, so the clone’s parts come from different moments — it’s inconsistent and usually won’t boot. Turn the snapshot on in an environment where VSS works, or boot from other media (such as WinPE) and clone this disk while it isn’t running.</value></data>
+  <data name="SafeTargetLargerFmt" xml:space="preserve"><value>The target is {0} larger than the source. The extra space is left unallocated. After cloning, you can extend the last partition in Disk Management.</value></data>
+  <data name="SafeSourceOverUsb" xml:space="preserve"><value>The source is connected over USB, which limits speed.</value></data>
+  <data name="SafeTargetOverUsb" xml:space="preserve"><value>The target is connected over USB, which limits speed. Take care not to disconnect it during the operation.</value></data>
+  <data name="SafeSourceBiosOnly" xml:space="preserve"><value>The source uses MBR with an active partition (BIOS style) and has no EFI system partition. The copy will only boot on hardware that supports legacy (CSM) boot — it won’t boot from an NVMe M.2 slot or on UEFI-only PCs (NVMe has no legacy boot option ROM). To move it there, convert the copy to GPT/UEFI with mbr2gpt after cloning.</value></data>
+  <data name="SafeSourceHibernated" xml:space="preserve"><value>The source has a hibernation image (hiberfil.sys) — Windows was shut down with Fast Startup. The copy will try to restore the saved kernel state on different hardware and hang on a black screen with no error message. After cloning, “Repair boot” on the results screen turns off resume and clears the image.</value></data>
+  <data name="SafeAssertTargetGoneFmt" xml:space="preserve"><value>The target disk you confirmed, [{0}] {1}, no longer exists. Aborting the operation.</value></data>
+  <data name="SafeAssertTargetChangedFmt" xml:space="preserve"><value>The disk at device number {0} has changed since you confirmed it. At confirmation: {1} ({2}); now: {3} ({4}). To avoid erasing the wrong disk, the operation is aborted.</value></data>
+  <data name="SafeAssertTargetReclassifiedFmt" xml:space="preserve"><value>Target [{0}] {1} has been reclassified as a system/boot disk. Aborting the operation.</value></data>
+</root>
