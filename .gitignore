@@ -43,3 +43,7 @@ desktop.ini
 *.png
 !src/**/*.png
 !docs/**/*.png
+
+# 설치 프로그램 빌드 생성물 (installer\build.ps1 로 재생성)
+installer/output/
+installer/EULA-license.txt
