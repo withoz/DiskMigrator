@@ -222,28 +222,28 @@
         <Border Grid.Row="0" Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
                 BorderThickness="0,0,0,1" Padding="24,16">
             <Grid>
+                <!--
+                    로고 락업 — DM 마크 + 세로 선 + DISKMIGRATOR 워드마크.
+                    마크는 세 번째 변형(볼에서 M이 뻗어 나옴)을 벡터로 그립니다. 헤더 배경이
+                    밝으므로 마크·글자 모두 먹색(TextBrush)입니다. 배경이 어두우면 흰 로고를 쓰기로
+                    했으므로 배지 없이 글자색을 따라가게 둡니다. 별도 이미지 없이 어떤 DPI에서도 선명.
+                    (WPF에는 letter-spacing이 없어 얇은 공백 U+2009로 자간을 줍니다.)
+                -->
                 <StackPanel Orientation="Horizontal">
-                    <!--
-                        로고 — DM 모노그램. 세 번째 변형(볼에서 M이 뻗어 나옴)을 벡터로 그립니다.
-                        어두운 둥근 배지 안에 흰 마크. 별도 이미지 파일 없이 화면과 함께 선명합니다.
-                    -->
-                    <Border Width="46" Height="46" CornerRadius="11" Background="{StaticResource TextBrush}"
-                            VerticalAlignment="Center" Margin="0,0,14,0">
-                        <Viewbox Margin="9">
-                            <Canvas Width="350" Height="222">
-                                <Path Stroke="White" StrokeThickness="44" StrokeLineJoin="Round"
-                                      Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
-                                <Path Stroke="White" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
-                                      Data="M182,100 L255,178 L328,22 V200" />
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Viewbox Height="44" VerticalAlignment="Center" Margin="0,0,18,0">
+                        <Canvas Width="350" Height="222">
+                            <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Round"
+                                  Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
+                            <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
+                                  Data="M182,100 L255,178 L328,22 V200" />
+                        </Canvas>
+                    </Viewbox>
 
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="DiskMigrator" Style="{StaticResource Heading}" />
-                        <TextBlock Text="디스크 전체를 섹터 단위로 복제합니다 — 실행 중인 시스템 디스크 포함"
-                                   Style="{StaticResource Caption}" Margin="0,2,0,0" />
-                    </StackPanel>
+                    <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1,0,0,0"
+                            Padding="18,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
+                                   FontSize="21" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                    </Border>
                 </StackPanel>
 
                 <Border HorizontalAlignment="Right" VerticalAlignment="Center"
