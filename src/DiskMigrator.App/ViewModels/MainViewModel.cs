@@ -210,32 +210,30 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (SelectedSource.Disk.PartitionStyle is not (PartitionStyle.Gpt or PartitionStyle.Mbr))
             {
-                return $"원본이 {SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant()} 형식이라 " +
-                       "쓸 수 없습니다 — 이 방식은 파티션을 옮기고 파티션 테이블을 다시 씁니다.";
+                return Strings.Format("RbNotGptFmt",
+                    SelectedSource.Disk.PartitionStyle.ToString().ToUpperInvariant());
             }
 
             if (SelectedSource.Disk.HasExtendedPartition)
             {
-                return "원본에 확장 파티션(논리 드라이브)이 있어 쓸 수 없습니다 — 논리 드라이브는 " +
-                       "EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다.";
+                return Strings.Get("RbExtended");
             }
 
             if (ExceedsMbrLimit)
             {
-                return "MBR 원본은 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 " +
-                       "쓸 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 GPT로 바꾸십시오.";
+                return Strings.Get("RbMbr2tb");
             }
 
             if (SelectedSource.Disk.LogicalSectorSize != SelectedTarget.Disk.LogicalSectorSize)
             {
-                return $"원본과 대상의 섹터 크기가 다릅니다(원본 {SelectedSource.Disk.LogicalSectorSize}바이트, " +
-                       $"대상 {SelectedTarget.Disk.LogicalSectorSize}바이트). 파티션 위치가 어긋나 쓸 수 없습니다.";
+                return Strings.Format("RbSectorMismatchFmt",
+                    SelectedSource.Disk.LogicalSectorSize, SelectedTarget.Disk.LogicalSectorSize);
             }
 
             if (ResizablePartitions.Count == 0)
-                return "원본에 넓힐 수 있는 NTFS 파티션이 없습니다.";
+                return Strings.Get("RbNoNtfs");
 
-            return "대상이 원본보다 크지 않아 넓힐 공간이 없습니다.";
+            return Strings.Get("RbNoRoom");
         }
     }
 
@@ -258,9 +256,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// </remarks>
     public string RecoveryHint =>
         _recoveryPartitionMoved && ResultIsSuccess
-            ? "복구 파티션이 뒤로 밀려 Windows가 기억하던 위치와 달라졌습니다. 복제한 디스크로 부팅한 뒤 " +
-              "관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다. " +
-              "(Windows 부팅 자체는 정상입니다.)"
+            ? Strings.Get("ReagentcNote")
             : "";
 
     public bool HasRecoveryHint => RecoveryHint.Length > 0;
@@ -472,7 +468,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "디스크 목록을 읽지 못했습니다.");
-            LoadError = $"디스크 목록을 읽지 못했습니다: {ex.Message}";
+            LoadError = Strings.Format("LoadErrorFmt", ex.Message);
         }
         finally
         {
@@ -1028,7 +1024,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "부팅 구성 검사에 실패했습니다.");
-            BootCheckVerdict = $"검사에 실패했습니다: {ex.Message}";
+            BootCheckVerdict = Strings.Format("BootCheckFailFmt", ex.Message);
             BootCheckVerdictIsGood = false;
             BootCheckRan = true;
         }
@@ -1074,7 +1070,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "부팅 복구에 실패했습니다.");
-            BootRepairMessage = $"복구에 실패했습니다: {ex.Message}";
+            BootRepairMessage = Strings.Format("BootRepairFailFmt", ex.Message);
             BootRepairSuccess = false;
             BootRepairRan = true;
         }
@@ -1129,7 +1125,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "파티션 확장에 실패했습니다.");
-            PartitionExpandMessage = $"확장에 실패했습니다: {ex.Message}";
+            PartitionExpandMessage = Strings.Format("ExpandFailFmt", ex.Message);
             PartitionExpandSuccess = false;
             PartitionExpandRan = true;
         }
@@ -1180,7 +1176,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "UEFI 변환에 실패했습니다.");
-            UefiConvertMessage = $"변환에 실패했습니다: {ex.Message}";
+            UefiConvertMessage = Strings.Format("UefiConvertFailFmt", ex.Message);
             UefiConvertSuccess = false;
             UefiConvertRan = true;
         }
@@ -1268,14 +1264,14 @@ public sealed partial class MainViewModel : ObservableObject
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogError(ex, "권한 부족으로 작업이 실패했습니다.");
-            ShowFailure("권한이 부족합니다", ex.Message,
-                "프로그램을 관리자 권한으로 다시 실행하십시오.");
+            ShowFailure(Strings.Get("FailNoPrivTitle"), ex.Message,
+                Strings.Get("FailNoPrivDetail"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "작업이 실패했습니다.");
-            ShowFailure("작업이 실패했습니다", ex.Message,
-                "자세한 내용은 로그 파일을 확인하십시오.");
+            ShowFailure(Strings.Get("ResTitleFailed"), ex.Message,
+                Strings.Get("FailSeeLog"));
         }
         finally
         {
@@ -1294,7 +1290,7 @@ public sealed partial class MainViewModel : ObservableObject
         ProgressRegion = p.CurrentRegion;
         ProgressBytes = $"{SizeFormatter.Format(p.BytesProcessed)} / {SizeFormatter.Format(p.TotalBytes)}";
         ProgressSpeed = SizeFormatter.FormatSpeed(p.SpeedBytesPerSecond);
-        ProgressEta = p.Eta is { } eta ? SizeFormatter.FormatDuration(eta) : "계산 중...";
+        ProgressEta = p.Eta is { } eta ? SizeFormatter.FormatDuration(eta) : Strings.Get("EtaCalculating");
         ProgressElapsed = SizeFormatter.FormatDuration(p.Elapsed);
         BadSectorCount = p.BadSectorCount;
     }

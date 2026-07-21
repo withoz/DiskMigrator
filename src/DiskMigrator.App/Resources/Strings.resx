@@ -197,4 +197,21 @@
   <data name="ResMsgUnknownError" xml:space="preserve"><value>알 수 없는 오류입니다.</value></data>
   <data name="ResTitleResizeCorrupted" xml:space="preserve"><value>클론했지만 파티션 배치가 깨졌습니다 — 이 디스크로 부팅하지 마십시오</value></data>
   <data name="ResMsgResizeCorruptedFmt" xml:space="preserve"><value>[{0}] {1} 에 데이터는 복사됐지만, 파티션 리사이즈 배치를 반영하는 GPT 재작성에 실패해 파티션 테이블이 옛 위치를 가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. 리사이즈를 끄고 다시 클론하십시오.</value></data>
+
+  <data name="RbNotGptFmt" xml:space="preserve"><value>원본이 {0} 형식이라 쓸 수 없습니다 — 이 방식은 파티션을 옮기고 파티션 테이블을 다시 씁니다.</value></data>
+  <data name="RbExtended" xml:space="preserve"><value>원본에 확장 파티션(논리 드라이브)이 있어 쓸 수 없습니다 — 논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다.</value></data>
+  <data name="RbMbr2tb" xml:space="preserve"><value>MBR 원본은 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 쓸 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 GPT로 바꾸십시오.</value></data>
+  <data name="RbSectorMismatchFmt" xml:space="preserve"><value>원본과 대상의 섹터 크기가 다릅니다(원본 {0}바이트, 대상 {1}바이트). 파티션 위치가 어긋나 쓸 수 없습니다.</value></data>
+  <data name="RbNoNtfs" xml:space="preserve"><value>원본에 넓힐 수 있는 NTFS 파티션이 없습니다.</value></data>
+  <data name="RbNoRoom" xml:space="preserve"><value>대상이 원본보다 크지 않아 넓힐 공간이 없습니다.</value></data>
+  <data name="ReagentcNote" xml:space="preserve"><value>복구 파티션이 뒤로 밀려 Windows가 기억하던 위치와 달라졌습니다. 복제한 디스크로 부팅한 뒤 관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다. (Windows 부팅 자체는 정상입니다.)</value></data>
+  <data name="LoadErrorFmt" xml:space="preserve"><value>디스크 목록을 읽지 못했습니다: {0}</value></data>
+  <data name="BootCheckFailFmt" xml:space="preserve"><value>검사에 실패했습니다: {0}</value></data>
+  <data name="BootRepairFailFmt" xml:space="preserve"><value>복구에 실패했습니다: {0}</value></data>
+  <data name="ExpandFailFmt" xml:space="preserve"><value>확장에 실패했습니다: {0}</value></data>
+  <data name="UefiConvertFailFmt" xml:space="preserve"><value>변환에 실패했습니다: {0}</value></data>
+  <data name="FailNoPrivTitle" xml:space="preserve"><value>권한이 부족합니다</value></data>
+  <data name="FailNoPrivDetail" xml:space="preserve"><value>프로그램을 관리자 권한으로 다시 실행하십시오.</value></data>
+  <data name="FailSeeLog" xml:space="preserve"><value>자세한 내용은 로그 파일을 확인하십시오.</value></data>
+  <data name="EtaCalculating" xml:space="preserve"><value>계산 중...</value></data>
 </root>

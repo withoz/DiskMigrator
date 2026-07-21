@@ -197,4 +197,21 @@
   <data name="ResMsgUnknownError" xml:space="preserve"><value>An unknown error occurred.</value></data>
   <data name="ResTitleResizeCorrupted" xml:space="preserve"><value>Cloned, but the partition layout is broken — don’t boot from this disk</value></data>
   <data name="ResMsgResizeCorruptedFmt" xml:space="preserve"><value>Data was copied to [{0}] {1}, but rewriting the GPT to reflect the resized layout failed, so the partition table points to the old positions. Don’t boot from this disk or use its data. Turn off resize and clone again.</value></data>
+
+  <data name="RbNotGptFmt" xml:space="preserve"><value>The source is {0} format, so this can’t be used — this method moves partitions and rewrites the partition table.</value></data>
+  <data name="RbExtended" xml:space="preserve"><value>The source has an extended partition (logical drives), so this can’t be used — logical drives are linked by an EBR chain, and moving them means rewriting the whole chain.</value></data>
+  <data name="RbMbr2tb" xml:space="preserve"><value>An MBR source can only address partition locations up to about 2 TB, so this can’t be used on a larger target. Use “Add it to the last partition”, or convert the source to GPT.</value></data>
+  <data name="RbSectorMismatchFmt" xml:space="preserve"><value>The source and target have different sector sizes (source {0} bytes, target {1} bytes). Partition positions won’t line up, so this can’t be used.</value></data>
+  <data name="RbNoNtfs" xml:space="preserve"><value>The source has no NTFS partition that can be grown.</value></data>
+  <data name="RbNoRoom" xml:space="preserve"><value>The target isn’t larger than the source, so there’s no room to grow.</value></data>
+  <data name="ReagentcNote" xml:space="preserve"><value>The recovery partition moved back, so it’s no longer where Windows remembered it. After booting the cloned disk, run reagentc /enable once in an administrator command prompt to reconnect the recovery environment. (Windows itself boots fine.)</value></data>
+  <data name="LoadErrorFmt" xml:space="preserve"><value>Couldn’t read the disk list: {0}</value></data>
+  <data name="BootCheckFailFmt" xml:space="preserve"><value>The check failed: {0}</value></data>
+  <data name="BootRepairFailFmt" xml:space="preserve"><value>Repair failed: {0}</value></data>
+  <data name="ExpandFailFmt" xml:space="preserve"><value>Expansion failed: {0}</value></data>
+  <data name="UefiConvertFailFmt" xml:space="preserve"><value>Conversion failed: {0}</value></data>
+  <data name="FailNoPrivTitle" xml:space="preserve"><value>Insufficient privileges</value></data>
+  <data name="FailNoPrivDetail" xml:space="preserve"><value>Restart the program as administrator.</value></data>
+  <data name="FailSeeLog" xml:space="preserve"><value>Check the log file for details.</value></data>
+  <data name="EtaCalculating" xml:space="preserve"><value>Calculating…</value></data>
 </root>
