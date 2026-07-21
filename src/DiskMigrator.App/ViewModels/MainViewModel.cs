@@ -637,6 +637,27 @@ public sealed partial class MainViewModel : ObservableObject
             FreeSpaceGrowPartition = false;
             FreeSpaceLeave = true;
         }
+
+        // 대상이 바뀌면 '새 총 크기'에 남아 있던 값이 새 대상 범위를 벗어날 수 있습니다 —
+        // 더 큰 대상에서 정한 값을 그대로 두고 작은 대상으로 바꾸면 "용량 초과"로 거부돼
+        // 리사이즈가 아예 불가능한 것처럼 보입니다. 범위를 벗어난 값은 최대치로 맞춥니다.
+        ClampResizeSizeToBounds();
+    }
+
+    /// <summary>'새 총 크기' 입력이 현재 대상에서 가능한 범위를 벗어나면 최대치로 맞춥니다.</summary>
+    private void ClampResizeSizeToBounds()
+    {
+        if (SelectedResizePartition is not { } choice) return;
+        if (ResizeBounds(choice) is not var (min, max) || max <= min) return;
+        if (!FreeSpacePlanner.TryParseSizeGb(ResizeSizeGb, out double gb) || gb <= 0) return;
+
+        long bytes = (long)(gb * FreeSpacePlanner.BytesPerGb);
+        if (bytes < min || bytes > max)
+        {
+            long clamped = Math.Clamp(bytes, min, max);
+            ResizeSizeGb = ((double)clamped / FreeSpacePlanner.BytesPerGb)
+                .ToString("0.##", CultureInfo.CurrentCulture);
+        }
     }
 
     /// <summary>
