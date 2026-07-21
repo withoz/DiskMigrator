@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>DiskMigrator 로고 락업</title>
+<style>
+  :root {
+    --ground: #ffffff;
+    --ink: #26282B;
+    --rule: #D9D3CA;
+    --label: #57606A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground: #26282B; --ink: #ffffff; --rule: #3A3D42; --label: #7E838A; }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4rem 1.5rem;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  /*
+    로고 락업 = 마크 + 세로 구분선 + 워드마크. 세 요소의 간격·비율이 정체성입니다.
+    - 마크 폭 150px 기준. 워드마크 글자 크기 23px.
+    - 마크와 워드마크 사이 간격 1.375rem, 구분선 왼쪽 여백도 1.375rem.
+    - 워드마크는 전부 대문자, 자간 0.34em.
+  */
+  .lockup { display: flex; align-items: center; gap: 1.375rem; }
+  .mark { width: 150px; flex: none; }
+  .mark svg { display: block; width: 100%; height: auto; }
+  .mark svg path { stroke: var(--ink); }
+  .wordmark { border-left: 1px solid var(--rule); padding-left: 1.375rem; }
+  .wordmark .name {
+    font-size: 23px;
+    font-weight: 400;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--label);
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+  <div class="lockup">
+    <div class="mark">
+      <svg viewBox="-25 -25 400 272" xmlns="http://www.w3.org/2000/svg" aria-label="DiskMigrator">
+        <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" fill="none" stroke-width="44" stroke-linejoin="round"/>
+        <path d="M182,100 L255,178 L328,22 V200" fill="none" stroke-width="44" stroke-linejoin="miter" stroke-miterlimit="10"/>
+      </svg>
+    </div>
+    <div class="wordmark"><span class="name">DiskMigrator</span></div>
+  </div>
+</body>
+</html>

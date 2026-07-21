@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DiskMigrator 앱 아이콘">
+  <title>DiskMigrator 앱 아이콘</title>
+  <!--
+    앱 아이콘: 다크 라운드 사각(#26282B) + 흰 DM 마크. 이것이 왜곡 없는 벡터 원본입니다.
+    (기존 logo.ico/png 는 GDI+로 다시 그리다 D 곡선이 뭉개졌습니다 — 이 SVG 로 다시 내보내십시오.)
+
+    마크 배치: translate(92,152) scale(0.937). 512 캔버스에 18% 여백을 두고 가운데 정렬한 값입니다.
+    라운드 반경 rx=92 도 512의 18%입니다. 캔버스 크기를 바꾸면 세 값(rx·translate·여백)을
+    같은 비율로 다시 계산하십시오.
+  -->
+  <rect width="512" height="512" rx="92" fill="#26282B"/>
+  <g transform="translate(92,152) scale(0.937)"
+     fill="none" stroke="#FFFFFF" stroke-width="44">
+    <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" stroke-linejoin="round"/>
+    <path d="M182,100 L255,178 L328,22 V200" stroke-linejoin="miter" stroke-miterlimit="10"/>
+  </g>
+</svg>

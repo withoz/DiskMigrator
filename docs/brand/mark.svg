@@ -1,0 +1,12 @@
+<svg viewBox="-25 -25 400 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DiskMigrator DM 마크">
+  <title>DiskMigrator DM 마크</title>
+  <!--
+    이것이 정식 로고 마크의 벡터 원본입니다. 헤더·아티팩트가 쓰는 것과 같은 좌표입니다.
+    color 를 바꾸면 두 획 모두 그 색으로 칠해집니다(currentColor). 예: <svg ... color="#000">.
+    획 굵기 44, D는 둥근 이음, M은 각진 이음(miterlimit 10)이 핵심입니다 — 바꾸지 마십시오.
+  -->
+  <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z"
+        fill="none" stroke="currentColor" stroke-width="44" stroke-linejoin="round"/>
+  <path d="M182,100 L255,178 L328,22 V200"
+        fill="none" stroke="currentColor" stroke-width="44" stroke-linejoin="miter" stroke-miterlimit="10"/>
+</svg>

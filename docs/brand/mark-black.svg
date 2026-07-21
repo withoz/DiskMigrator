@@ -1,0 +1,7 @@
+<svg viewBox="-25 -25 400 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DiskMigrator DM 마크 (검정)">
+  <title>DiskMigrator DM 마크 · 검정 (밝은 바탕용)</title>
+  <path d="M22,178 V22 H126 A56,56 0 0 1 126,178 Z"
+        fill="none" stroke="#26282B" stroke-width="44" stroke-linejoin="round"/>
+  <path d="M182,100 L255,178 L328,22 V200"
+        fill="none" stroke="#26282B" stroke-width="44" stroke-linejoin="miter" stroke-miterlimit="10"/>
+</svg>
