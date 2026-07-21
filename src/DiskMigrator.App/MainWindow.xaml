@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:DiskMigrator.App.ViewModels"
+        xmlns:loc="clr-namespace:DiskMigrator.App.Localization"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="DiskMigrator — 디스크 클론" Height="840" Width="1180"
+        Title="{loc:Loc AppTitle}" Height="840" Width="1180"
         MinHeight="700" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource SurfaceAlt}"
@@ -140,7 +141,7 @@
                                Cursor="SizeWE" Focusable="True"
                                DragDelta="ResizeThumb_DragDelta"
                                KeyDown="ResizeThumb_KeyDown"
-                               ToolTip="끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)">
+                               ToolTip="{loc:Loc ResizeHandleTooltip}">
                             <Thumb.Template>
                                 <ControlTemplate TargetType="Thumb">
                                     <!--
@@ -265,7 +266,7 @@
                         Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
                         CornerRadius="6" Padding="10,5"
                         Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
-                    <TextBlock Text="관리자 권한 아님 — 클론을 실행할 수 없습니다"
+                    <TextBlock Text="{loc:Loc NotAdminBadge}"
                                Style="{StaticResource Caption}" Foreground="{StaticResource Danger}" FontWeight="SemiBold" />
                 </Border>
             </Grid>
@@ -289,8 +290,8 @@
                 <Border Style="{StaticResource StepNumber}">
                     <TextBlock Text="1" Style="{StaticResource StepNumberText}" />
                 </Border>
-                <TextBlock Text="디스크 선택" Style="{StaticResource StepTitle}" />
-                <TextBlock Text="원본은 읽기만 합니다" Style="{StaticResource Micro}"
+                <TextBlock Text="{loc:Loc Step1Title}" Style="{StaticResource StepTitle}" />
+                <TextBlock Text="{loc:Loc Step1Subtitle}" Style="{StaticResource Micro}"
                            VerticalAlignment="Center" Margin="8,0,0,0" />
             </StackPanel>
 
@@ -315,7 +316,7 @@
                 -->
                 <StackPanel Grid.Row="0" Grid.Column="0">
                     <StackPanel Orientation="Horizontal" Height="26" Margin="0,0,0,8">
-                        <TextBlock Text="원본 (읽기)" Style="{StaticResource SubHeading}"
+                        <TextBlock Text="{loc:Loc SourceReadLabel}" Style="{StaticResource SubHeading}"
                                    FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
                         <!--
                             글자 색은 버튼 안 TextBlock에 직접 줍니다. 기본 Button 템플릿의
@@ -325,7 +326,7 @@
                         <Button Command="{Binding RefreshDisksCommand}"
                                 Padding="8,3" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center"
                                 BorderBrush="{StaticResource Success}">
-                            <TextBlock Text="새로고침" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
+                            <TextBlock Text="{loc:Loc Refresh}" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
                         </Button>
                     </StackPanel>
 
@@ -342,14 +343,14 @@
                 <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Margin="20,0">
                     <TextBlock Text="&#x2192;" FontSize="20" Foreground="{StaticResource Accent}"
                                HorizontalAlignment="Center" FontWeight="Bold" />
-                    <TextBlock Text="복제" Style="{StaticResource Micro}"
+                    <TextBlock Text="{loc:Loc CloneArrow}" Style="{StaticResource Micro}"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <!-- 대상 — 높이는 원본 열과 같은 값이어야 가로줄이 맞습니다. -->
                 <StackPanel Grid.Row="0" Grid.Column="2">
                     <Grid Height="26" Margin="0,0,0,8">
-                        <TextBlock Text="대상 (쓰기)" VerticalAlignment="Center"
+                        <TextBlock Text="{loc:Loc TargetWriteLabel}" VerticalAlignment="Center"
                                    Style="{StaticResource SubHeading}" FontWeight="Bold"
                                    Foreground="{StaticResource Danger}" />
                     </Grid>
@@ -404,8 +405,8 @@
                     <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceLeave}"
                                  VerticalContentAlignment="Top" Margin="0,0,0,9">
                         <StackPanel>
-                            <TextBlock Text="그대로 둡니다" Style="{StaticResource Body}" />
-                            <TextBlock Text="미할당으로 남겨 두고, 나중에 디스크 관리에서 씁니다"
+                            <TextBlock Text="{loc:Loc FreeSpaceLeaveTitle}" Style="{StaticResource Body}" />
+                            <TextBlock Text="{loc:Loc FreeSpaceLeaveDesc}"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                     </RadioButton>
@@ -413,8 +414,8 @@
                     <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceExpandLast}"
                                  VerticalContentAlignment="Top" Margin="0,0,0,9">
                         <StackPanel>
-                            <TextBlock Text="마지막 파티션에 합치기" Style="{StaticResource Body}" />
-                            <TextBlock Text="간단하고 안전합니다 · MBR 디스크도 가능. 다만 맨 뒤가 복구 파티션이면 그것이 커집니다"
+                            <TextBlock Text="{loc:Loc FreeSpaceMergeTitle}" Style="{StaticResource Body}" />
+                            <TextBlock Text="{loc:Loc FreeSpaceMergeDesc}"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                     </RadioButton>
@@ -423,8 +424,8 @@
                                  IsEnabled="{Binding CanResize}"
                                  VerticalContentAlignment="Top" Margin="0,0,0,4">
                         <StackPanel>
-                            <TextBlock Text="파티션 조정" Style="{StaticResource Body}" />
-                            <TextBlock Text="C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본 (확장 파티션 제외)"
+                            <TextBlock Text="{loc:Loc FreeSpaceResizeTitle}" Style="{StaticResource Body}" />
+                            <TextBlock Text="{loc:Loc FreeSpaceResizeDesc}"
                                        Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                     </RadioButton>
@@ -471,7 +472,7 @@
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="ResizeFillRadio" GroupName="ResizeSize"
                                          IsChecked="{Binding ResizeFillRemaining}"
-                                         Content="남는 공간 전부" VerticalContentAlignment="Center"
+                                         Content="{loc:Loc AllRemainingSpace}" VerticalContentAlignment="Center"
                                          Margin="0,0,14,0" FontSize="12" />
                             <!--
                                 두 라디오 모두 뷰모델이 받쳐야 합니다. 한쪽만 묶어 두면 나머지
@@ -481,7 +482,7 @@
                             -->
                             <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeSize"
                                          IsChecked="{Binding ResizeUseCustomSize}"
-                                         Content="새 총 크기(GB):" VerticalContentAlignment="Center"
+                                         Content="{loc:Loc NewTotalSizeGb}" VerticalContentAlignment="Center"
                                          Margin="0,0,6,0" FontSize="12" />
                             <!--
                                 기본 UpdateSourceTrigger(LostFocus)면 숫자를 다 치고도 다른 곳을
@@ -494,7 +495,7 @@
                         </StackPanel>
 
                         <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,6,0,0"
-                                   Text="'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 클론 중 자동 확장이 안 되면 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 넓힐 수 있습니다." />
+                                   Text="{loc:Loc ResizeHelp}" />
                     </StackPanel>
                 </StackPanel>
 
@@ -508,7 +509,7 @@
                         <Border Style="{StaticResource StepNumber}">
                             <TextBlock Text="2" Style="{StaticResource StepNumberText}" />
                         </Border>
-                        <TextBlock Text="옵션" Style="{StaticResource StepTitle}" />
+                        <TextBlock Text="{loc:Loc Step2Title}" Style="{StaticResource StepTitle}" />
                     </StackPanel>
 
                     <Grid>
@@ -518,13 +519,13 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,18,0">
-                            <TextBlock Text="안전" Style="{StaticResource SectionLabel}" Margin="0,0,0,7" />
+                            <TextBlock Text="{loc:Loc SafetyLabel}" Style="{StaticResource SectionLabel}" Margin="0,0,0,7" />
 
                             <CheckBox IsChecked="{Binding UseSnapshot}" IsEnabled="{Binding IsSnapshotAvailable}"
                                       VerticalContentAlignment="Top" Margin="0,0,0,9">
                                 <StackPanel>
-                                    <TextBlock Text="VSS 스냅샷 사용" Style="{StaticResource Body}" />
-                                    <TextBlock Text="복제 중 파일이 바뀌어도 일관된 사본을 만듭니다"
+                                    <TextBlock Text="{loc:Loc VssTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc VssDesc}"
                                                Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                                 </StackPanel>
                             </CheckBox>
@@ -532,8 +533,8 @@
                             <CheckBox IsChecked="{Binding VerifyAfterClone}"
                                       VerticalContentAlignment="Top" Margin="0,0,0,9">
                                 <StackPanel>
-                                    <TextBlock Text="복제 후 검증" Style="{StaticResource Body}" />
-                                    <TextBlock Text="다시 읽어 원본과 비교합니다 · 시간 약 2배"
+                                    <TextBlock Text="{loc:Loc VerifyTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc VerifyDesc}"
                                                Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                                 </StackPanel>
                             </CheckBox>
@@ -541,21 +542,21 @@
                             <CheckBox IsChecked="{Binding ZeroFillBadSectors}"
                                       VerticalContentAlignment="Top" Margin="0,0,0,9">
                                 <StackPanel>
-                                    <TextBlock Text="불량 섹터 건너뛰기" Style="{StaticResource Body}" />
-                                    <TextBlock Text="읽지 못한 섹터를 0으로 채우고 계속합니다"
+                                    <TextBlock Text="{loc:Loc SkipBadTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc SkipBadDesc}"
                                                Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                                 </StackPanel>
                             </CheckBox>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1">
-                            <TextBlock Text="동작" Style="{StaticResource SectionLabel}" Margin="0,0,0,7" />
+                            <TextBlock Text="{loc:Loc BehaviorLabel}" Style="{StaticResource SectionLabel}" Margin="0,0,0,7" />
 
                             <CheckBox IsChecked="{Binding SkipUnusedBlocks}" IsEnabled="{Binding UseSnapshot}"
                                       VerticalContentAlignment="Top" Margin="0,0,0,9">
                                 <StackPanel>
-                                    <TextBlock Text="스마트 클론" Style="{StaticResource Body}" />
-                                    <TextBlock Text="사용 중인 블록만 복사해 빠르게 · 스냅샷 필요"
+                                    <TextBlock Text="{loc:Loc SmartTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc SmartDesc}"
                                                Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                                 </StackPanel>
                             </CheckBox>
@@ -563,8 +564,8 @@
                             <CheckBox IsChecked="{Binding UniversalRestore}"
                                       VerticalContentAlignment="Top" Margin="0,0,0,9">
                                 <StackPanel>
-                                    <TextBlock Text="새 하드웨어 대비" Style="{StaticResource Body}" />
-                                    <TextBlock Text="다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화"
+                                    <TextBlock Text="{loc:Loc NewHwTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc NewHwDesc}"
                                                Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
                                 </StackPanel>
                             </CheckBox>
@@ -589,7 +590,7 @@
                         <Border Style="{StaticResource StepNumber}">
                             <TextBlock Text="3" Style="{StaticResource StepNumberText}" />
                         </Border>
-                        <TextBlock Text="확인 후 실행" Style="{StaticResource StepTitle}" />
+                        <TextBlock Text="{loc:Loc Step3Title}" Style="{StaticResource StepTitle}" />
                     </StackPanel>
 
                     <!-- 안전 점검 결과 -->
@@ -633,7 +634,7 @@
                             비활성 사유·주의), 오른쪽에 버튼을 두어 박스 높이를 글 내용에 맞춥니다.
                         -->
                         <DockPanel LastChildFill="True">
-                            <Button DockPanel.Dock="Right" Content="클론 시작" Command="{Binding StartCommand}"
+                            <Button DockPanel.Dock="Right" Content="{loc:Loc StartClone}" Command="{Binding StartCommand}"
                                     Style="{StaticResource DangerButton}" MinWidth="130" Padding="20,9"
                                     Margin="14,0,0,0" VerticalAlignment="Center" />
 
@@ -655,7 +656,7 @@
                                            Visibility="{Binding HasBlockedReason,
                                                         Converter={StaticResource BoolToVisibility}}" />
 
-                                <TextBlock Text="이 작업은 되돌릴 수 없습니다. 대상 디스크를 다시 확인하십시오."
+                                <TextBlock Text="{loc:Loc IrreversibleWarn}"
                                            Style="{StaticResource Micro}" Margin="0,4,0,0" />
                             </StackPanel>
                         </DockPanel>
@@ -690,22 +691,22 @@
 
                     <UniformGrid Columns="4" Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="복사됨" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{loc:Loc StatCopied}" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
                             <TextBlock Text="{Binding ProgressBytes}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="속도" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{loc:Loc StatSpeed}" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
                             <TextBlock Text="{Binding ProgressSpeed}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="남은 시간" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{loc:Loc StatTimeLeft}" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
                             <TextBlock Text="{Binding ProgressEta}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="경과" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{loc:Loc StatElapsed}" Style="{StaticResource SubHeading}" HorizontalAlignment="Center" />
                             <TextBlock Text="{Binding ProgressElapsed}" Style="{StaticResource Body}" HorizontalAlignment="Center"
                                        Margin="0,3,0,0" />
                         </StackPanel>
@@ -714,11 +715,11 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <Button Content="{Binding PauseButtonText}" Command="{Binding TogglePauseCommand}"
                                 MinWidth="110" Margin="0,0,10,0" />
-                        <Button Content="취소" Command="{Binding CancelCommand}"
+                        <Button Content="{loc:Loc Cancel}" Command="{Binding CancelCommand}"
                                 Style="{StaticResource DangerButton}" MinWidth="110" />
                     </StackPanel>
 
-                    <TextBlock Text="작업 중에는 대상 디스크의 연결을 끊거나 PC를 끄지 마십시오."
+                    <TextBlock Text="{loc:Loc DoNotDisconnect}"
                                Style="{StaticResource Micro}"
                                HorizontalAlignment="Center" Margin="0,16,0,0" />
                 </StackPanel>
@@ -759,13 +760,13 @@
                     <StackPanel Margin="0,20,0,0"
                                 Visibility="{Binding ResultIsSuccess, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="부팅 구성 검사" Command="{Binding BootCheckCommand}"
+                            <Button Content="{loc:Loc BootCheckBtn}" Command="{Binding BootCheckCommand}"
                                     MinWidth="130" Padding="16,8" />
                             <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
-                                       Text="실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다." />
+                                       Text="{loc:Loc BootCheckTip}" />
                         </StackPanel>
 
-                        <TextBlock Text="검사 중..." Margin="0,8,0,0" Style="{StaticResource Caption}"
+                        <TextBlock Text="{loc:Loc Checking}" Margin="0,8,0,0" Style="{StaticResource Caption}"
                                    Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
 
                         <!-- 검사 결과 -->
@@ -822,12 +823,12 @@
                             <StackPanel Margin="0,12,0,0"
                                         Visibility="{Binding BootRepairAvailable, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="부팅 복구" Command="{Binding RepairBootCommand}"
+                                    <Button Content="{loc:Loc RepairBootBtn}" Command="{Binding RepairBootCommand}"
                                             MinWidth="120" Padding="14,7" />
                                     <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                               Text="BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다." />
+                                               Text="{loc:Loc RepairBootTip}" />
                                 </StackPanel>
-                                <TextBlock Text="복구 중..." Margin="0,6,0,0" Style="{StaticResource Caption}"
+                                <TextBlock Text="{loc:Loc Repairing}" Margin="0,6,0,0" Style="{StaticResource Caption}"
                                            Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
 
@@ -858,21 +859,21 @@
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
                             Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
-                            <TextBlock Text="요즘 PC에서 부팅되게 만들기 (GPT/UEFI 변환)"
+                            <TextBlock Text="{loc:Loc MakeBootableTitle}"
                                        Style="{StaticResource Body}" FontWeight="SemiBold"
                                        Foreground="{StaticResource Accent}" />
                             <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
-                                       Text="이 사본은 원본과 같은 BIOS(레거시) 방식이라, 레거시 부팅을 지원하는 PC에서만 켜집니다. NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다. 아래 버튼이 GPT로 바꾸고 EFI 시스템 파티션을 만들어 UEFI로 부팅되게 합니다." />
+                                       Text="{loc:Loc MakeBootableDesc}" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="UEFI로 변환" Command="{Binding ConvertToUefiCommand}"
+                                <Button Content="{loc:Loc ConvertUefiBtn}" Command="{Binding ConvertToUefiCommand}"
                                         MinWidth="130" Padding="16,8" />
                                 <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
                                            Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                           Text="되돌릴 수 없습니다. 변환 후에는 BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오." />
+                                           Text="{loc:Loc ConvertUefiTip}" />
                             </StackPanel>
 
-                            <TextBlock Text="변환 중... (몇 분 걸릴 수 있습니다)" Margin="0,6,0,0"
+                            <TextBlock Text="{loc:Loc Converting}" Margin="0,6,0,0"
                                        Style="{StaticResource Caption}"
                                        Visibility="{Binding IsConvertingToUefi,
                                                     Converter={StaticResource BoolToVisibility}}" />
@@ -904,7 +905,7 @@
                             BorderBrush="{StaticResource Warning}" BorderThickness="1"
                             Visibility="{Binding HasRecoveryHint, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
-                            <TextBlock Text="복구 환경(WinRE) 다시 연결하기" Style="{StaticResource Body}"
+                            <TextBlock Text="{loc:Loc ReconnectWinre}" Style="{StaticResource Body}"
                                        FontWeight="SemiBold" Foreground="{StaticResource Warning}" />
                             <TextBlock Text="{Binding RecoveryHint}" Style="{StaticResource Caption}"
                                        TextWrapping="Wrap" Margin="0,4,0,0" />
@@ -915,13 +916,13 @@
                     <StackPanel Margin="0,20,0,0"
                                 Visibility="{Binding PartitionExpandAvailable, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="파티션 확장" Command="{Binding ExpandPartitionCommand}"
+                            <Button Content="{loc:Loc ExpandPartitionBtn}" Command="{Binding ExpandPartitionCommand}"
                                     MinWidth="130" Padding="16,8" />
                             <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
-                                       Text="확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 맨 뒤가 복구 파티션이면 그것이 커집니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다." />
+                                       Text="{loc:Loc ExpandPartitionTip}" />
                         </StackPanel>
 
-                        <TextBlock Text="확장 중..." Margin="0,6,0,0" Style="{StaticResource Caption}"
+                        <TextBlock Text="{loc:Loc Expanding}" Margin="0,6,0,0" Style="{StaticResource Caption}"
                                    Visibility="{Binding IsExpandingPartition, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
 
@@ -939,7 +940,7 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <Button Content="처음으로" Command="{Binding BackToSelectionCommand}"
+                    <Button Content="{loc:Loc StartOver}" Command="{Binding BackToSelectionCommand}"
                             Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
                             Margin="0,20,0,0" MinWidth="120" Padding="20,10" />
                 </StackPanel>

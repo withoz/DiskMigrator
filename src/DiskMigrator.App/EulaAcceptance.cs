@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 
 namespace DiskMigrator.App;
@@ -40,16 +41,29 @@ public static class EulaAcceptance
             $"DiskMigrator EULA v{Version}\r\naccepted: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}\r\n");
     }
 
-    /// <summary>내장된 EULA 본문을 읽어옵니다.</summary>
+    /// <summary>현재 언어에 맞는 내장 EULA 본문을 읽어옵니다.</summary>
+    /// <remarks>
+    /// 영어(en)면 EULA.en.txt, 그 외(한국어 포함)면 EULA.txt를 씁니다. 영어 리소스가 없으면
+    /// 한국어로 되돌아갑니다. 리소스 이름은 "<루트네임스페이스>.Resources.EULA[.en].txt" 형태.
+    /// </remarks>
     public static string LoadText()
     {
         var asm = typeof(EulaAcceptance).Assembly;
-        // 리소스 이름은 "<루트네임스페이스>.Resources.EULA.txt" 형태입니다.
-        string resourceName = $"{typeof(EulaAcceptance).Namespace}.Resources.EULA.txt";
-        using var stream = asm.GetManifestResourceStream(resourceName);
-        if (stream is null)
-            return "사용권 계약 본문을 불러오지 못했습니다.";
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        string ns = typeof(EulaAcceptance).Namespace!;
+        bool english = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName != "ko";
+
+        string[] candidates = english
+            ? new[] { $"{ns}.Resources.EULA.en.txt", $"{ns}.Resources.EULA.txt" }
+            : new[] { $"{ns}.Resources.EULA.txt" };
+
+        foreach (string name in candidates)
+        {
+            using var stream = asm.GetManifestResourceStream(name);
+            if (stream is null) continue;
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+
+        return "Could not load the license agreement text.";
     }
 }

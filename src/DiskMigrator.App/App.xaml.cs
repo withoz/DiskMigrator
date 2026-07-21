@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -17,9 +18,29 @@ public partial class App : Application
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "DiskMigrator", "logs");
 
+    /// <summary>
+    /// 이번 실행의 UI 언어를 정합니다. 환경변수 <c>DM_LANG</c>(예: en, ko)가 있으면 그것을,
+    /// 없으면 OS UI 언어를 씁니다 — 한국어면 한국어, 그 외는 영어. 창이 로드되기 전에
+    /// 호출해야 문자열이 올바른 언어로 잡힙니다.
+    /// </summary>
+    private static void ApplyCulture()
+    {
+        string? env = Environment.GetEnvironmentVariable("DM_LANG");
+        CultureInfo culture = !string.IsNullOrWhiteSpace(env)
+            ? new CultureInfo(env)
+            : (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko"
+                ? new CultureInfo("ko")
+                : new CultureInfo("en"));
+
+        Thread.CurrentThread.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        ApplyCulture();
 
         Directory.CreateDirectory(LogDirectory);
 

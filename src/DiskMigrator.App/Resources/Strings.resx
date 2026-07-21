@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="AppTitle" xml:space="preserve"><value>DiskMigrator — 디스크 클론</value></data>
+  <data name="ResizeHandleTooltip" xml:space="preserve"><value>끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)</value></data>
+  <data name="NotAdminBadge" xml:space="preserve"><value>관리자 권한 아님 — 클론을 실행할 수 없습니다</value></data>
+  <data name="Step1Title" xml:space="preserve"><value>디스크 선택</value></data>
+  <data name="Step1Subtitle" xml:space="preserve"><value>원본은 읽기만 합니다</value></data>
+  <data name="SourceReadLabel" xml:space="preserve"><value>원본 (읽기)</value></data>
+  <data name="Refresh" xml:space="preserve"><value>새로고침</value></data>
+  <data name="CloneArrow" xml:space="preserve"><value>복제</value></data>
+  <data name="TargetWriteLabel" xml:space="preserve"><value>대상 (쓰기)</value></data>
+  <data name="FreeSpaceLeaveTitle" xml:space="preserve"><value>그대로 둡니다</value></data>
+  <data name="FreeSpaceLeaveDesc" xml:space="preserve"><value>미할당으로 남겨 두고, 나중에 디스크 관리에서 씁니다</value></data>
+  <data name="FreeSpaceMergeTitle" xml:space="preserve"><value>마지막 파티션에 합치기</value></data>
+  <data name="FreeSpaceMergeDesc" xml:space="preserve"><value>간단하고 안전합니다 · MBR 디스크도 가능. 다만 맨 뒤가 복구 파티션이면 그것이 커집니다</value></data>
+  <data name="FreeSpaceResizeTitle" xml:space="preserve"><value>파티션 조정</value></data>
+  <data name="FreeSpaceResizeDesc" xml:space="preserve"><value>C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본 (확장 파티션 제외)</value></data>
+  <data name="AllRemainingSpace" xml:space="preserve"><value>남는 공간 전부</value></data>
+  <data name="NewTotalSizeGb" xml:space="preserve"><value>새 총 크기(GB):</value></data>
+  <data name="ResizeHelp" xml:space="preserve"><value>'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 클론 중 자동 확장이 안 되면 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 넓힐 수 있습니다.</value></data>
+  <data name="Step2Title" xml:space="preserve"><value>옵션</value></data>
+  <data name="SafetyLabel" xml:space="preserve"><value>안전</value></data>
+  <data name="VssTitle" xml:space="preserve"><value>VSS 스냅샷 사용</value></data>
+  <data name="VssDesc" xml:space="preserve"><value>복제 중 파일이 바뀌어도 일관된 사본을 만듭니다</value></data>
+  <data name="VerifyTitle" xml:space="preserve"><value>복제 후 검증</value></data>
+  <data name="VerifyDesc" xml:space="preserve"><value>다시 읽어 원본과 비교합니다 · 시간 약 2배</value></data>
+  <data name="SkipBadTitle" xml:space="preserve"><value>불량 섹터 건너뛰기</value></data>
+  <data name="SkipBadDesc" xml:space="preserve"><value>읽지 못한 섹터를 0으로 채우고 계속합니다</value></data>
+  <data name="BehaviorLabel" xml:space="preserve"><value>동작</value></data>
+  <data name="SmartTitle" xml:space="preserve"><value>스마트 클론</value></data>
+  <data name="SmartDesc" xml:space="preserve"><value>사용 중인 블록만 복사해 빠르게 · 스냅샷 필요</value></data>
+  <data name="NewHwTitle" xml:space="preserve"><value>새 하드웨어 대비</value></data>
+  <data name="NewHwDesc" xml:space="preserve"><value>다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화</value></data>
+  <data name="Step3Title" xml:space="preserve"><value>확인 후 실행</value></data>
+  <data name="StartClone" xml:space="preserve"><value>클론 시작</value></data>
+  <data name="IrreversibleWarn" xml:space="preserve"><value>이 작업은 되돌릴 수 없습니다. 대상 디스크를 다시 확인하십시오.</value></data>
+  <data name="StatCopied" xml:space="preserve"><value>복사됨</value></data>
+  <data name="StatSpeed" xml:space="preserve"><value>속도</value></data>
+  <data name="StatTimeLeft" xml:space="preserve"><value>남은 시간</value></data>
+  <data name="StatElapsed" xml:space="preserve"><value>경과</value></data>
+  <data name="Cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="DoNotDisconnect" xml:space="preserve"><value>작업 중에는 대상 디스크의 연결을 끊거나 PC를 끄지 마십시오.</value></data>
+  <data name="BootCheckBtn" xml:space="preserve"><value>부팅 구성 검사</value></data>
+  <data name="BootCheckTip" xml:space="preserve"><value>실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다.</value></data>
+  <data name="Checking" xml:space="preserve"><value>검사 중...</value></data>
+  <data name="RepairBootBtn" xml:space="preserve"><value>부팅 복구</value></data>
+  <data name="RepairBootTip" xml:space="preserve"><value>BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다.</value></data>
+  <data name="Repairing" xml:space="preserve"><value>복구 중...</value></data>
+  <data name="MakeBootableTitle" xml:space="preserve"><value>요즘 PC에서 부팅되게 만들기 (GPT/UEFI 변환)</value></data>
+  <data name="MakeBootableDesc" xml:space="preserve"><value>이 사본은 원본과 같은 BIOS(레거시) 방식이라, 레거시 부팅을 지원하는 PC에서만 켜집니다. NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다. 아래 버튼이 GPT로 바꾸고 EFI 시스템 파티션을 만들어 UEFI로 부팅되게 합니다.</value></data>
+  <data name="ConvertUefiBtn" xml:space="preserve"><value>UEFI로 변환</value></data>
+  <data name="ConvertUefiTip" xml:space="preserve"><value>되돌릴 수 없습니다. 변환 후에는 BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오.</value></data>
+  <data name="Converting" xml:space="preserve"><value>변환 중... (몇 분 걸릴 수 있습니다)</value></data>
+  <data name="ReconnectWinre" xml:space="preserve"><value>복구 환경(WinRE) 다시 연결하기</value></data>
+  <data name="ExpandPartitionBtn" xml:space="preserve"><value>파티션 확장</value></data>
+  <data name="ExpandPartitionTip" xml:space="preserve"><value>확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 맨 뒤가 복구 파티션이면 그것이 커집니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다.</value></data>
+  <data name="Expanding" xml:space="preserve"><value>확장 중...</value></data>
+  <data name="StartOver" xml:space="preserve"><value>처음으로</value></data>
+
+  <data name="EulaTitle" xml:space="preserve"><value>DiskMigrator 사용권 계약</value></data>
+  <data name="EulaHeading" xml:space="preserve"><value>사용권 계약 (EULA)</value></data>
+  <data name="EulaDanger" xml:space="preserve"><value>이 프로그램은 대상(쓰기) 디스크의 모든 데이터를 영구히 삭제할 수 있습니다. 계속하려면 아래 내용을 읽고 동의하십시오.</value></data>
+  <data name="EulaAgreeCheck" xml:space="preserve"><value>위 내용을 읽고 이해했으며, 이에 동의합니다.</value></data>
+  <data name="EulaDecline" xml:space="preserve"><value>동의하지 않음 (종료)</value></data>
+  <data name="EulaAccept" xml:space="preserve"><value>동의하고 시작</value></data>
+</root>

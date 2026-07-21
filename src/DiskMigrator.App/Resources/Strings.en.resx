@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="AppTitle" xml:space="preserve"><value>DiskMigrator — Disk Clone</value></data>
+  <data name="ResizeHandleTooltip" xml:space="preserve"><value>Drag to resize · arrow keys nudge by 1 MiB (hold Shift for 1 GiB)</value></data>
+  <data name="NotAdminBadge" xml:space="preserve"><value>Not running as administrator — cloning is disabled</value></data>
+  <data name="Step1Title" xml:space="preserve"><value>Choose disks</value></data>
+  <data name="Step1Subtitle" xml:space="preserve"><value>The source is never modified</value></data>
+  <data name="SourceReadLabel" xml:space="preserve"><value>Source (read)</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="CloneArrow" xml:space="preserve"><value>Clone</value></data>
+  <data name="TargetWriteLabel" xml:space="preserve"><value>Target (write)</value></data>
+  <data name="FreeSpaceLeaveTitle" xml:space="preserve"><value>Leave it as is</value></data>
+  <data name="FreeSpaceLeaveDesc" xml:space="preserve"><value>Leaves the extra space unallocated — use it later in Disk Management</value></data>
+  <data name="FreeSpaceMergeTitle" xml:space="preserve"><value>Add it to the last partition</value></data>
+  <data name="FreeSpaceMergeDesc" xml:space="preserve"><value>Simple and safe · works on MBR disks too. If the last partition is a recovery one, that grows instead</value></data>
+  <data name="FreeSpaceResizeTitle" xml:space="preserve"><value>Resize a partition</value></data>
+  <data name="FreeSpaceResizeDesc" xml:space="preserve"><value>Grow a middle partition like C: · GPT and MBR sources (not extended partitions)</value></data>
+  <data name="AllRemainingSpace" xml:space="preserve"><value>All remaining space</value></data>
+  <data name="NewTotalSizeGb" xml:space="preserve"><value>New total size (GB):</value></data>
+  <data name="ResizeHelp" xml:space="preserve"><value>“New total size” is the final size after growing — not how much to add. If it isn’t grown automatically during the clone, finish up with the “Expand partition” button on the results screen. Only NTFS partitions can be grown.</value></data>
+  <data name="Step2Title" xml:space="preserve"><value>Options</value></data>
+  <data name="SafetyLabel" xml:space="preserve"><value>Safety</value></data>
+  <data name="VssTitle" xml:space="preserve"><value>Use a VSS snapshot</value></data>
+  <data name="VssDesc" xml:space="preserve"><value>Captures a consistent copy even if files change mid-clone</value></data>
+  <data name="VerifyTitle" xml:space="preserve"><value>Verify after cloning</value></data>
+  <data name="VerifyDesc" xml:space="preserve"><value>Reads the copy back and compares it to the source · roughly doubles the time</value></data>
+  <data name="SkipBadTitle" xml:space="preserve"><value>Skip bad sectors</value></data>
+  <data name="SkipBadDesc" xml:space="preserve"><value>Fills unreadable sectors with zeros and keeps going</value></data>
+  <data name="BehaviorLabel" xml:space="preserve"><value>Behavior</value></data>
+  <data name="SmartTitle" xml:space="preserve"><value>Smart clone</value></data>
+  <data name="SmartDesc" xml:space="preserve"><value>Copies only the used blocks, so it’s faster · needs a snapshot</value></data>
+  <data name="NewHwTitle" xml:space="preserve"><value>Prepare for new hardware</value></data>
+  <data name="NewHwDesc" xml:space="preserve"><value>Enables storage drivers so it still boots on a different PC</value></data>
+  <data name="Step3Title" xml:space="preserve"><value>Review and start</value></data>
+  <data name="StartClone" xml:space="preserve"><value>Start clone</value></data>
+  <data name="IrreversibleWarn" xml:space="preserve"><value>This can’t be undone. Double-check the target disk.</value></data>
+  <data name="StatCopied" xml:space="preserve"><value>Copied</value></data>
+  <data name="StatSpeed" xml:space="preserve"><value>Speed</value></data>
+  <data name="StatTimeLeft" xml:space="preserve"><value>Time left</value></data>
+  <data name="StatElapsed" xml:space="preserve"><value>Elapsed</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="DoNotDisconnect" xml:space="preserve"><value>Don’t disconnect the target disk or shut down the PC while this is running.</value></data>
+  <data name="BootCheckBtn" xml:space="preserve"><value>Check boot setup</value></data>
+  <data name="BootCheckTip" xml:space="preserve"><value>Inspects the bootloader, BCD, winload and storage drivers — without actually booting.</value></data>
+  <data name="Checking" xml:space="preserve"><value>Checking…</value></data>
+  <data name="RepairBootBtn" xml:space="preserve"><value>Repair boot</value></data>
+  <data name="RepairBootTip" xml:space="preserve"><value>Repoints the BCD device references to this disk’s partitions to fix error 0xc000000e.</value></data>
+  <data name="Repairing" xml:space="preserve"><value>Repairing…</value></data>
+  <data name="MakeBootableTitle" xml:space="preserve"><value>Make it boot on modern PCs (convert to GPT/UEFI)</value></data>
+  <data name="MakeBootableDesc" xml:space="preserve"><value>This copy uses the same legacy BIOS layout as the source, so it only boots on PCs that still support legacy boot. It won’t boot from an NVMe M.2 slot or on UEFI-only PCs. The button below converts it to GPT and creates an EFI system partition so it boots under UEFI.</value></data>
+  <data name="ConvertUefiBtn" xml:space="preserve"><value>Convert to UEFI</value></data>
+  <data name="ConvertUefiTip" xml:space="preserve"><value>Can’t be undone. Afterwards, turn off CSM in the BIOS and boot the UEFI entry.</value></data>
+  <data name="Converting" xml:space="preserve"><value>Converting… (this can take a few minutes)</value></data>
+  <data name="ReconnectWinre" xml:space="preserve"><value>Reconnect the recovery environment (WinRE)</value></data>
+  <data name="ExpandPartitionBtn" xml:space="preserve"><value>Expand partition</value></data>
+  <data name="ExpandPartitionTip" xml:space="preserve"><value>Grows the resized partition — or the last one — into the leftover unallocated space. If a recovery partition is last, that grows instead. Works most reliably with the target connected on its own, with the source disconnected.</value></data>
+  <data name="Expanding" xml:space="preserve"><value>Expanding…</value></data>
+  <data name="StartOver" xml:space="preserve"><value>Start over</value></data>
+
+  <data name="EulaTitle" xml:space="preserve"><value>DiskMigrator License Agreement</value></data>
+  <data name="EulaHeading" xml:space="preserve"><value>License Agreement (EULA)</value></data>
+  <data name="EulaDanger" xml:space="preserve"><value>This program can permanently erase everything on the target (write) disk. Please read the terms below and agree before continuing.</value></data>
+  <data name="EulaAgreeCheck" xml:space="preserve"><value>I have read and understood the above, and I agree.</value></data>
+  <data name="EulaDecline" xml:space="preserve"><value>Decline and exit</value></data>
+  <data name="EulaAccept" xml:space="preserve"><value>Agree and continue</value></data>
+</root>

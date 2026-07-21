@@ -61,9 +61,16 @@
     <ProjectReference Include="..\DiskMigrator.Windows\DiskMigrator.Windows.csproj" />
   </ItemGroup>
 
-  <!-- 최초 실행 EULA 동의 화면이 읽는 사용권 계약 본문. exe에 내장합니다. -->
+  <!-- 최초 실행 EULA 동의 화면이 읽는 사용권 계약 본문(한/영). exe에 내장합니다.
+       Strings.resx / Strings.en.resx 는 SDK가 자동으로 포함·위성 어셈블리로 만듭니다. -->
   <ItemGroup>
     <EmbeddedResource Include="Resources\EULA.txt" />
+    <!-- 파일명의 ".en."을 MSBuild가 위성(언어) 리소스로 오인하지 않게 WithCulture=false로
+         고정하고, 코드가 찾는 이름과 맞도록 LogicalName을 명시합니다. -->
+    <EmbeddedResource Include="Resources\EULA.en.txt">
+      <WithCulture>false</WithCulture>
+      <LogicalName>DiskMigrator.App.Resources.EULA.en.txt</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

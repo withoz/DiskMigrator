@@ -1,0 +1,64 @@
+DiskMigrator End User License Agreement (EULA)
+Version 1.0
+
+IMPORTANT — PLEASE READ CAREFULLY.
+By installing, running, or using DiskMigrator ("the Software"), you agree to all
+of the terms of this Agreement. If you do not agree, do not use the Software.
+
+
+1. WHAT THE SOFTWARE DOES — RISK OF DATA LOSS
+
+The Software clones an entire disk. During the clone it permanently overwrites and
+erases all existing data on the target (write) disk. If you select the wrong disk
+as the target, the resulting data loss is irreversible.
+
+You are solely responsible for:
+  - Choosing the correct source (read) and target (write) disks
+  - Backing up important data to a separate location before you begin
+  - Having the legal right to access the systems and disks you operate on
+
+
+2. LICENSE GRANT
+
+The copyright holder grants you a non-exclusive, non-transferable right to use the
+Software for personal and commercial purposes. The Software's source code is governed
+by its stated open-source license (the MIT License); this Agreement concerns your
+"use" of the executable and your acknowledgment of the risks that come with it.
+
+
+3. DISCLAIMER OF WARRANTY (AS IS)
+
+The Software is provided "AS IS", without warranty of any kind, express or implied,
+including but not limited to the warranties of merchantability, fitness for a
+particular purpose, and non-infringement. No warranty is made that the Software will
+operate uninterrupted or error-free, that it will work on any particular hardware,
+operating system, or disk configuration, or that a clone will boot in every
+environment.
+
+
+4. LIMITATION OF LIABILITY
+
+To the maximum extent permitted by applicable law, the copyright holder, contributors,
+and distributors shall not be liable for any damages arising out of the use of, or
+inability to use, the Software. This includes loss or corruption of data, hardware
+damage, inability to boot a system, business interruption, and lost profits, whether
+direct, indirect, incidental, special, or consequential, even if advised of the
+possibility of such damages.
+
+
+5. YOUR RESPONSIBILITIES AND LAWFUL USE
+
+You agree to use the Software only for lawful purposes and only on disks and systems
+that you are authorized to access. You are solely responsible for any legal liability
+arising from using it to clone or erase data or devices without authorization.
+
+
+6. GOVERNING LAW
+
+This Agreement is governed by and construed under the laws of the Republic of Korea.
+(Adjust for your distribution region if different.)
+
+
+─────────────────────────────────────────────────────────────
+This document is not legal advice. Have it reviewed by a qualified legal
+professional before distributing commercially.
