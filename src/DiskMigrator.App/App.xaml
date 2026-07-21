@@ -30,6 +30,8 @@
         <SolidColorBrush x:Key="SurfaceAlt" Color="#FAF8F5" />
         <SolidColorBrush x:Key="BorderBrushSoft" Color="#E7E1D9" />
         <SolidColorBrush x:Key="TextBrush" Color="#33302B" />
+        <!-- 로고 마크용 — TextBrush(#33302B)를 흰색 쪽으로 10% 밝힌 값. 너무 새까맣지 않게. -->
+        <SolidColorBrush x:Key="LogoInk" Color="#474540" />
         <SolidColorBrush x:Key="SelectionSoft" Color="#EEF3F7" />
         <SolidColorBrush x:Key="DangerSoft" Color="#FEF2F2" />
 

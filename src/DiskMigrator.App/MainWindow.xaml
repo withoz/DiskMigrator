@@ -220,7 +220,7 @@
 
         <!-- ===== 헤더 ===== -->
         <Border Grid.Row="0" Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
-                BorderThickness="0,0,0,1" Padding="24,16">
+                BorderThickness="0,0,0,1" Padding="40,13">
             <Grid>
                 <!--
                     로고 락업 — DM 마크 + 세로 선 + DISKMIGRATOR 워드마크.
@@ -235,15 +235,24 @@
                         내용(0..350, 0..222)을 (25,25) 밀어 사방 25 여백을 줍니다 — 여백이 없으면
                         마크가 답답하고 M 꼭짓점이 테두리에 닿아 모양이 다르게 보입니다.
                     -->
-                    <Viewbox Height="64" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <Viewbox Height="45" VerticalAlignment="Center" Margin="0,0,14,0">
+                        <!--
+                            Clip 사각형으로 M 봉우리의 뾰족한 끝을 잘라 평평하게 만듭니다.
+                            자르는 높이(Rect의 Y=21)는 D 윗변(내용 y=25, 여기 캔버스 좌표) 바로 위라,
+                            봉우리가 D와 거의 같은 높이에서 직각으로 잘립니다. 값을 키우면 더 아래로,
+                            줄이면 봉우리가 더 남습니다.
+                        -->
                         <Canvas Width="400" Height="272">
+                            <Canvas.Clip>
+                                <RectangleGeometry Rect="0,21,400,251" />
+                            </Canvas.Clip>
                             <Canvas>
                                 <Canvas.RenderTransform>
                                     <TranslateTransform X="25" Y="25" />
                                 </Canvas.RenderTransform>
-                                <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Round"
+                                <Path Stroke="{StaticResource LogoInk}" StrokeThickness="44" StrokeLineJoin="Round"
                                       Data="M22,178 V22 H126 A56,56 0 0 1 126,178 Z" />
-                                <Path Stroke="{StaticResource TextBrush}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
+                                <Path Stroke="{StaticResource LogoInk}" StrokeThickness="44" StrokeLineJoin="Miter" StrokeMiterLimit="10"
                                       Data="M182,100 L255,178 L328,22 V200" />
                             </Canvas>
                         </Canvas>
@@ -252,7 +261,7 @@
                     <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1,0,0,0"
                             Padding="14,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
-                                   FontSize="15" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                                   FontSize="16.5" FontWeight="Normal" Foreground="{StaticResource Muted}" />
                     </Border>
                 </StackPanel>
 
@@ -272,7 +281,7 @@
              목록에 최소 높이를 보장하고 넘치는 만큼만 스크롤하는 편이 안전합니다. -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Selecting}">
-        <Grid Margin="24">
+        <Grid Margin="40,14,40,16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -289,7 +298,7 @@
                            VerticalAlignment="Center" Margin="8,0,0,0" />
             </StackPanel>
 
-            <Grid Grid.Row="0" Margin="0,30,0,0">
+            <Grid Grid.Row="0" Margin="0,22,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -310,10 +319,17 @@
                 -->
                 <StackPanel Grid.Row="0" Grid.Column="0">
                     <StackPanel Orientation="Horizontal" Height="26" Margin="0,0,0,8">
-                        <TextBlock Text="원본 (읽기)" Style="{StaticResource SubHeading}" VerticalAlignment="Center" />
-                        <Button Content="새로고침" Command="{Binding RefreshDisksCommand}"
-                                Padding="8,3" MinWidth="0" FontSize="11" Margin="12,0,0,0"
-                                VerticalAlignment="Center" />
+                        <TextBlock Text="원본 (읽기)" Style="{StaticResource SubHeading}"
+                                   FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                        <!--
+                            글자 색은 버튼 안 TextBlock에 직접 줍니다. 기본 Button 템플릿의
+                            ContentPresenter가 Foreground를 문자열 내용에 전달하지 않아, Button에
+                            Foreground를 줘도 글자색이 안 바뀝니다. 명시적 TextBlock이 확실합니다.
+                        -->
+                        <Button Command="{Binding RefreshDisksCommand}"
+                                Padding="8,3" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="새로고침" FontSize="8" Foreground="{StaticResource Success}" />
+                        </Button>
                     </StackPanel>
 
                     <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedSource}"
@@ -336,8 +352,9 @@
                 <!-- 대상 — 높이는 원본 열과 같은 값이어야 가로줄이 맞습니다. -->
                 <StackPanel Grid.Row="0" Grid.Column="2">
                     <Grid Height="26" Margin="0,0,0,8">
-                        <TextBlock Text="대상 (모든 데이터가 삭제됨)" VerticalAlignment="Center"
-                                   Style="{StaticResource SubHeading}" Foreground="{StaticResource Danger}" />
+                        <TextBlock Text="대상 (쓰기)" VerticalAlignment="Center"
+                                   Style="{StaticResource SubHeading}" FontWeight="Bold"
+                                   Foreground="{StaticResource Danger}" />
                     </Grid>
 
                     <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
@@ -358,7 +375,7 @@
                     둘 다 켤 수 있었고, 그러면 하나가 조용히 무시됐습니다.
                     남는 공간이 없으면 묶음 전체를 숨깁니다 — 고를 이유가 없습니다.
                 -->
-                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,18,0,0"
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,14,0,0"
                             Visibility="{Binding HasFreeSpace, Converter={StaticResource BoolToVisibility}}">
 
                     <!--
@@ -489,7 +506,7 @@
                     결정할 것이 있는 대상 쪽만 길어지던 불균형을 여기서 해소합니다.
                     설명을 라벨 아래로 내려 행이 화면 끝까지 늘어나지 않게 했습니다.
                 -->
-                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,18,0,0">
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,14,0,0">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Border Style="{StaticResource StepNumber}">
                             <TextBlock Text="2" Style="{StaticResource StepNumberText}" />
@@ -563,7 +580,7 @@
 
             <!-- 하단 패널 -->
             <Border Grid.Row="1" Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
-                    BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,16,0,0">
+                    BorderThickness="1" CornerRadius="10" Padding="16,13" Margin="0,14,0,0">
                 <StackPanel>
 
                     <TextBlock Text="{Binding LoadError}" Foreground="{StaticResource Danger}"
@@ -612,34 +629,39 @@
                         무엇을 더 해야 하는지 알 수 없었습니다 — 이제 이유를 바로 옆에 적습니다.
                     -->
                     <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
-                            CornerRadius="10" Padding="14" Margin="0,6,0,0">
-                        <StackPanel>
-                            <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
-                                       Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,9"
-                                       Visibility="{Binding NeedsConfirmation,
-                                                    Converter={StaticResource BoolToVisibility}}" />
+                            CornerRadius="10" Padding="14,10" Margin="0,6,0,0">
+                        <!--
+                            버튼과 안내 글을 한 줄에 세로 중앙으로 맞춥니다. 예전에는 큰 버튼이 위에,
+                            안내 글이 아래에 떨어져 빈 공간이 컸습니다. 왼쪽에 글(확인 프롬프트·입력란·
+                            비활성 사유·주의), 오른쪽에 버튼을 두어 박스 높이를 글 내용에 맞춥니다.
+                        -->
+                        <DockPanel LastChildFill="True">
+                            <Button DockPanel.Dock="Right" Content="클론 시작" Command="{Binding StartCommand}"
+                                    Style="{StaticResource DangerButton}" MinWidth="130" Padding="20,9"
+                                    Margin="14,0,0,0" VerticalAlignment="Center" />
 
-                            <DockPanel LastChildFill="True">
-                                <Button DockPanel.Dock="Right" Content="클론 시작" Command="{Binding StartCommand}"
-                                        Style="{StaticResource DangerButton}" MinWidth="130" Padding="20,10"
-                                        Margin="12,0,0,0" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
+                                           Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,7"
+                                           Visibility="{Binding NeedsConfirmation,
+                                                        Converter={StaticResource BoolToVisibility}}" />
 
                                 <TextBox Text="{Binding ConfirmationText, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="9,7" FontSize="13" FontFamily="Consolas, D2Coding"
-                                         VerticalContentAlignment="Center"
+                                         VerticalContentAlignment="Center" Margin="0,0,0,7"
                                          Visibility="{Binding NeedsConfirmation,
                                                       Converter={StaticResource BoolToVisibility}}" />
-                            </DockPanel>
 
-                            <!-- 버튼이 왜 비활성인지 -->
-                            <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"
-                                       Style="{StaticResource Micro}" Foreground="#991B1B" Margin="0,9,0,0"
-                                       Visibility="{Binding HasBlockedReason,
-                                                    Converter={StaticResource BoolToVisibility}}" />
+                                <!-- 버튼이 왜 비활성인지 -->
+                                <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"
+                                           Style="{StaticResource Micro}" Foreground="#991B1B"
+                                           Visibility="{Binding HasBlockedReason,
+                                                        Converter={StaticResource BoolToVisibility}}" />
 
-                            <TextBlock Text="이 작업은 되돌릴 수 없습니다. 대상 디스크를 다시 확인하십시오."
-                                       Style="{StaticResource Micro}" Margin="0,6,0,0" />
-                        </StackPanel>
+                                <TextBlock Text="이 작업은 되돌릴 수 없습니다. 대상 디스크를 다시 확인하십시오."
+                                           Style="{StaticResource Micro}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </DockPanel>
                     </Border>
 
                 </StackPanel>
@@ -648,7 +670,7 @@
         </ScrollViewer>
 
         <!-- ===== 2단계: 진행 중 ===== -->
-        <Grid Grid.Row="1" Margin="24"
+        <Grid Grid.Row="1" Margin="40,14,40,16"
               Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Running}">
             <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
                     BorderThickness="1" CornerRadius="10" Padding="40"
@@ -707,7 +729,7 @@
         </Grid>
 
         <!-- ===== 3단계: 결과 ===== -->
-        <Grid Grid.Row="1" Margin="24"
+        <Grid Grid.Row="1" Margin="40,14,40,16"
               Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Finished}">
             <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
                     BorderThickness="1" CornerRadius="10" Padding="40"
