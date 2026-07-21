@@ -17,11 +17,12 @@ public enum BootCheckSeverity
 }
 
 /// <summary>부팅 구성 정적 검사의 개별 항목 결과.</summary>
-/// <param name="Name">항목 이름.</param>
+/// <param name="Name">항목 이름(현지화됨 — 표시용).</param>
 /// <param name="Passed">통과 여부. 확인 자체가 불가능(볼륨 미마운트 등)하면 null.</param>
 /// <param name="Severity">심각도.</param>
-/// <param name="Detail">사람이 읽을 상세 설명.</param>
-public sealed record BootCheckItem(string Name, bool? Passed, BootCheckSeverity Severity, string Detail);
+/// <param name="Detail">사람이 읽을 상세 설명(현지화됨).</param>
+/// <param name="Code">언어와 무관한 안정 식별자(선택). UI 로직은 이름 대신 이것으로 항목을 찾습니다.</param>
+public sealed record BootCheckItem(string Name, bool? Passed, BootCheckSeverity Severity, string Detail, string? Code = null);
 
 /// <summary>부팅 구성 정적 검사 전체 결과.</summary>
 public sealed record BootReadinessReport(IReadOnlyList<BootCheckItem> Items)
@@ -80,6 +81,12 @@ public sealed record BootCheckInput
 /// </remarks>
 public static class BootReadinessCheck
 {
+    /// <summary>
+    /// BCD 장치 참조↔디스크 항목의 언어 무관 식별자. UI가 이 코드로 "복구 버튼 제안 여부"를
+    /// 판단합니다 — 현지화된 <see cref="BootCheckItem.Name"/>에 의존하면 언어를 바꿀 때 깨집니다.
+    /// </summary>
+    public const string CodeDeviceRef = "DEVICE_REF";
+
     /// <summary>BCD 요소 코드: BcdLibraryString_ApplicationPath (OS 로더의 winload 경로).</summary>
     private const string ElementApplicationPath = "12000002";
 
@@ -394,7 +401,8 @@ public static class BootReadinessCheck
         items.Add(new(Strings.Get("BcNameBcdDeviceRef"), matched, BootCheckSeverity.Fatal,
             matched
                 ? Strings.Format("BcDetailDeviceMatchFmt", identity)
-                : Strings.Format("BcDetailDeviceMismatchFmt", identity)));
+                : Strings.Format("BcDetailDeviceMismatchFmt", identity),
+            CodeDeviceRef));
     }
 
     /// <summary>haystack 안에 needle(연속 바이트열)이 있으면 true.</summary>

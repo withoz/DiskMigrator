@@ -162,4 +162,39 @@
   <data name="RoleMsr" xml:space="preserve"><value>MSR (reserved)</value></data>
   <data name="RoleRecovery" xml:space="preserve"><value>Recovery</value></data>
   <data name="FreeSpaceHeaderFmt" xml:space="preserve"><value>What to do with {0} of free space</value></data>
+
+  <data name="PauseResume" xml:space="preserve"><value>Resume</value></data>
+  <data name="PausePause" xml:space="preserve"><value>Pause</value></data>
+  <data name="ProgPreparing" xml:space="preserve"><value>Preparing</value></data>
+  <data name="ProgSnapshotting" xml:space="preserve"><value>Creating snapshot… (up to tens of seconds)</value></data>
+  <data name="ProgLockingTarget" xml:space="preserve"><value>Locking target volumes…</value></data>
+  <data name="VerdictReady" xml:space="preserve"><value>Ready to boot — all critical checks passed</value></data>
+  <data name="VerdictReadyWarn" xml:space="preserve"><value>Bootable, but with warnings — review the warning items below</value></data>
+  <data name="VerdictNoBoot" xml:space="preserve"><value>Boot at risk — a critical check failed</value></data>
+  <data name="VerdictUnknown" xml:space="preserve"><value>Can’t tell — a critical item couldn’t be checked (make sure the target is online and mounted)</value></data>
+  <data name="FailFreeSpaceTitle" xml:space="preserve"><value>The free-space setting isn’t valid</value></data>
+  <data name="FailSafetyTitle" xml:space="preserve"><value>Stopped by the safety check</value></data>
+  <data name="FailNothingWritten" xml:space="preserve"><value>Nothing was written to the target disk.</value></data>
+
+  <data name="ResCopiedFmt" xml:space="preserve"><value>Data copied: {0}</value></data>
+  <data name="ResDurationFmt" xml:space="preserve"><value>Time taken: {0}</value></data>
+  <data name="ResSpeedFmt" xml:space="preserve"><value>Average speed: {0}</value></data>
+  <data name="ResSnapshotTimeFmt" xml:space="preserve"><value>Snapshot taken: {0} (changes after this point weren’t cloned)</value></data>
+  <data name="ResUnsnapshottedFmt" xml:space="preserve"><value>Partitions raw-copied without a snapshot: {0}</value></data>
+  <data name="ResVerifyPass" xml:space="preserve"><value>Verification: passed — source and target match.</value></data>
+  <data name="ResVerifyFail" xml:space="preserve"><value>Verification: failed — source and target don’t match.</value></data>
+  <data name="ResVerifyNone" xml:space="preserve"><value>Verification: not performed</value></data>
+  <data name="ResBadSectorsFmt" xml:space="preserve"><value>Bad sectors: {0} filled with zeros. Files at those locations may be damaged.</value></data>
+  <data name="ResPartTableFmt" xml:space="preserve"><value>Partition table: {0}</value></data>
+  <data name="ResNewHwFmt" xml:space="preserve"><value>New-hardware prep: {0}</value></data>
+  <data name="ResTitleCompleted" xml:space="preserve"><value>Clone complete</value></data>
+  <data name="ResMsgCompletedFmt" xml:space="preserve"><value>[{0}] {1} is now an exact copy of the source.</value></data>
+  <data name="ResTitleBadSectors" xml:space="preserve"><value>Clone complete, but there were bad sectors</value></data>
+  <data name="ResMsgBadSectorsFmt" xml:space="preserve"><value>{0} sectors that couldn’t be read from the source were filled with zeros. Most files are fine, but some may be damaged — check your important data.</value></data>
+  <data name="ResTitleCancelled" xml:space="preserve"><value>Operation cancelled</value></data>
+  <data name="ResMsgCancelledFmt" xml:space="preserve"><value>[{0}] {1} is incomplete. Don’t boot from this disk or use its data.</value></data>
+  <data name="ResTitleFailed" xml:space="preserve"><value>Operation failed</value></data>
+  <data name="ResMsgUnknownError" xml:space="preserve"><value>An unknown error occurred.</value></data>
+  <data name="ResTitleResizeCorrupted" xml:space="preserve"><value>Cloned, but the partition layout is broken — don’t boot from this disk</value></data>
+  <data name="ResMsgResizeCorruptedFmt" xml:space="preserve"><value>Data was copied to [{0}] {1}, but rewriting the GPT to reflect the resized layout failed, so the partition table points to the old positions. Don’t boot from this disk or use its data. Turn off resize and clone again.</value></data>
 </root>

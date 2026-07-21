@@ -360,7 +360,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(PauseButtonText))]
     private bool _isPaused;
 
-    public string PauseButtonText => IsPaused ? "재개" : "일시정지";
+    public string PauseButtonText => IsPaused ? Strings.Get("PauseResume") : Strings.Get("PausePause");
 
     // --- 결과 --------------------------------------------------------------
 
@@ -1011,15 +1011,16 @@ public sealed partial class MainViewModel : ObservableObject
             (BootCheckVerdict, BootCheckVerdictIsGood) =
                 (report.WouldBoot, report.HasWarnings, anyFatalFailed) switch
                 {
-                    (true, false, _) => ("부팅 준비 완료 — 치명 항목 모두 통과", true),
-                    (true, true, _) => ("부팅 가능하나 경고 있음 — 아래 경고 항목을 확인하세요", true),
-                    (false, _, true) => ("부팅 불가 위험 — 치명 항목이 실패했습니다", false),
-                    _ => ("판정 불가 — 치명 항목을 확인하지 못했습니다 (대상이 온라인·마운트 상태인지 확인)", false),
+                    (true, false, _) => (Strings.Get("VerdictReady"), true),
+                    (true, true, _) => (Strings.Get("VerdictReadyWarn"), true),
+                    (false, _, true) => (Strings.Get("VerdictNoBoot"), false),
+                    _ => (Strings.Get("VerdictUnknown"), false),
                 };
 
             // BCD 장치 참조가 이 디스크와 불일치(0xc000000e)면 복구 버튼을 제안합니다.
+            // 이름은 언어에 따라 바뀌므로 안정 코드로 판별합니다.
             BootRepairAvailable = report.Items.Any(i =>
-                i.Passed == false && i.Name.Contains("장치 참조"));
+                i.Passed == false && i.Code == BootReadinessCheck.CodeDeviceRef);
 
             BootCheckRan = true;
             _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
@@ -1206,8 +1207,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (plan.Error is { } planError)
         {
             Stage = AppStage.Finished;
-            ShowFailure("남는 공간 설정이 올바르지 않습니다", planError,
-                "대상 디스크에는 아무것도 쓰지 않았습니다.");
+            ShowFailure(Strings.Get("FailFreeSpaceTitle"), planError,
+                Strings.Get("FailNothingWritten"));
             return;
         }
 
@@ -1230,8 +1231,8 @@ public sealed partial class MainViewModel : ObservableObject
         ResetBootCheck();
         BadSectorCount = 0;
         ProgressPercent = 0;
-        ProgressPhase = "준비 중";
-        ProgressRegion = UseSnapshot ? "스냅샷 생성 중... (최대 수십 초)" : "대상 볼륨 잠금 중...";
+        ProgressPhase = Strings.Get("ProgPreparing");
+        ProgressRegion = UseSnapshot ? Strings.Get("ProgSnapshotting") : Strings.Get("ProgLockingTarget");
         ProgressBytes = ProgressSpeed = ProgressEta = ProgressElapsed = "";
 
         var options = new CloneOptions
@@ -1261,8 +1262,8 @@ public sealed partial class MainViewModel : ObservableObject
         catch (SafetyViolationException ex)
         {
             _logger.LogError(ex, "안전 검사에 걸려 작업이 중단되었습니다.");
-            ShowFailure("안전 검사에 걸려 중단했습니다", ex.Message,
-                "대상 디스크에는 아무것도 쓰지 않았습니다.");
+            ShowFailure(Strings.Get("FailSafetyTitle"), ex.Message,
+                Strings.Get("FailNothingWritten"));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -1303,44 +1304,43 @@ public sealed partial class MainViewModel : ObservableObject
         var result = report.Result;
         var details = new List<string>();
 
-        details.Add($"복사한 데이터: {SizeFormatter.Format(result.BytesCopied)}");
-        details.Add($"소요 시간: {SizeFormatter.FormatDuration(result.Duration)}");
-        details.Add($"평균 속도: {SizeFormatter.FormatSpeed(result.AverageSpeedBytesPerSecond)}");
+        details.Add(Strings.Format("ResCopiedFmt", SizeFormatter.Format(result.BytesCopied)));
+        details.Add(Strings.Format("ResDurationFmt", SizeFormatter.FormatDuration(result.Duration)));
+        details.Add(Strings.Format("ResSpeedFmt", SizeFormatter.FormatSpeed(result.AverageSpeedBytesPerSecond)));
 
         if (report.SnapshotTimeUtc is { } snapshotTime)
         {
-            details.Add($"스냅샷 시점: {snapshotTime.ToLocalTime():yyyy-MM-dd HH:mm:ss} " +
-                        "(이 시점 이후의 변경 사항은 복제되지 않았습니다)");
+            details.Add(Strings.Format("ResSnapshotTimeFmt",
+                snapshotTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)));
         }
 
         if (report.UnsnapshottedPartitions.Count > 0)
         {
-            details.Add($"스냅샷 없이 원시 복사한 파티션: {string.Join(", ", report.UnsnapshottedPartitions)}");
+            details.Add(Strings.Format("ResUnsnapshottedFmt", string.Join(", ", report.UnsnapshottedPartitions)));
         }
 
         details.Add(result.VerificationPassed switch
         {
-            true => "검증: 통과 — 원본과 대상이 일치합니다.",
-            false => "검증: 실패 — 원본과 대상이 일치하지 않습니다.",
-            null => "검증: 수행하지 않음",
+            true => Strings.Get("ResVerifyPass"),
+            false => Strings.Get("ResVerifyFail"),
+            null => Strings.Get("ResVerifyNone"),
         });
 
         if (result.BadSectors.Count > 0)
         {
-            details.Add($"불량 섹터: {result.BadSectors.Count}개를 0으로 채웠습니다. " +
-                        "해당 위치의 파일은 손상되었을 수 있습니다.");
+            details.Add(Strings.Format("ResBadSectorsFmt", result.BadSectors.Count));
         }
 
         if (report.GptRepair is { } gpt)
         {
             // 라벨을 "GPT"로 박아 두면 MBR 클론에서 "GPT: MBR 파티션 테이블을 다시 썼습니다"가
             // 됩니다. 내부 필드 이름(GptRepair)을 화면 글자로 그대로 쓴 탓이었습니다.
-            details.Add($"파티션 테이블: {gpt.Description}");
+            details.Add(Strings.Format("ResPartTableFmt", gpt.Description));
         }
 
         if (report.UniversalRestore is { } ur)
         {
-            details.Add($"새 하드웨어 대비: {ur.Message}");
+            details.Add(Strings.Format("ResNewHwFmt", ur.Message));
         }
 
         // 파티션 확장 결과는 아래 전용 패널(재시도 버튼 포함)에서 보여주므로 여기선 생략합니다.
@@ -1371,22 +1371,20 @@ public sealed partial class MainViewModel : ObservableObject
         (ResultTitle, ResultMessage) = result.Outcome switch
         {
             CloneOutcome.Completed => (
-                "클론이 완료되었습니다",
-                $"[{report.Target.DeviceNumber}] {report.Target.Model} 이(가) 원본의 정확한 사본이 되었습니다."),
+                Strings.Get("ResTitleCompleted"),
+                Strings.Format("ResMsgCompletedFmt", report.Target.DeviceNumber, report.Target.Model)),
 
             CloneOutcome.CompletedWithBadSectors => (
-                "클론이 완료되었지만 불량 섹터가 있었습니다",
-                $"원본에서 읽지 못한 섹터 {result.BadSectors.Count}개는 0으로 채웠습니다. " +
-                "대부분의 파일은 정상이지만 일부가 손상되었을 수 있으니 중요한 데이터를 확인하십시오."),
+                Strings.Get("ResTitleBadSectors"),
+                Strings.Format("ResMsgBadSectorsFmt", result.BadSectors.Count)),
 
             CloneOutcome.Cancelled => (
-                "작업이 취소되었습니다",
-                $"[{report.Target.DeviceNumber}] {report.Target.Model} 은(는) 불완전한 상태입니다. " +
-                "이 디스크로 부팅하거나 데이터를 사용하지 마십시오."),
+                Strings.Get("ResTitleCancelled"),
+                Strings.Format("ResMsgCancelledFmt", report.Target.DeviceNumber, report.Target.Model)),
 
             _ => (
-                "작업이 실패했습니다",
-                result.ErrorMessage ?? "알 수 없는 오류입니다."),
+                Strings.Get("ResTitleFailed"),
+                result.ErrorMessage ?? Strings.Get("ResMsgUnknownError")),
         };
 
         // 리사이즈 클론에서 GPT 재작성이 실패하면 파티션 데이터는 새 위치에 있는데 파티션
@@ -1397,12 +1395,9 @@ public sealed partial class MainViewModel : ObservableObject
             ResultIsSuccess = false;
             PartitionExpandAvailable = false;
             UefiConvertAvailable = false;
-            ResultTitle = "클론했지만 파티션 배치가 깨졌습니다 — 이 디스크로 부팅하지 마십시오";
-            ResultMessage =
-                $"[{report.Target.DeviceNumber}] {report.Target.Model} 에 데이터는 복사됐지만, " +
-                "파티션 리사이즈 배치를 반영하는 GPT 재작성에 실패해 파티션 테이블이 옛 위치를 " +
-                "가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. " +
-                "리사이즈를 끄고 다시 클론하십시오.";
+            ResultTitle = Strings.Get("ResTitleResizeCorrupted");
+            ResultMessage = Strings.Format("ResMsgResizeCorruptedFmt",
+                report.Target.DeviceNumber, report.Target.Model);
         }
     }
 

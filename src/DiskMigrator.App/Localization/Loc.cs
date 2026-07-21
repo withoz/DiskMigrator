@@ -16,6 +16,9 @@ public static class Strings
 
     public static string Get(string key)
         => Rm.GetString(key, CultureInfo.CurrentUICulture) ?? key;
+
+    public static string Format(string key, params object[] args)
+        => string.Format(CultureInfo.CurrentCulture, Get(key), args);
 }
 
 /// <summary>
