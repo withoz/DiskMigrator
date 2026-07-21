@@ -644,7 +644,7 @@ public sealed partial class MainViewModel : ObservableObject
         ClampResizeSizeToBounds();
     }
 
-    /// <summary>'새 총 크기' 입력이 현재 대상에서 가능한 범위를 벗어나면 최대치로 맞춥니다.</summary>
+    /// <summary>'새 총 크기' 입력이 현재 대상에서 가능한 범위를 벗어나면 맞춥니다.</summary>
     private void ClampResizeSizeToBounds()
     {
         if (SelectedResizePartition is not { } choice) return;
@@ -652,10 +652,18 @@ public sealed partial class MainViewModel : ObservableObject
         if (!FreeSpacePlanner.TryParseSizeGb(ResizeSizeGb, out double gb) || gb <= 0) return;
 
         long bytes = (long)(gb * FreeSpacePlanner.BytesPerGb);
-        if (bytes < min || bytes > max)
+
+        if (bytes >= max)
         {
-            long clamped = Math.Clamp(bytes, min, max);
-            ResizeSizeGb = ((double)clamped / FreeSpacePlanner.BytesPerGb)
+            // 최대 이상은 '남는 공간 전부'로 전환합니다 — GB 문자열로 반올림해 담으면 부동소수점
+            // 왕복으로 실제 최대치를 미세하게 넘겨 "용량 초과"가 뜹니다. fill 모드는 정확한 최대치를
+            // 씁니다.
+            ResizeFillRemaining = true;
+        }
+        else if (bytes < min)
+        {
+            // 현재 크기 이하는 현재 크기로 올려 맞춥니다(축소 미지원). min은 정확히 표현됩니다.
+            ResizeSizeGb = ((double)min / FreeSpacePlanner.BytesPerGb)
                 .ToString("0.##", CultureInfo.CurrentCulture);
         }
     }
