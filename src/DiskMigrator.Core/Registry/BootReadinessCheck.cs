@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 
 namespace DiskMigrator.Core.Registry;
@@ -164,12 +165,12 @@ public static class BootReadinessCheck
 
     private static void InspectSystemPartition(BootCheckInput input, List<BootCheckItem> items)
     {
-        string label = input.Uefi ? "EFI 시스템 파티션(ESP)" : "시스템/활성 파티션";
+        string label = input.Uefi ? Strings.Get("BcLabelEsp") : Strings.Get("BcLabelSystemActive");
 
         if (input.SystemRoot is null)
         {
             items.Add(new(label, null, BootCheckSeverity.Fatal,
-                "볼륨이 마운트되지 않아 부트로더/BCD를 검사할 수 없습니다."));
+                Strings.Get("BcDetailNotMounted")));
             return;
         }
 
@@ -179,14 +180,14 @@ public static class BootReadinessCheck
 
             string mgr = Path.Combine(efiBoot, "bootmgfw.efi");
             bool hasMgr = SafeFileExists(mgr);
-            items.Add(new("UEFI 부트로더 (bootmgfw.efi)", hasMgr, BootCheckSeverity.Fatal,
-                hasMgr ? mgr : "없음 — UEFI 부팅이 불가능합니다."));
+            items.Add(new(Strings.Get("BcNameUefiLoader"), hasMgr, BootCheckSeverity.Fatal,
+                hasMgr ? mgr : Strings.Get("BcDetailNoneUefi")));
 
             string fallback = Path.Combine(input.SystemRoot, "EFI", "Boot", "bootx64.efi");
             bool hasFallback = SafeFileExists(fallback);
-            items.Add(new("폴백 부트로더 (EFI\\Boot\\bootx64.efi)", hasFallback, BootCheckSeverity.Warning,
+            items.Add(new(Strings.Get("BcNameFallbackLoader"), hasFallback, BootCheckSeverity.Warning,
                 hasFallback ? fallback
-                    : "없음 — 일부 펌웨어/이동식 부팅에서 필요할 수 있습니다."));
+                    : Strings.Get("BcDetailFallbackMissing")));
 
             string bcd = Path.Combine(efiBoot, "BCD");
             AnalyzeBcd(bcd, input.DiskGuid, input.MbrSignature, items);
@@ -195,8 +196,8 @@ public static class BootReadinessCheck
         {
             string mgr = Path.Combine(input.SystemRoot, "bootmgr");
             bool hasMgr = SafeFileExists(mgr);
-            items.Add(new("BIOS 부트 매니저 (bootmgr)", hasMgr, BootCheckSeverity.Fatal,
-                hasMgr ? mgr : "없음 — BIOS/MBR 부팅이 불가능합니다."));
+            items.Add(new(Strings.Get("BcNameBiosMgr"), hasMgr, BootCheckSeverity.Fatal,
+                hasMgr ? mgr : Strings.Get("BcDetailNoneBios")));
 
             string bcd = Path.Combine(input.SystemRoot, "Boot", "BCD");
             AnalyzeBcd(bcd, input.DiskGuid, input.MbrSignature, items);
@@ -207,8 +208,8 @@ public static class BootReadinessCheck
     {
         if (input.WindowsRoot is null)
         {
-            items.Add(new("Windows 볼륨", null, BootCheckSeverity.Fatal,
-                "\\Windows 가 있는 볼륨을 찾지 못했거나 마운트되지 않았습니다."));
+            items.Add(new(Strings.Get("BcNameWinVolume"), null, BootCheckSeverity.Fatal,
+                Strings.Get("BcDetailNoWinVolume")));
             return;
         }
 
@@ -216,16 +217,16 @@ public static class BootReadinessCheck
         string loaderName = input.Uefi ? "winload.efi" : "winload.exe";
         string loader = Path.Combine(sys32, loaderName);
         bool hasLoader = SafeFileExists(loader);
-        items.Add(new($"OS 로더 ({loaderName})", hasLoader, BootCheckSeverity.Fatal,
-            hasLoader ? loader : $"없음 — BCD가 가리키는 OS 로더가 실제로 없습니다."));
+        items.Add(new(Strings.Format("BcNameOsLoaderFmt", loaderName), hasLoader, BootCheckSeverity.Fatal,
+            hasLoader ? loader : Strings.Get("BcDetailNoOsLoader")));
 
         CheckHibernationImage(input.WindowsRoot, items);
 
         string systemHive = Path.Combine(sys32, "config", "SYSTEM");
         if (!SafeFileExists(systemHive))
         {
-            items.Add(new("SYSTEM 레지스트리 하이브", false, BootCheckSeverity.Fatal,
-                "없음 — 커널이 시스템 구성을 읽을 수 없습니다."));
+            items.Add(new(Strings.Get("BcNameSystemHive"), false, BootCheckSeverity.Fatal,
+                Strings.Get("BcDetailNoSystemHive")));
             return;
         }
         AnalyzeSystemHive(systemHive, input.Uefi, items);
@@ -251,30 +252,28 @@ public static class BootReadinessCheck
         string hiberfil = Path.Combine(windowsRoot, "hiberfil.sys");
         bool exists = SafeFileExists(hiberfil);
 
-        items.Add(new("최대 절전 이미지 (빠른 시작)", !exists, BootCheckSeverity.Fatal,
+        items.Add(new(Strings.Get("BcNameHibernation"), !exists, BootCheckSeverity.Fatal,
             exists
-                ? "hiberfil.sys 가 남아 있습니다 — 원본이 빠른 시작으로 종료된 사본입니다. " +
-                  "이대로 부팅하면 저장된 커널 상태를 다른 하드웨어에서 복원하려다 " +
-                  "오류 문구 없이 검은 화면에서 멈춥니다. '부팅 복구'가 재개를 끄고 이미지를 지웁니다."
-                : "없음 — 정상 부팅합니다."));
+                ? Strings.Get("BcDetailHibernationPresent")
+                : Strings.Get("BcDetailHibernationNone")));
     }
 
     private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, uint? mbrSignature, List<BootCheckItem> items)
     {
         if (!SafeFileExists(bcdPath))
         {
-            items.Add(new("BCD 스토어", false, BootCheckSeverity.Fatal,
-                $"없음 ({bcdPath}) — 부팅 구성이 없습니다."));
+            items.Add(new(Strings.Get("BcNameBcdStore"), false, BootCheckSeverity.Fatal,
+                Strings.Format("BcDetailBcdStoreMissingFmt", bcdPath)));
             return;
         }
 
         switch (TryLoadHive(bcdPath, out RegistryHive? loaded, out string bcdError))
         {
             case HiveLoadStatus.InUse:
-                items.Add(new("BCD 스토어 유효성", null, BootCheckSeverity.Fatal, bcdError));
+                items.Add(new(Strings.Get("BcNameBcdStoreValid"), null, BootCheckSeverity.Fatal, bcdError));
                 return;
             case HiveLoadStatus.Bad:
-                items.Add(new("BCD 스토어 유효성", false, BootCheckSeverity.Fatal, bcdError));
+                items.Add(new(Strings.Get("BcNameBcdStoreValid"), false, BootCheckSeverity.Fatal, bcdError));
                 return;
         }
         RegistryHive bcd = loaded!;
@@ -282,14 +281,14 @@ public static class BootReadinessCheck
         if (!bcd.KeyExists("Objects"))
         {
             items.Add(new("BCD Objects", false, BootCheckSeverity.Fatal,
-                "Objects 키가 없습니다 — BCD 구조가 아닙니다."));
+                Strings.Get("BcDetailBcdNotStructure")));
             return;
         }
 
         bool hasMgr = bcd.KeyExists($"Objects\\{BootMgrObject}\\Elements");
-        items.Add(new("BCD 부트 매니저 항목", hasMgr, BootCheckSeverity.Warning,
-            hasMgr ? "표준 부트 매니저 객체 존재"
-                : "표준 부트 매니저 GUID 항목이 없습니다 (비표준 구성일 수 있음)."));
+        items.Add(new(Strings.Get("BcNameBcdBootMgr"), hasMgr, BootCheckSeverity.Warning,
+            hasMgr ? Strings.Get("BcDetailBootMgrPresent")
+                : Strings.Get("BcDetailBootMgrMissing")));
 
         // OS 로더 항목: 각 객체의 ApplicationPath(REG_SZ)가 winload로 끝나는지.
         int loaders = 0;
@@ -309,9 +308,9 @@ public static class BootReadinessCheck
         }
 
         bool anyLoader = loaders > 0;
-        items.Add(new("BCD OS 로더 항목", anyLoader, BootCheckSeverity.Fatal,
-            anyLoader ? $"{loaders}개 — 예: {firstPath}"
-                : "winload를 가리키는 OS 로더 항목이 없습니다 — 부팅 메뉴가 비어 있습니다."));
+        items.Add(new(Strings.Get("BcNameBcdOsLoader"), anyLoader, BootCheckSeverity.Fatal,
+            anyLoader ? Strings.Format("BcDetailOsLoaderCountFmt", loaders, firstPath ?? "")
+                : Strings.Get("BcDetailNoOsLoaderEntry")));
 
         CheckDeviceReferences(bcd, diskGuid, mbrSignature, items);
     }
@@ -338,8 +337,8 @@ public static class BootReadinessCheck
 
         if (target is null)
         {
-            items.Add(new("BCD 장치 참조 ↔ 디스크", null, BootCheckSeverity.Warning,
-                "디스크 GUID도 MBR 서명도 알 수 없어 장치 참조를 대조하지 못했습니다."));
+            items.Add(new(Strings.Get("BcNameBcdDeviceRef"), null, BootCheckSeverity.Warning,
+                Strings.Get("BcDetailNoDeviceKnown")));
             return;
         }
 
@@ -383,19 +382,19 @@ public static class BootReadinessCheck
 
         if (!checkedAny)
         {
-            items.Add(new("BCD 장치 참조 ↔ 디스크", null, BootCheckSeverity.Warning,
-                "대조할 장치 참조(device/osdevice)를 찾지 못했습니다."));
+            items.Add(new(Strings.Get("BcNameBcdDeviceRef"), null, BootCheckSeverity.Warning,
+                Strings.Get("BcDetailNoDeviceRefFound")));
             return;
         }
 
-        string identity = diskGuid is { } g ? $"GUID {g}" : $"MBR 서명 0x{mbrSignature:X8}";
+        string identity = diskGuid is { } g
+            ? Strings.Format("BcIdentityGuidFmt", g)
+            : Strings.Format("BcIdentityMbrFmt", mbrSignature.GetValueOrDefault().ToString("X8"));
 
-        items.Add(new("BCD 장치 참조 ↔ 디스크", matched, BootCheckSeverity.Fatal,
+        items.Add(new(Strings.Get("BcNameBcdDeviceRef"), matched, BootCheckSeverity.Fatal,
             matched
-                ? $"BCD가 이 디스크({identity})를 가리킵니다."
-                : $"BCD의 장치 참조가 이 디스크({identity})를 가리키지 않습니다 — 부팅 시 0xc000000e 위험. " +
-                  "원본과 대상을 함께 연결해 두면 서명이 충돌해 Windows가 대상을 재서명합니다. " +
-                  "'부팅 복구'로 device/osdevice를 이 디스크의 파티션으로 다시 설정하십시오."));
+                ? Strings.Format("BcDetailDeviceMatchFmt", identity)
+                : Strings.Format("BcDetailDeviceMismatchFmt", identity)));
     }
 
     /// <summary>haystack 안에 needle(연속 바이트열)이 있으면 true.</summary>
@@ -414,10 +413,10 @@ public static class BootReadinessCheck
         switch (TryLoadHive(systemHivePath, out RegistryHive? loaded, out string sysError))
         {
             case HiveLoadStatus.InUse:
-                items.Add(new("SYSTEM 하이브 유효성", null, BootCheckSeverity.Fatal, sysError));
+                items.Add(new(Strings.Get("BcNameSystemHiveValid"), null, BootCheckSeverity.Fatal, sysError));
                 return;
             case HiveLoadStatus.Bad:
-                items.Add(new("SYSTEM 하이브 유효성", false, BootCheckSeverity.Fatal, sysError));
+                items.Add(new(Strings.Get("BcNameSystemHiveValid"), false, BootCheckSeverity.Fatal, sysError));
                 return;
         }
         RegistryHive hive = loaded!;
@@ -432,7 +431,7 @@ public static class BootReadinessCheck
         if (sets.Count == 0)
         {
             items.Add(new("SYSTEM ControlSet", false, BootCheckSeverity.Fatal,
-                "ControlSet를 찾지 못했습니다 — 올바른 SYSTEM 하이브가 아닙니다."));
+                Strings.Get("BcDetailNoControlSet")));
             return;
         }
 
@@ -449,23 +448,23 @@ public static class BootReadinessCheck
         }
 
         bool anyBootStart = bootStart.Count > 0;
-        items.Add(new($"부팅 시작 저장소 드라이버 ({active})", anyBootStart, BootCheckSeverity.Warning,
+        items.Add(new(Strings.Format("BcNameBootStartDriversFmt", active), anyBootStart, BootCheckSeverity.Warning,
             anyBootStart
                 ? string.Join(", ", bootStart)
-                : "부팅 시작(Start=0) 저장소 드라이버가 없습니다 — 부팅 중 0x7B 위험이 큽니다."));
+                : Strings.Get("BcDetailNoBootStart")));
 
         // 하드웨어 독립성: 표준 AHCI+NVMe가 모두 부팅 시작이면 대부분의 최신 PC를 커버.
         bool broad = bootStart.Contains("storahci") && bootStart.Contains("stornvme");
-        items.Add(new("하드웨어 독립성 (Universal Restore)", broad, BootCheckSeverity.Info,
+        items.Add(new(Strings.Get("BcNameHwIndependence"), broad, BootCheckSeverity.Info,
             broad
-                ? "storahci+stornvme 모두 부팅 시작 — 대부분의 AHCI/NVMe 하드웨어를 커버합니다."
-                : "표준 AHCI/NVMe가 모두 부팅 시작은 아닙니다 — 다른 하드웨어로 옮긴다면 --universal-restore 권장."));
+                ? Strings.Get("BcDetailHwBroad")
+                : Strings.Get("BcDetailHwNarrow")));
 
         if (!uefi)
         {
             // BIOS 부팅은 부트 섹터/코드가 필요하지만 여기선 파일 레벨만 검사한다는 참고.
-            items.Add(new("BIOS 부트 코드", null, BootCheckSeverity.Info,
-                "MBR/VBR 부트 코드는 이 정적 파일 검사 범위를 벗어납니다 (실부팅 확인 권장)."));
+            items.Add(new(Strings.Get("BcNameBiosBootCode"), null, BootCheckSeverity.Info,
+                Strings.Get("BcDetailBiosBootCode")));
         }
     }
 
@@ -500,13 +499,12 @@ public static class BootReadinessCheck
         }
         catch (IOException ex) when ((ex.HResult & 0xFFFF) is 32 or 33) // 공유/잠금 위반
         {
-            detail = "사용 중이라 읽을 수 없습니다 — 라이브/마운트된 OS일 수 있습니다. " +
-                     "이 검사는 오프라인 클론 대상에 사용하세요.";
+            detail = Strings.Get("BcDetailHiveInUse");
             return HiveLoadStatus.InUse;
         }
         catch (Exception ex)
         {
-            detail = $"하이브 파싱 실패 — 손상 가능: {ex.Message}";
+            detail = Strings.Format("BcDetailHiveParseFmt", ex.Message);
             return HiveLoadStatus.Bad;
         }
     }

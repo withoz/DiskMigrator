@@ -68,4 +68,51 @@
   <data name="SafeAssertTargetGoneFmt" xml:space="preserve"><value>The target disk you confirmed, [{0}] {1}, no longer exists. Aborting the operation.</value></data>
   <data name="SafeAssertTargetChangedFmt" xml:space="preserve"><value>The disk at device number {0} has changed since you confirmed it. At confirmation: {1} ({2}); now: {3} ({4}). To avoid erasing the wrong disk, the operation is aborted.</value></data>
   <data name="SafeAssertTargetReclassifiedFmt" xml:space="preserve"><value>Target [{0}] {1} has been reclassified as a system/boot disk. Aborting the operation.</value></data>
+
+  <data name="BcLabelEsp" xml:space="preserve"><value>EFI system partition (ESP)</value></data>
+  <data name="BcLabelSystemActive" xml:space="preserve"><value>System/active partition</value></data>
+  <data name="BcNameUefiLoader" xml:space="preserve"><value>UEFI bootloader (bootmgfw.efi)</value></data>
+  <data name="BcNameFallbackLoader" xml:space="preserve"><value>Fallback bootloader (EFI\Boot\bootx64.efi)</value></data>
+  <data name="BcNameBiosMgr" xml:space="preserve"><value>BIOS boot manager (bootmgr)</value></data>
+  <data name="BcNameWinVolume" xml:space="preserve"><value>Windows volume</value></data>
+  <data name="BcNameOsLoaderFmt" xml:space="preserve"><value>OS loader ({0})</value></data>
+  <data name="BcNameSystemHive" xml:space="preserve"><value>SYSTEM registry hive</value></data>
+  <data name="BcNameHibernation" xml:space="preserve"><value>Hibernation image (Fast Startup)</value></data>
+  <data name="BcNameBcdStore" xml:space="preserve"><value>BCD store</value></data>
+  <data name="BcNameBcdStoreValid" xml:space="preserve"><value>BCD store validity</value></data>
+  <data name="BcNameBcdBootMgr" xml:space="preserve"><value>BCD boot manager entry</value></data>
+  <data name="BcNameBcdOsLoader" xml:space="preserve"><value>BCD OS loader entries</value></data>
+  <data name="BcNameBcdDeviceRef" xml:space="preserve"><value>BCD device reference ↔ disk</value></data>
+  <data name="BcNameSystemHiveValid" xml:space="preserve"><value>SYSTEM hive validity</value></data>
+  <data name="BcNameBootStartDriversFmt" xml:space="preserve"><value>Boot-start storage drivers ({0})</value></data>
+  <data name="BcNameHwIndependence" xml:space="preserve"><value>Hardware independence (Universal Restore)</value></data>
+  <data name="BcNameBiosBootCode" xml:space="preserve"><value>BIOS boot code</value></data>
+  <data name="BcDetailNotMounted" xml:space="preserve"><value>The volume isn’t mounted, so the bootloader/BCD can’t be checked.</value></data>
+  <data name="BcDetailNoneUefi" xml:space="preserve"><value>Missing — UEFI boot isn’t possible.</value></data>
+  <data name="BcDetailFallbackMissing" xml:space="preserve"><value>Missing — may be needed by some firmware or for removable boot.</value></data>
+  <data name="BcDetailNoneBios" xml:space="preserve"><value>Missing — BIOS/MBR boot isn’t possible.</value></data>
+  <data name="BcDetailNoWinVolume" xml:space="preserve"><value>Couldn’t find the volume with \Windows, or it isn’t mounted.</value></data>
+  <data name="BcDetailNoOsLoader" xml:space="preserve"><value>Missing — the OS loader the BCD points to isn’t actually there.</value></data>
+  <data name="BcDetailNoSystemHive" xml:space="preserve"><value>Missing — the kernel can’t read the system configuration.</value></data>
+  <data name="BcDetailHibernationPresent" xml:space="preserve"><value>hiberfil.sys is still present — the source was shut down with Fast Startup. Booting as-is will try to restore the saved kernel state on different hardware and hang on a black screen with no error. “Repair boot” turns off resume and clears the image.</value></data>
+  <data name="BcDetailHibernationNone" xml:space="preserve"><value>None — boots normally.</value></data>
+  <data name="BcDetailBcdStoreMissingFmt" xml:space="preserve"><value>Missing ({0}) — there is no boot configuration.</value></data>
+  <data name="BcDetailBcdNotStructure" xml:space="preserve"><value>No Objects key — this isn’t a BCD structure.</value></data>
+  <data name="BcDetailBootMgrPresent" xml:space="preserve"><value>Standard boot manager object present</value></data>
+  <data name="BcDetailBootMgrMissing" xml:space="preserve"><value>No standard boot manager GUID entry (may be a non-standard configuration).</value></data>
+  <data name="BcDetailOsLoaderCountFmt" xml:space="preserve"><value>{0} — e.g. {1}</value></data>
+  <data name="BcDetailNoOsLoaderEntry" xml:space="preserve"><value>No OS loader entry points to winload — the boot menu is empty.</value></data>
+  <data name="BcDetailNoDeviceKnown" xml:space="preserve"><value>Neither the disk GUID nor the MBR signature is known, so device references couldn’t be matched.</value></data>
+  <data name="BcDetailNoDeviceRefFound" xml:space="preserve"><value>Couldn’t find a device reference (device/osdevice) to match.</value></data>
+  <data name="BcIdentityGuidFmt" xml:space="preserve"><value>GUID {0}</value></data>
+  <data name="BcIdentityMbrFmt" xml:space="preserve"><value>MBR signature 0x{0}</value></data>
+  <data name="BcDetailDeviceMatchFmt" xml:space="preserve"><value>The BCD points to this disk ({0}).</value></data>
+  <data name="BcDetailDeviceMismatchFmt" xml:space="preserve"><value>The BCD’s device reference doesn’t point to this disk ({0}) — risk of 0xc000000e at boot. If the source and target are connected together, their signatures collide and Windows re-signs the target. Use “Repair boot” to repoint device/osdevice to this disk’s partitions.</value></data>
+  <data name="BcDetailNoControlSet" xml:space="preserve"><value>No ControlSet found — this isn’t a valid SYSTEM hive.</value></data>
+  <data name="BcDetailNoBootStart" xml:space="preserve"><value>No boot-start (Start=0) storage driver — high risk of 0x7B during boot.</value></data>
+  <data name="BcDetailHwBroad" xml:space="preserve"><value>Both storahci and stornvme are boot-start — this covers most AHCI/NVMe hardware.</value></data>
+  <data name="BcDetailHwNarrow" xml:space="preserve"><value>Not all of the standard AHCI/NVMe drivers are boot-start — if moving to different hardware, --universal-restore is recommended.</value></data>
+  <data name="BcDetailBiosBootCode" xml:space="preserve"><value>MBR/VBR boot code is outside this static file check (verify with a real boot).</value></data>
+  <data name="BcDetailHiveInUse" xml:space="preserve"><value>In use, so it can’t be read — this may be a live/mounted OS. Run this check on an offline clone target.</value></data>
+  <data name="BcDetailHiveParseFmt" xml:space="preserve"><value>Failed to parse the hive — possibly corrupt: {0}</value></data>
 </root>

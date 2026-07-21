@@ -68,4 +68,51 @@
   <data name="SafeAssertTargetGoneFmt" xml:space="preserve"><value>확인했던 대상 디스크 [{0}] {1} 이(가) 더 이상 존재하지 않습니다. 작업을 중단합니다.</value></data>
   <data name="SafeAssertTargetChangedFmt" xml:space="preserve"><value>장치 번호 {0} 의 디스크가 확인 시점과 달라졌습니다. 확인 당시: {1} ({2}), 현재: {3} ({4}). 다른 디스크를 지울 위험이 있어 작업을 중단합니다.</value></data>
   <data name="SafeAssertTargetReclassifiedFmt" xml:space="preserve"><value>대상 [{0}] {1} 이(가) 시스템/부팅 디스크로 재판정되었습니다. 작업을 중단합니다.</value></data>
+
+  <data name="BcLabelEsp" xml:space="preserve"><value>EFI 시스템 파티션(ESP)</value></data>
+  <data name="BcLabelSystemActive" xml:space="preserve"><value>시스템/활성 파티션</value></data>
+  <data name="BcNameUefiLoader" xml:space="preserve"><value>UEFI 부트로더 (bootmgfw.efi)</value></data>
+  <data name="BcNameFallbackLoader" xml:space="preserve"><value>폴백 부트로더 (EFI\Boot\bootx64.efi)</value></data>
+  <data name="BcNameBiosMgr" xml:space="preserve"><value>BIOS 부트 매니저 (bootmgr)</value></data>
+  <data name="BcNameWinVolume" xml:space="preserve"><value>Windows 볼륨</value></data>
+  <data name="BcNameOsLoaderFmt" xml:space="preserve"><value>OS 로더 ({0})</value></data>
+  <data name="BcNameSystemHive" xml:space="preserve"><value>SYSTEM 레지스트리 하이브</value></data>
+  <data name="BcNameHibernation" xml:space="preserve"><value>최대 절전 이미지 (빠른 시작)</value></data>
+  <data name="BcNameBcdStore" xml:space="preserve"><value>BCD 스토어</value></data>
+  <data name="BcNameBcdStoreValid" xml:space="preserve"><value>BCD 스토어 유효성</value></data>
+  <data name="BcNameBcdBootMgr" xml:space="preserve"><value>BCD 부트 매니저 항목</value></data>
+  <data name="BcNameBcdOsLoader" xml:space="preserve"><value>BCD OS 로더 항목</value></data>
+  <data name="BcNameBcdDeviceRef" xml:space="preserve"><value>BCD 장치 참조 ↔ 디스크</value></data>
+  <data name="BcNameSystemHiveValid" xml:space="preserve"><value>SYSTEM 하이브 유효성</value></data>
+  <data name="BcNameBootStartDriversFmt" xml:space="preserve"><value>부팅 시작 저장소 드라이버 ({0})</value></data>
+  <data name="BcNameHwIndependence" xml:space="preserve"><value>하드웨어 독립성 (Universal Restore)</value></data>
+  <data name="BcNameBiosBootCode" xml:space="preserve"><value>BIOS 부트 코드</value></data>
+  <data name="BcDetailNotMounted" xml:space="preserve"><value>볼륨이 마운트되지 않아 부트로더/BCD를 검사할 수 없습니다.</value></data>
+  <data name="BcDetailNoneUefi" xml:space="preserve"><value>없음 — UEFI 부팅이 불가능합니다.</value></data>
+  <data name="BcDetailFallbackMissing" xml:space="preserve"><value>없음 — 일부 펌웨어/이동식 부팅에서 필요할 수 있습니다.</value></data>
+  <data name="BcDetailNoneBios" xml:space="preserve"><value>없음 — BIOS/MBR 부팅이 불가능합니다.</value></data>
+  <data name="BcDetailNoWinVolume" xml:space="preserve"><value>\Windows 가 있는 볼륨을 찾지 못했거나 마운트되지 않았습니다.</value></data>
+  <data name="BcDetailNoOsLoader" xml:space="preserve"><value>없음 — BCD가 가리키는 OS 로더가 실제로 없습니다.</value></data>
+  <data name="BcDetailNoSystemHive" xml:space="preserve"><value>없음 — 커널이 시스템 구성을 읽을 수 없습니다.</value></data>
+  <data name="BcDetailHibernationPresent" xml:space="preserve"><value>hiberfil.sys 가 남아 있습니다 — 원본이 빠른 시작으로 종료된 사본입니다. 이대로 부팅하면 저장된 커널 상태를 다른 하드웨어에서 복원하려다 오류 문구 없이 검은 화면에서 멈춥니다. '부팅 복구'가 재개를 끄고 이미지를 지웁니다.</value></data>
+  <data name="BcDetailHibernationNone" xml:space="preserve"><value>없음 — 정상 부팅합니다.</value></data>
+  <data name="BcDetailBcdStoreMissingFmt" xml:space="preserve"><value>없음 ({0}) — 부팅 구성이 없습니다.</value></data>
+  <data name="BcDetailBcdNotStructure" xml:space="preserve"><value>Objects 키가 없습니다 — BCD 구조가 아닙니다.</value></data>
+  <data name="BcDetailBootMgrPresent" xml:space="preserve"><value>표준 부트 매니저 객체 존재</value></data>
+  <data name="BcDetailBootMgrMissing" xml:space="preserve"><value>표준 부트 매니저 GUID 항목이 없습니다 (비표준 구성일 수 있음).</value></data>
+  <data name="BcDetailOsLoaderCountFmt" xml:space="preserve"><value>{0}개 — 예: {1}</value></data>
+  <data name="BcDetailNoOsLoaderEntry" xml:space="preserve"><value>winload를 가리키는 OS 로더 항목이 없습니다 — 부팅 메뉴가 비어 있습니다.</value></data>
+  <data name="BcDetailNoDeviceKnown" xml:space="preserve"><value>디스크 GUID도 MBR 서명도 알 수 없어 장치 참조를 대조하지 못했습니다.</value></data>
+  <data name="BcDetailNoDeviceRefFound" xml:space="preserve"><value>대조할 장치 참조(device/osdevice)를 찾지 못했습니다.</value></data>
+  <data name="BcIdentityGuidFmt" xml:space="preserve"><value>GUID {0}</value></data>
+  <data name="BcIdentityMbrFmt" xml:space="preserve"><value>MBR 서명 0x{0}</value></data>
+  <data name="BcDetailDeviceMatchFmt" xml:space="preserve"><value>BCD가 이 디스크({0})를 가리킵니다.</value></data>
+  <data name="BcDetailDeviceMismatchFmt" xml:space="preserve"><value>BCD의 장치 참조가 이 디스크({0})를 가리키지 않습니다 — 부팅 시 0xc000000e 위험. 원본과 대상을 함께 연결해 두면 서명이 충돌해 Windows가 대상을 재서명합니다. '부팅 복구'로 device/osdevice를 이 디스크의 파티션으로 다시 설정하십시오.</value></data>
+  <data name="BcDetailNoControlSet" xml:space="preserve"><value>ControlSet를 찾지 못했습니다 — 올바른 SYSTEM 하이브가 아닙니다.</value></data>
+  <data name="BcDetailNoBootStart" xml:space="preserve"><value>부팅 시작(Start=0) 저장소 드라이버가 없습니다 — 부팅 중 0x7B 위험이 큽니다.</value></data>
+  <data name="BcDetailHwBroad" xml:space="preserve"><value>storahci+stornvme 모두 부팅 시작 — 대부분의 AHCI/NVMe 하드웨어를 커버합니다.</value></data>
+  <data name="BcDetailHwNarrow" xml:space="preserve"><value>표준 AHCI/NVMe가 모두 부팅 시작은 아닙니다 — 다른 하드웨어로 옮긴다면 --universal-restore 권장.</value></data>
+  <data name="BcDetailBiosBootCode" xml:space="preserve"><value>MBR/VBR 부트 코드는 이 정적 파일 검사 범위를 벗어납니다 (실부팅 확인 권장).</value></data>
+  <data name="BcDetailHiveInUse" xml:space="preserve"><value>사용 중이라 읽을 수 없습니다 — 라이브/마운트된 OS일 수 있습니다. 이 검사는 오프라인 클론 대상에 사용하세요.</value></data>
+  <data name="BcDetailHiveParseFmt" xml:space="preserve"><value>하이브 파싱 실패 — 손상 가능: {0}</value></data>
 </root>
