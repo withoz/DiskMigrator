@@ -131,7 +131,7 @@ public sealed class DiskLayoutViewModel
         (string roleText, Brush roleBrush, string actionText, Brush actionBrush, Brush lineBrush) = role switch
         {
             DiskRole.Target => (Strings.Get("RoleTarget"), DangerBrush, Strings.Get("ActionTargetErased"), DangerBrush, DangerLineBrush),
-            DiskRole.TargetAfter => (Strings.Get("RoleAfter"), AccentBrush, Strings.Get("ActionAfter"), MutedBrush, AccentLineBrush),
+            DiskRole.TargetAfter => (Strings.Get("RoleAfter"), DangerBrush, Strings.Get("ActionAfter"), MutedBrush, AccentLineBrush),
             _ => (Strings.Get("RoleSource"), AccentBrush, Strings.Get("ActionSourceRead"), MutedBrush, AccentLineBrush),
         };
 
