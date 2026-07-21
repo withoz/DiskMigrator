@@ -43,6 +43,22 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             Log.Fatal(args.ExceptionObject as Exception, "처리되지 않은 도메인 예외");
 
+        // 데이터를 지울 수 있는 도구라, 위험을 고지하고 동의를 받은 뒤에만 실행합니다.
+        // 동의는 사용자별·버전별로 한 번만 받습니다(EulaAcceptance). 미동의면 창을 열지 않고 종료.
+        if (!EulaAcceptance.IsAccepted())
+        {
+            var eulaWindow = new EulaWindow();
+            if (eulaWindow.ShowDialog() != true)
+            {
+                Log.Information("EULA 미동의 — 실행하지 않고 종료합니다.");
+                Shutdown();
+                return;
+            }
+
+            EulaAcceptance.RecordAcceptance();
+            Log.Information("EULA v{Version} 동의를 기록했습니다.", EulaAcceptance.Version);
+        }
+
         var viewModel = new MainViewModel(_loggerFactory);
         var window = new MainWindow { DataContext = viewModel };
 

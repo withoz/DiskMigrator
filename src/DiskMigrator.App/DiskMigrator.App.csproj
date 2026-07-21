@@ -61,6 +61,11 @@
     <ProjectReference Include="..\DiskMigrator.Windows\DiskMigrator.Windows.csproj" />
   </ItemGroup>
 
+  <!-- 최초 실행 EULA 동의 화면이 읽는 사용권 계약 본문. exe에 내장합니다. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\EULA.txt" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Serilog" Version="4.4.0" />
