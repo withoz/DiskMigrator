@@ -1,4 +1,6 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DiskMigrator.App.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 
@@ -19,7 +21,12 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
     {
         get
         {
-            var parts = new List<string> { $"디스크 {Disk.DeviceNumber}", BusText, Disk.PartitionStyle.ToString().ToUpperInvariant() };
+            var parts = new List<string>
+            {
+                string.Format(CultureInfo.CurrentCulture, Strings.Get("DiskLabel"), Disk.DeviceNumber),
+                BusText,
+                Disk.PartitionStyle.ToString().ToUpperInvariant(),
+            };
 
             if (Disk.SerialNumber is { } serial) parts.Add($"S/N {serial}");
 
@@ -34,8 +41,8 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
         DiskBusType.Usb => "USB",
         DiskBusType.Sas => "SAS",
         DiskBusType.RAID => "RAID",
-        DiskBusType.Virtual or DiskBusType.FileBackedVirtual => "가상",
-        DiskBusType.Unknown => "알 수 없음",
+        DiskBusType.Virtual or DiskBusType.FileBackedVirtual => Strings.Get("BusVirtual"),
+        DiskBusType.Unknown => Strings.Get("BusUnknown"),
         _ => Disk.BusType.ToString().ToUpperInvariant(),
     };
 
@@ -52,10 +59,10 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
         {
             var badges = new List<string>();
 
-            if (Disk.IsSystemDisk) badges.Add("시스템");
-            if (Disk.IsBootDisk && !Disk.IsSystemDisk) badges.Add("부팅");
-            if (Disk.HasPageFile && !Disk.IsSystemDisk) badges.Add("페이지 파일");
-            if (Disk.IsReadOnly) badges.Add("읽기 전용");
+            if (Disk.IsSystemDisk) badges.Add(Strings.Get("BadgeSystem"));
+            if (Disk.IsBootDisk && !Disk.IsSystemDisk) badges.Add(Strings.Get("BadgeBoot"));
+            if (Disk.HasPageFile && !Disk.IsSystemDisk) badges.Add(Strings.Get("BadgePageFile"));
+            if (Disk.IsReadOnly) badges.Add(Strings.Get("BadgeReadOnly"));
 
             return badges;
         }
@@ -63,7 +70,7 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
 
     /// <summary>위험과 무관한 사실 표시 — 파랑으로 표시합니다.</summary>
     public IReadOnlyList<string> InfoBadges =>
-        Disk.IsRemovable ? ["착탈식"] : [];
+        Disk.IsRemovable ? [Strings.Get("BadgeRemovable")] : [];
 
     public bool HasWarningBadges => WarningBadges.Count > 0;
     public bool HasInfoBadges => InfoBadges.Count > 0;
@@ -98,7 +105,7 @@ public sealed partial class DiskItemViewModel(DiskInfo disk) : ObservableObject
     {
         get
         {
-            if (Disk.Partitions.Count == 0) return "파티션 없음 (초기화되지 않음)";
+            if (Disk.Partitions.Count == 0) return Strings.Get("NoPartitions");
 
             var parts = Disk.Partitions.Select(p =>
             {

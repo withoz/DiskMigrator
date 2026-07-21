@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.Versioning;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DiskMigrator.App.Localization;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
@@ -290,7 +291,7 @@ public sealed partial class MainViewModel : ObservableObject
     public string ConfirmationPrompt =>
         SelectedTarget is null
             ? ""
-            : $"계속하려면 대상 디스크의 모델명을 그대로 입력하십시오 — {SelectedTarget.Model}";
+            : string.Format(CultureInfo.CurrentCulture, Strings.Get("ConfirmPromptFmt"), SelectedTarget.Model);
 
     /// <summary>
     /// 시작 버튼을 누를 수 있는지. 차단 사유가 없고, 확인이 필요하면 모델명이 정확히 입력돼야 합니다.
@@ -316,16 +317,16 @@ public sealed partial class MainViewModel : ObservableObject
     {
         get
         {
-            if (SelectedSource is null && SelectedTarget is null) return "원본과 대상 디스크를 고르십시오.";
-            if (SelectedSource is null) return "원본 디스크를 고르십시오.";
-            if (SelectedTarget is null) return "대상 디스크를 고르십시오.";
+            if (SelectedSource is null && SelectedTarget is null) return Strings.Get("BlockChooseSourceTarget");
+            if (SelectedSource is null) return Strings.Get("BlockChooseSource");
+            if (SelectedTarget is null) return Strings.Get("BlockChooseTarget");
 
             if (!CanProceed)
             {
                 var blocker = SafetyIssues.FirstOrDefault(i => i.Severity == SafetySeverity.Blocker);
                 return blocker is null
-                    ? "안전 검사를 통과하지 못했습니다."
-                    : $"차단됨 — {blocker.Message}";
+                    ? Strings.Get("BlockSafetyFailed")
+                    : string.Format(CultureInfo.CurrentCulture, Strings.Get("BlockPrefixFmt"), blocker.Message);
             }
 
             // 남는 공간 설정이 덜 됐으면 확인 입력보다 먼저 말해 줍니다 — 모델명을 다 치고
@@ -335,7 +336,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (NeedsConfirmation &&
                 !SafetyGuard.IsConfirmationValid(SelectedTarget.Disk, ConfirmationText))
             {
-                return "확인 입력이 아직 완료되지 않아 시작할 수 없습니다.";
+                return Strings.Get("BlockConfirmIncomplete");
             }
 
             return "";
@@ -670,7 +671,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (!HasFreeSpace) return "";
             long free = SelectedTarget!.Disk.SizeBytes - SelectedSource!.Disk.SizeBytes;
-            return $"남는 공간 {SizeFormatter.Format(free)} 를 어떻게 할까요";
+            return string.Format(CultureInfo.CurrentCulture, Strings.Get("FreeSpaceHeaderFmt"), SizeFormatter.Format(free));
         }
     }
 
@@ -992,7 +993,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (target is null)
             {
-                BootCheckVerdict = "대상 디스크를 다시 찾지 못했습니다.";
+                BootCheckVerdict = Strings.Get("TargetNotFoundAgain");
                 BootCheckVerdictIsGood = false;
                 BootCheckRan = true;
                 return;
@@ -1052,7 +1053,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (target is null)
             {
-                BootRepairMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                BootRepairMessage = Strings.Get("TargetNotFoundAgain");
                 BootRepairSuccess = false;
                 BootRepairRan = true;
                 return;
@@ -1102,7 +1103,7 @@ public sealed partial class MainViewModel : ObservableObject
             var target = await ResolveCurrentTargetAsync();
             if (target is null)
             {
-                PartitionExpandMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                PartitionExpandMessage = Strings.Get("TargetNotFoundAgain");
                 PartitionExpandSuccess = false;
                 PartitionExpandRan = true;
                 return;
@@ -1156,7 +1157,7 @@ public sealed partial class MainViewModel : ObservableObject
             var target = await ResolveCurrentTargetAsync();
             if (target is null)
             {
-                UefiConvertMessage = "대상 디스크를 다시 찾지 못했습니다.";
+                UefiConvertMessage = Strings.Get("TargetNotFoundAgain");
                 UefiConvertSuccess = false;
                 UefiConvertRan = true;
                 return;

@@ -118,4 +118,48 @@
   <data name="UpdateAvailable" xml:space="preserve"><value>새 버전이 있습니다</value></data>
   <data name="UpdateDownload" xml:space="preserve"><value>다운로드</value></data>
   <data name="UpdateLater" xml:space="preserve"><value>나중에</value></data>
+
+  <data name="DiskLabel" xml:space="preserve"><value>디스크 {0}</value></data>
+  <data name="BusVirtual" xml:space="preserve"><value>가상</value></data>
+  <data name="BusUnknown" xml:space="preserve"><value>알 수 없음</value></data>
+  <data name="BadgeSystem" xml:space="preserve"><value>시스템</value></data>
+  <data name="BadgeBoot" xml:space="preserve"><value>부팅</value></data>
+  <data name="BadgePageFile" xml:space="preserve"><value>페이지 파일</value></data>
+  <data name="BadgeReadOnly" xml:space="preserve"><value>읽기 전용</value></data>
+  <data name="BadgeRemovable" xml:space="preserve"><value>착탈식</value></data>
+  <data name="NoPartitions" xml:space="preserve"><value>파티션 없음 (초기화되지 않음)</value></data>
+
+  <data name="ConfirmPromptFmt" xml:space="preserve"><value>계속하려면 대상 디스크의 모델명을 그대로 입력하십시오 — {0}</value></data>
+  <data name="BlockChooseSourceTarget" xml:space="preserve"><value>원본과 대상 디스크를 고르십시오.</value></data>
+  <data name="BlockChooseSource" xml:space="preserve"><value>원본 디스크를 고르십시오.</value></data>
+  <data name="BlockChooseTarget" xml:space="preserve"><value>대상 디스크를 고르십시오.</value></data>
+  <data name="BlockSafetyFailed" xml:space="preserve"><value>안전 검사를 통과하지 못했습니다.</value></data>
+  <data name="BlockPrefixFmt" xml:space="preserve"><value>차단됨 — {0}</value></data>
+  <data name="BlockConfirmIncomplete" xml:space="preserve"><value>확인 입력이 아직 완료되지 않아 시작할 수 없습니다.</value></data>
+  <data name="TargetNotFoundAgain" xml:space="preserve"><value>대상 디스크를 다시 찾지 못했습니다.</value></data>
+
+  <data name="PartitionWord" xml:space="preserve"><value>파티션</value></data>
+  <data name="LayoutNoPartitionsFmt" xml:space="preserve"><value>파티션 없음 · 디스크 {0}</value></data>
+  <data name="LayoutOccupiedFmt" xml:space="preserve"><value>파티션이 차지한 끝 {0} · 디스크 {1}</value></data>
+  <data name="RoleSource" xml:space="preserve"><value>원본</value></data>
+  <data name="RoleTarget" xml:space="preserve"><value>대상</value></data>
+  <data name="RoleAfter" xml:space="preserve"><value>변경 후</value></data>
+  <data name="ActionSourceRead" xml:space="preserve"><value>읽기만 합니다</value></data>
+  <data name="ActionTargetErased" xml:space="preserve"><value>이 디스크가 지워집니다</value></data>
+  <data name="ActionAfter" xml:space="preserve"><value>복제가 끝나면 이렇게 됩니다</value></data>
+  <data name="TrailingFreeFmt" xml:space="preserve"><value>뒤쪽 빈 공간 {0} — 더 작은 디스크로 옮길 때 이만큼은 복제되지 않습니다.</value></data>
+  <data name="Unallocated" xml:space="preserve"><value>미할당</value></data>
+  <data name="UnallocatedTipFmt" xml:space="preserve"><value>미할당 공간 {0}</value></data>
+  <data name="UnallocatedTipLine2" xml:space="preserve"><value>어떤 파티션에도 속하지 않아 복제 대상이 아닙니다.</value></data>
+  <data name="TipLabelFmt" xml:space="preserve"><value>레이블: {0}</value></data>
+  <data name="TipKindFmt" xml:space="preserve"><value>종류: {0}</value></data>
+  <data name="TipSizeFmt" xml:space="preserve"><value>크기: {0}  (디스크의 {1})</value></data>
+  <data name="TipLocationFmt" xml:space="preserve"><value>위치: {0} 부터</value></data>
+  <data name="TipUsageFmt" xml:space="preserve"><value>사용: {0} / 여유: {1}</value></data>
+  <data name="TipUsageUnknown" xml:space="preserve"><value>사용량: 알 수 없음 (마운트된 볼륨이 아님)</value></data>
+  <data name="UsedFmt" xml:space="preserve"><value>사용 {0}</value></data>
+  <data name="RoleEfi" xml:space="preserve"><value>EFI 시스템</value></data>
+  <data name="RoleMsr" xml:space="preserve"><value>MSR (예약)</value></data>
+  <data name="RoleRecovery" xml:space="preserve"><value>복구</value></data>
+  <data name="FreeSpaceHeaderFmt" xml:space="preserve"><value>남는 공간 {0} 를 어떻게 할까요</value></data>
 </root>

@@ -118,4 +118,48 @@
   <data name="UpdateAvailable" xml:space="preserve"><value>A new version is available</value></data>
   <data name="UpdateDownload" xml:space="preserve"><value>Download</value></data>
   <data name="UpdateLater" xml:space="preserve"><value>Later</value></data>
+
+  <data name="DiskLabel" xml:space="preserve"><value>Disk {0}</value></data>
+  <data name="BusVirtual" xml:space="preserve"><value>Virtual</value></data>
+  <data name="BusUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="BadgeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="BadgeBoot" xml:space="preserve"><value>Boot</value></data>
+  <data name="BadgePageFile" xml:space="preserve"><value>Page file</value></data>
+  <data name="BadgeReadOnly" xml:space="preserve"><value>Read-only</value></data>
+  <data name="BadgeRemovable" xml:space="preserve"><value>Removable</value></data>
+  <data name="NoPartitions" xml:space="preserve"><value>No partitions (not initialized)</value></data>
+
+  <data name="ConfirmPromptFmt" xml:space="preserve"><value>To continue, type the target disk’s model name exactly — {0}</value></data>
+  <data name="BlockChooseSourceTarget" xml:space="preserve"><value>Choose a source disk and a target disk.</value></data>
+  <data name="BlockChooseSource" xml:space="preserve"><value>Choose a source disk.</value></data>
+  <data name="BlockChooseTarget" xml:space="preserve"><value>Choose a target disk.</value></data>
+  <data name="BlockSafetyFailed" xml:space="preserve"><value>The safety check didn’t pass.</value></data>
+  <data name="BlockPrefixFmt" xml:space="preserve"><value>Blocked — {0}</value></data>
+  <data name="BlockConfirmIncomplete" xml:space="preserve"><value>Can’t start yet — the confirmation isn’t complete.</value></data>
+  <data name="TargetNotFoundAgain" xml:space="preserve"><value>Couldn’t find the target disk again.</value></data>
+
+  <data name="PartitionWord" xml:space="preserve"><value>Partition</value></data>
+  <data name="LayoutNoPartitionsFmt" xml:space="preserve"><value>No partitions · Disk {0}</value></data>
+  <data name="LayoutOccupiedFmt" xml:space="preserve"><value>Used up to {0} · Disk {1}</value></data>
+  <data name="RoleSource" xml:space="preserve"><value>Source</value></data>
+  <data name="RoleTarget" xml:space="preserve"><value>Target</value></data>
+  <data name="RoleAfter" xml:space="preserve"><value>After</value></data>
+  <data name="ActionSourceRead" xml:space="preserve"><value>Read only</value></data>
+  <data name="ActionTargetErased" xml:space="preserve"><value>This disk will be erased</value></data>
+  <data name="ActionAfter" xml:space="preserve"><value>How it will look after cloning</value></data>
+  <data name="TrailingFreeFmt" xml:space="preserve"><value>Trailing free space {0} — this much isn’t cloned when moving to a smaller disk.</value></data>
+  <data name="Unallocated" xml:space="preserve"><value>Unallocated</value></data>
+  <data name="UnallocatedTipFmt" xml:space="preserve"><value>Unallocated space {0}</value></data>
+  <data name="UnallocatedTipLine2" xml:space="preserve"><value>Belongs to no partition, so it isn’t cloned.</value></data>
+  <data name="TipLabelFmt" xml:space="preserve"><value>Label: {0}</value></data>
+  <data name="TipKindFmt" xml:space="preserve"><value>Type: {0}</value></data>
+  <data name="TipSizeFmt" xml:space="preserve"><value>Size: {0}  ({1} of the disk)</value></data>
+  <data name="TipLocationFmt" xml:space="preserve"><value>Location: from {0}</value></data>
+  <data name="TipUsageFmt" xml:space="preserve"><value>Used: {0} / Free: {1}</value></data>
+  <data name="TipUsageUnknown" xml:space="preserve"><value>Usage: unknown (not a mounted volume)</value></data>
+  <data name="UsedFmt" xml:space="preserve"><value>Used {0}</value></data>
+  <data name="RoleEfi" xml:space="preserve"><value>EFI system</value></data>
+  <data name="RoleMsr" xml:space="preserve"><value>MSR (reserved)</value></data>
+  <data name="RoleRecovery" xml:space="preserve"><value>Recovery</value></data>
+  <data name="FreeSpaceHeaderFmt" xml:space="preserve"><value>What to do with {0} of free space</value></data>
 </root>

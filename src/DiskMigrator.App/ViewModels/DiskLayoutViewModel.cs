@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Windows.Media;
+using DiskMigrator.App.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 
@@ -119,17 +121,18 @@ public sealed class DiskLayoutViewModel
         long trailing = DiskLayoutMap.TrailingFreeBytes(disk);
 
         string summary = disk.Partitions.Count == 0
-            ? $"파티션 없음 · 디스크 {SizeFormatter.Format(disk.SizeBytes)}"
-            : $"파티션이 차지한 끝 {SizeFormatter.Format(DiskLayoutMap.OccupiedEnd(disk))} · " +
-              $"디스크 {SizeFormatter.Format(disk.SizeBytes)}";
+            ? string.Format(CultureInfo.CurrentCulture, Strings.Get("LayoutNoPartitionsFmt"),
+                SizeFormatter.Format(disk.SizeBytes))
+            : string.Format(CultureInfo.CurrentCulture, Strings.Get("LayoutOccupiedFmt"),
+                SizeFormatter.Format(DiskLayoutMap.OccupiedEnd(disk)), SizeFormatter.Format(disk.SizeBytes));
 
         // 세 막대는 같은 모양으로 그리고 라벨로만 시점을 가릅니다. 한쪽만 다르게 그리면
         // 다른 의미의 그래프로 착각하게 됩니다.
         (string roleText, Brush roleBrush, string actionText, Brush actionBrush, Brush lineBrush) = role switch
         {
-            DiskRole.Target => ("대상", DangerBrush, "이 디스크가 지워집니다", DangerBrush, DangerLineBrush),
-            DiskRole.TargetAfter => ("변경 후", AccentBrush, "복제가 끝나면 이렇게 됩니다", MutedBrush, AccentLineBrush),
-            _ => ("원본", AccentBrush, "읽기만 합니다", MutedBrush, AccentLineBrush),
+            DiskRole.Target => (Strings.Get("RoleTarget"), DangerBrush, Strings.Get("ActionTargetErased"), DangerBrush, DangerLineBrush),
+            DiskRole.TargetAfter => (Strings.Get("RoleAfter"), AccentBrush, Strings.Get("ActionAfter"), MutedBrush, AccentLineBrush),
+            _ => (Strings.Get("RoleSource"), AccentBrush, Strings.Get("ActionSourceRead"), MutedBrush, AccentLineBrush),
         };
 
         return new DiskLayoutViewModel
@@ -149,7 +152,7 @@ public sealed class DiskLayoutViewModel
             // 뒤쪽은 안 따라간다". 복제 후 예상 막대에서는 사용자가 방금 '그대로 둡니다'를
             // 골라 의도적으로 남긴 공간이라, 같은 문구를 쓰면 앞뒤가 맞지 않습니다.
             TrailingFreeText = role == DiskRole.Source && trailing >= DiskLayoutMap.GapNoiseThreshold
-                ? $"뒤쪽 빈 공간 {SizeFormatter.Format(trailing)} — 더 작은 디스크로 옮길 때 이만큼은 복제되지 않습니다."
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Get("TrailingFreeFmt"), SizeFormatter.Format(trailing))
                 : null,
         };
     }
@@ -162,12 +165,13 @@ public sealed class DiskLayoutViewModel
             {
                 Fraction = span.DisplayFraction,
                 LengthBytes = span.LengthBytes,
-                Title = "미할당",
+                Title = Strings.Get("Unallocated"),
                 SizeText = SizeFormatter.Format(span.LengthBytes),
                 Fill = UnallocatedBrush,
-                Tooltip = $"미할당 공간 {SizeFormatter.Format(span.LengthBytes)}\n" +
-                          "어떤 파티션에도 속하지 않아 복제 대상이 아닙니다.",
-                BarLabel = "미할당",
+                Tooltip = string.Format(CultureInfo.CurrentCulture, Strings.Get("UnallocatedTipFmt"),
+                              SizeFormatter.Format(span.LengthBytes))
+                          + "\n" + Strings.Get("UnallocatedTipLine2"),
+                BarLabel = Strings.Get("Unallocated"),
                 ShowBarLabel = span.DisplayFraction >= LabelMinFraction,
                 BarLabelBrush = DarkLabelBrush,   // 미할당은 밝은 색이라 어두운 글자
             };
@@ -184,16 +188,20 @@ public sealed class DiskLayoutViewModel
         long used = hasUsage ? Math.Max(0, p.LengthBytes - p.FreeSpaceBytes!.Value) : 0;
 
         var tip = new StringBuilder();
-        tip.Append($"파티션 {p.Number}");
+        tip.Append($"{Strings.Get("PartitionWord")} {p.Number}");
         if (p.DriveLetter is { } d) tip.Append($" ({d}:)");
         tip.AppendLine();
-        if (!string.IsNullOrWhiteSpace(p.VolumeLabel)) tip.AppendLine($"레이블: {p.VolumeLabel}");
-        tip.AppendLine($"종류: {role}");
-        tip.AppendLine($"크기: {SizeFormatter.Format(p.LengthBytes)}  (디스크의 {span.TrueFraction:P1})");
-        tip.AppendLine($"위치: {SizeFormatter.Format(span.StartOffset)} 부터");
+        if (!string.IsNullOrWhiteSpace(p.VolumeLabel))
+            tip.AppendLine(string.Format(CultureInfo.CurrentCulture, Strings.Get("TipLabelFmt"), p.VolumeLabel));
+        tip.AppendLine(string.Format(CultureInfo.CurrentCulture, Strings.Get("TipKindFmt"), role));
+        tip.AppendLine(string.Format(CultureInfo.CurrentCulture, Strings.Get("TipSizeFmt"),
+            SizeFormatter.Format(p.LengthBytes), span.TrueFraction.ToString("P1", CultureInfo.CurrentCulture)));
+        tip.AppendLine(string.Format(CultureInfo.CurrentCulture, Strings.Get("TipLocationFmt"),
+            SizeFormatter.Format(span.StartOffset)));
         tip.Append(hasUsage
-            ? $"사용: {SizeFormatter.Format(used)} / 여유: {SizeFormatter.Format(p.FreeSpaceBytes!.Value)}"
-            : "사용량: 알 수 없음 (마운트된 볼륨이 아님)");
+            ? string.Format(CultureInfo.CurrentCulture, Strings.Get("TipUsageFmt"),
+                SizeFormatter.Format(used), SizeFormatter.Format(p.FreeSpaceBytes!.Value))
+            : Strings.Get("TipUsageUnknown"));
 
         return new DiskSegmentViewModel
         {
@@ -209,7 +217,7 @@ public sealed class DiskLayoutViewModel
             // 여유는 적지 않습니다 — 크기에서 사용을 뺀 값이라 새 정보가 없는데 줄만 길어져
             // 두 칸 격자에서 잘렸습니다. 막대의 흰 띠가 이미 비율을 보여 주고,
             // 정확한 값은 툴팁에 있습니다.
-            UsageText = hasUsage ? $"사용 {SizeFormatter.Format(used)}" : "",
+            UsageText = hasUsage ? string.Format(CultureInfo.CurrentCulture, Strings.Get("UsedFmt"), SizeFormatter.Format(used)) : "",
 
             // 드라이브 문자가 있으면 그것이 가장 알아보기 쉽습니다. 없으면 역할을 짧게.
             BarLabel = p.DriveLetter is { } dl2 ? $"{dl2}:" : ShortRole(p),
@@ -223,7 +231,7 @@ public sealed class DiskLayoutViewModel
     {
         if (p.IsEfiSystemPartition) return "EFI";
         if (p.GptPartitionType == MicrosoftReserved) return "MSR";
-        if (p.IsWindowsRecovery) return "복구";
+        if (p.IsWindowsRecovery) return Strings.Get("RoleRecovery");
         return p.FileSystem ?? "RAW";
     }
 
@@ -233,9 +241,9 @@ public sealed class DiskLayoutViewModel
 
     private static string DescribeRole(PartitionInfo p)
     {
-        if (p.IsEfiSystemPartition) return "EFI 시스템";
-        if (p.GptPartitionType == MicrosoftReserved) return "MSR (예약)";
-        if (p.IsWindowsRecovery) return "복구";
+        if (p.IsEfiSystemPartition) return Strings.Get("RoleEfi");
+        if (p.GptPartitionType == MicrosoftReserved) return Strings.Get("RoleMsr");
+        if (p.IsWindowsRecovery) return Strings.Get("RoleRecovery");
         return p.FileSystem ?? "RAW";
     }
 

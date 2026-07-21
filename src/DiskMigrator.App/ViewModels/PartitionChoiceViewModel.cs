@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using DiskMigrator.App.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 
@@ -33,7 +34,7 @@ public sealed partial class PartitionChoiceViewModel(PartitionInfo partition) : 
             string letter = Partition.DriveLetter is null ? "" : $"({Partition.DriveLetter}:) ";
             string fs = Partition.FileSystem ?? "RAW";
             string label = string.IsNullOrWhiteSpace(Partition.VolumeLabel) ? "" : $" \"{Partition.VolumeLabel}\"";
-            return $"파티션 {Partition.Number} {letter}{fs}{label} — {SizeFormatter.Format(Partition.LengthBytes)}";
+            return $"{Strings.Get("PartitionWord")} {Partition.Number} {letter}{fs}{label} — {SizeFormatter.Format(Partition.LengthBytes)}";
         }
     }
 }
