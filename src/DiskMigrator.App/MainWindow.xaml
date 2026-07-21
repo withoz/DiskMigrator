@@ -327,7 +327,8 @@
                             Foreground를 줘도 글자색이 안 바뀝니다. 명시적 TextBlock이 확실합니다.
                         -->
                         <Button Command="{Binding RefreshDisksCommand}"
-                                Padding="8,3" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center">
+                                Padding="8,3" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center"
+                                BorderBrush="{StaticResource Success}">
                             <TextBlock Text="새로고침" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
                         </Button>
                     </StackPanel>
