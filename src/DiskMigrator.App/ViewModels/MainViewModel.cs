@@ -440,6 +440,26 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _uefiConvertMessage = "";
     [ObservableProperty] private bool _uefiConvertSuccess;
 
+    // --- 대상 안전하게 제거 ------------------------------------------------
+    //
+    // 클론이 끝나면 세션 정리가 대상을 다시 온라인으로 올려, Windows가 복제된 볼륨을 자동
+    // 마운트합니다. 그 상태에서 이동식(USB) 대상을 "안전하게 제거"하면 Windows가 "장치
+    // 사용 중"이라며 막습니다. 이 버튼이 볼륨을 디스마운트하고 디스크를 오프라인으로 내려,
+    // 사용자가 USB를 그대로 뽑아도 안전하게 만듭니다(디스크 관리의 "오프라인"과 같은 동작).
+
+    /// <summary>대상이 이동식(USB)이라 "안전하게 제거" 버튼을 보여줄지.</summary>
+    [ObservableProperty] private bool _safeRemoveAvailable;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SafeRemoveTargetCommand))]
+    private bool _isSafeRemoving;
+
+    public bool CanSafeRemove => !IsSafeRemoving;
+
+    [ObservableProperty] private bool _safeRemoveRan;
+    [ObservableProperty] private string _safeRemoveMessage = "";
+    [ObservableProperty] private bool _safeRemoveSuccess;
+
     // --- 명령 --------------------------------------------------------------
 
     [RelayCommand]
@@ -1009,6 +1029,10 @@ public sealed partial class MainViewModel : ObservableObject
         UefiConvertSuccess = false;
         PartitionExpandMessage = "";
         PartitionExpandSuccess = false;
+        SafeRemoveAvailable = false;
+        SafeRemoveRan = false;
+        SafeRemoveMessage = "";
+        SafeRemoveSuccess = false;
     }
 
     /// <summary>
@@ -1229,6 +1253,50 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 이동식 대상 디스크의 볼륨을 내리고 오프라인으로 전환해, 사용자가 USB를 안전하게 뽑을 수
+    /// 있게 합니다. 복제 데이터는 이미 대상에 온전히 쓰인 뒤이므로 손상 위험은 없습니다.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanSafeRemove))]
+    private async Task SafeRemoveTargetAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsSafeRemoving = true;
+        SafeRemoveRan = false;
+        try
+        {
+            // 클론·재연결로 장치 번호가 바뀌었을 수 있어 신원으로 다시 찾습니다. 못 찾으면
+            // (이미 뽑혔거나 사라졌으면) 처음 선택했던 정보로 시도합니다.
+            var target = await ResolveCurrentTargetAsync() ?? SelectedTarget.Disk;
+
+            var result = await _diskService.SafeRemoveAsync(target);
+
+            SafeRemoveSuccess = result.Success;
+            SafeRemoveMessage = result.Success
+                ? Strings.Get("SafeRemoveDone")
+                : Strings.Format("SafeRemoveFailFmt", result.ErrorDetail ?? "");
+            SafeRemoveRan = true;
+
+            _logger.LogInformation(
+                "대상 안전 제거: 성공={Success} {Detail}", result.Success, result.ErrorDetail ?? "");
+
+            // 오프라인으로 내렸으면 더 할 일이 없으므로 버튼을 감춥니다.
+            if (result.Success) SafeRemoveAvailable = false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "대상 안전 제거에 실패했습니다.");
+            SafeRemoveMessage = Strings.Format("SafeRemoveFailFmt", ex.Message);
+            SafeRemoveSuccess = false;
+            SafeRemoveRan = true;
+        }
+        finally
+        {
+            IsSafeRemoving = false;
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanStart))]
     public async Task StartAsync()
     {
@@ -1406,6 +1474,12 @@ public sealed partial class MainViewModel : ObservableObject
         // 원본이 BIOS 전용 배치였으면 사본도 그렇습니다. 요즘 PC(특히 NVMe)에서는 부팅하지
         // 않으므로 GPT/UEFI 변환을 제안합니다. 되돌릴 수 없는 변경이라 자동으로 하지 않습니다.
         UefiConvertAvailable = ResultIsSuccess && UefiConverter.NeedsConversion(report.Source);
+
+        // 대상이 이동식(USB)이면 "안전하게 제거"를 제안합니다. 클론 후 대상을 다시 온라인으로
+        // 올리며 복제된 볼륨이 자동 마운트돼, 그냥은 안전 제거가 "장치 사용 중"으로 막히기
+        // 때문입니다. 성공·실패와 무관하게 디스크를 뽑으려면 필요하므로 결과와 상관없이 띄웁니다.
+        SafeRemoveRan = false;
+        SafeRemoveAvailable = report.Target.IsRemovable || report.Target.BusType == DiskBusType.Usb;
 
         (ResultTitle, ResultMessage) = result.Outcome switch
         {

@@ -1002,6 +1002,53 @@
                         </TextBlock.Style>
                     </TextBlock>
 
+                    <!--
+                        대상 안전하게 제거 — 이동식(USB) 대상일 때만.
+                        클론 후 대상을 다시 온라인으로 올리며 복제된 볼륨이 자동 마운트돼,
+                        Windows "안전하게 제거"가 "장치 사용 중"으로 막힙니다. 이 버튼이 볼륨을
+                        디스마운트하고 디스크를 오프라인으로 내려 그대로 뽑을 수 있게 합니다.
+                    -->
+                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
+                            Background="{StaticResource SurfaceAlt}"
+                            BorderBrush="{StaticResource Success}" BorderThickness="1"
+                            Visibility="{Binding SafeRemoveAvailable, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc SafeRemoveTitle}"
+                                       Style="{StaticResource Body}" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Success}" />
+                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       Text="{loc:Loc SafeRemoveDesc}" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="{loc:Loc SafeRemoveBtn}" Command="{Binding SafeRemoveTargetCommand}"
+                                        MinWidth="130" Padding="16,8" />
+                                <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
+                                           Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
+                                           Text="{loc:Loc SafeRemoveTip}" />
+                            </StackPanel>
+
+                            <TextBlock Text="{loc:Loc SafeRemoveBusy}" Margin="0,6,0,0"
+                                       Style="{StaticResource Caption}"
+                                       Visibility="{Binding IsSafeRemoving,
+                                                    Converter={StaticResource BoolToVisibility}}" />
+
+                            <TextBlock Text="{Binding SafeRemoveMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Visibility="{Binding SafeRemoveRan,
+                                                    Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SafeRemoveSuccess}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
                     <Button Content="{loc:Loc StartOver}" Command="{Binding BackToSelectionCommand}"
                             Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
                             Margin="0,20,0,0" MinWidth="120" Padding="20,10" />

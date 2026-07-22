@@ -102,6 +102,13 @@
   <data name="ConvertUefiBtn" xml:space="preserve"><value>UEFI로 변환</value></data>
   <data name="ConvertUefiTip" xml:space="preserve"><value>되돌릴 수 없습니다. 변환 후에는 BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오.</value></data>
   <data name="Converting" xml:space="preserve"><value>변환 중... (몇 분 걸릴 수 있습니다)</value></data>
+  <data name="SafeRemoveTitle" xml:space="preserve"><value>대상 USB 안전하게 제거</value></data>
+  <data name="SafeRemoveDesc" xml:space="preserve"><value>복제가 끝나면 대상 디스크가 다시 온라인이 되어 복제된 볼륨이 자동으로 마운트됩니다. 이 상태에서는 Windows "안전하게 제거"가 "장치 사용 중"이라며 막힙니다. 아래 버튼이 볼륨을 내리고 디스크를 오프라인으로 전환해, USB를 그대로 뽑을 수 있게 합니다.</value></data>
+  <data name="SafeRemoveBtn" xml:space="preserve"><value>대상 안전하게 제거</value></data>
+  <data name="SafeRemoveTip" xml:space="preserve"><value>디스크를 오프라인으로 내려(디스크 관리의 "오프라인"과 동일) 캐시를 비웁니다. 완료 메시지가 뜬 뒤 USB를 뽑으면 됩니다. 복제된 데이터는 손상되지 않습니다.</value></data>
+  <data name="SafeRemoveBusy" xml:space="preserve"><value>대상 볼륨을 내리는 중...</value></data>
+  <data name="SafeRemoveDone" xml:space="preserve"><value>대상 디스크를 오프라인으로 내렸습니다. 이제 USB를 안전하게 뽑을 수 있습니다.</value></data>
+  <data name="SafeRemoveFailFmt" xml:space="preserve"><value>안전 제거에 실패했습니다: {0} — 디스크 관리(diskmgmt.msc)에서 이 디스크를 우클릭해 "오프라인"으로 내린 뒤 뽑으십시오.</value></data>
   <data name="ReconnectWinre" xml:space="preserve"><value>복구 환경(WinRE) 다시 연결하기</value></data>
   <data name="ExpandPartitionBtn" xml:space="preserve"><value>파티션 확장</value></data>
   <data name="ExpandPartitionTip" xml:space="preserve"><value>확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 맨 뒤가 복구 파티션이면 그것이 커집니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다.</value></data>

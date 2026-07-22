@@ -102,6 +102,13 @@
   <data name="ConvertUefiBtn" xml:space="preserve"><value>Convert to UEFI</value></data>
   <data name="ConvertUefiTip" xml:space="preserve"><value>Can’t be undone. Afterwards, turn off CSM in the BIOS and boot the UEFI entry.</value></data>
   <data name="Converting" xml:space="preserve"><value>Converting… (this can take a few minutes)</value></data>
+  <data name="SafeRemoveTitle" xml:space="preserve"><value>Safely remove the target USB</value></data>
+  <data name="SafeRemoveDesc" xml:space="preserve"><value>Once the clone finishes, the target disk is brought back online and Windows auto-mounts the copied volumes. In that state, Windows blocks "Safely Remove Hardware" with a "device is in use" error. The button below dismounts the volumes and takes the disk offline so you can just unplug the USB.</value></data>
+  <data name="SafeRemoveBtn" xml:space="preserve"><value>Safely remove target</value></data>
+  <data name="SafeRemoveTip" xml:space="preserve"><value>Takes the disk offline (same as "Offline" in Disk Management) and flushes its caches. Once you see the confirmation, unplug the USB. Your cloned data is not affected.</value></data>
+  <data name="SafeRemoveBusy" xml:space="preserve"><value>Dismounting the target's volumes…</value></data>
+  <data name="SafeRemoveDone" xml:space="preserve"><value>The target disk is now offline. You can safely unplug the USB.</value></data>
+  <data name="SafeRemoveFailFmt" xml:space="preserve"><value>Safe removal failed: {0} — In Disk Management (diskmgmt.msc), right-click this disk, choose "Offline," then unplug it.</value></data>
   <data name="ReconnectWinre" xml:space="preserve"><value>Reconnect the recovery environment (WinRE)</value></data>
   <data name="ExpandPartitionBtn" xml:space="preserve"><value>Expand partition</value></data>
   <data name="ExpandPartitionTip" xml:space="preserve"><value>Grows the resized partition — or the last one — into the leftover unallocated space. If a recovery partition is last, that grows instead. Works most reliably with the target connected on its own, with the source disconnected.</value></data>

@@ -1,4 +1,7 @@
+using System.ComponentModel;
 using System.Management;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using DiskMigrator.Core.Abstractions;
@@ -6,6 +9,7 @@ using DiskMigrator.Core.Models;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Win32.SafeHandles;
 
 namespace DiskMigrator.Windows.Devices;
 
@@ -375,6 +379,76 @@ public sealed class WindowsDiskService(ILogger<WindowsDiskService>? logger = nul
         {
             // 실패해도 데이터는 이미 정상적으로 쓰였습니다. 재부팅하면 반영됩니다.
             _logger.LogWarning(ex, "디스크 {Disk} 속성 갱신에 실패했습니다.", disk.DeviceNumber);
+        }
+    }
+
+    public Task<SafeRemoveResult> SafeRemoveAsync(DiskInfo disk, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(disk);
+        return Task.Run(() => SafeRemove(disk), ct);
+    }
+
+    /// <summary>
+    /// 대상 디스크를 오프라인으로 내립니다. 오프라인 전환은 그 디스크의 볼륨을 강제로
+    /// 디스마운트하며(캐시를 비우고 열린 핸들을 무효화), 이는 디스크 관리의 "오프라인" 및
+    /// 상용 클론 도구의 안전 제거와 같은 동작입니다. 오프라인이 된 뒤에는 마운트된 볼륨이
+    /// 없으므로 사용자가 USB를 뽑아도 데이터가 손상되지 않습니다.
+    /// </summary>
+    private SafeRemoveResult SafeRemove(DiskInfo disk)
+    {
+        try
+        {
+            using var handle = NativeMethods.CreateFile(
+                disk.DevicePath,
+                NativeMethods.GENERIC_READ | NativeMethods.GENERIC_WRITE,
+                NativeMethods.FILE_SHARE_READ | NativeMethods.FILE_SHARE_WRITE,
+                0, NativeMethods.OPEN_EXISTING, NativeMethods.FILE_ATTRIBUTE_NORMAL, 0);
+
+            if (handle.IsInvalid)
+            {
+                int error = Marshal.GetLastWin32Error();
+                string detail = new Win32Exception(error).Message;
+                _logger.LogWarning(
+                    "디스크 {Disk} 안전 제거를 위해 열지 못했습니다: {Detail}", disk.DeviceNumber, detail);
+                return new SafeRemoveResult(false, detail);
+            }
+
+            // 오프라인으로 내려 볼륨을 디스마운트하고, 실제 상태에 반영시킵니다.
+            SetDiskOffline(handle);
+            DiskIoctl.TryControl(handle, NativeMethods.IOCTL_DISK_UPDATE_PROPERTIES);
+
+            _logger.LogInformation(
+                "디스크 {Disk} 을(를) 오프라인으로 내렸습니다 — 이제 안전하게 뽑을 수 있습니다.",
+                disk.DeviceNumber);
+
+            return new SafeRemoveResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "디스크 {Disk} 안전 제거에 실패했습니다.", disk.DeviceNumber);
+            return new SafeRemoveResult(false, ex.Message);
+        }
+    }
+
+    /// <summary>디스크에 오프라인 속성을 설정합니다(재부팅 후에는 유지하지 않음).</summary>
+    private static unsafe void SetDiskOffline(SafeFileHandle handle)
+    {
+        var request = new SET_DISK_ATTRIBUTES
+        {
+            Version = (uint)Unsafe.SizeOf<SET_DISK_ATTRIBUTES>(),
+            Persist = 0,
+            Attributes = NativeMethods.DISK_ATTRIBUTE_OFFLINE,
+            AttributesMask = NativeMethods.DISK_ATTRIBUTE_OFFLINE,
+        };
+
+        int size = Unsafe.SizeOf<SET_DISK_ATTRIBUTES>();
+
+        if (!NativeMethods.DeviceIoControl(
+                handle, NativeMethods.IOCTL_DISK_SET_DISK_ATTRIBUTES,
+                (nint)(&request), (uint)size, 0, 0, out _, 0))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(),
+                "디스크 오프라인 전환(IOCTL_DISK_SET_DISK_ATTRIBUTES)에 실패했습니다.");
         }
     }
 }
