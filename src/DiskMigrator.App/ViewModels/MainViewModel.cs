@@ -1009,9 +1009,14 @@ public sealed partial class MainViewModel : ObservableObject
         Stage = AppStage.Selecting;
         ConfirmationText = "";
         ResetBootCheck();
+        ResetPostCloneActions();
         _ = RefreshDisksAsync();
     }
 
+    /// <summary>
+    /// 부팅 구성 검사의 표시 상태만 초기화합니다. 후속 작업 버튼(UEFI 변환·파티션 확장·안전
+    /// 제거)은 건드리지 않습니다 — 검사를 한 번 돌렸다고 그 버튼들이 사라지면 안 됩니다.
+    /// </summary>
     private void ResetBootCheck()
     {
         BootCheckItems.Clear();
@@ -1021,14 +1026,22 @@ public sealed partial class MainViewModel : ObservableObject
         BootRepairAvailable = false;
         BootRepairRan = false;
         BootRepairMessage = "";
+    }
+
+    /// <summary>
+    /// 완료 화면의 후속 작업 버튼(UEFI 변환·파티션 확장·안전 제거) 상태를 초기화합니다.
+    /// 새 선택으로 돌아가거나 새 클론을 시작할 때만 부릅니다 — 부팅 검사는 부르지 않습니다.
+    /// </summary>
+    private void ResetPostCloneActions()
+    {
         PartitionExpandAvailable = false;
         PartitionExpandRan = false;
+        PartitionExpandMessage = "";
+        PartitionExpandSuccess = false;
         UefiConvertAvailable = false;
         UefiConvertRan = false;
         UefiConvertMessage = "";
         UefiConvertSuccess = false;
-        PartitionExpandMessage = "";
-        PartitionExpandSuccess = false;
         SafeRemoveAvailable = false;
         SafeRemoveRan = false;
         SafeRemoveMessage = "";
@@ -1336,6 +1349,7 @@ public sealed partial class MainViewModel : ObservableObject
         Stage = AppStage.Running;
         IsPaused = false;
         ResetBootCheck();
+        ResetPostCloneActions();
         BadSectorCount = 0;
         ProgressPercent = 0;
         ProgressPhase = Strings.Get("ProgPreparing");
