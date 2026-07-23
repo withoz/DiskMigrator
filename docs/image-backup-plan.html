@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이미지 백업 / 복원 — DiskMigrator 기능 계획</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --surface: #ffffff; --surface-2: #eef1f6; --border: #dce1ea;
+    --text: #1a212f; --muted: #5a6579; --accent: #3457c5; --accent-weak: #e9eefc;
+    --good: #1c8a5c; --good-weak: #e5f4ec; --warn: #a9711a; --warn-weak: #f8efdd;
+    --danger: #c33b36; --code-bg: #151b28; --code-text: #d6ddeb; --code-dim: #7d89a1;
+    --shadow: 0 1px 2px rgba(20,30,50,.04), 0 6px 20px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1117; --surface: #161b24; --surface-2: #1d232f; --border: #29313f;
+      --text: #e7eaf1; --muted: #98a2b4; --accent: #86a0ff; --accent-weak: #182238;
+      --good: #4cc98d; --good-weak: #143026; --warn: #e2a950; --warn-weak: #322613;
+      --danger: #f0746d; --code-bg: #0b0f17; --code-text: #d3dbea; --code-dim: #6c757d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7fa; --surface: #ffffff; --surface-2: #eef1f6; --border: #dce1ea;
+    --text: #1a212f; --muted: #5a6579; --accent: #3457c5; --accent-weak: #e9eefc;
+    --good: #1c8a5c; --good-weak: #e5f4ec; --warn: #a9711a; --warn-weak: #f8efdd;
+    --danger: #c33b36; --code-bg: #151b28; --code-text: #d6ddeb; --code-dim: #7d89a1;
+    --shadow: 0 1px 2px rgba(20,30,50,.04), 0 6px 20px rgba(20,30,50,.06);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1117; --surface: #161b24; --surface-2: #1d232f; --border: #29313f;
+    --text: #e7eaf1; --muted: #98a2b4; --accent: #86a0ff; --accent-weak: #182238;
+    --good: #4cc98d; --good-weak: #143026; --warn: #e2a950; --warn-weak: #322613;
+    --danger: #f0746d; --code-bg: #0b0f17; --code-text: #d3dbea; --code-dim: #6c757d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 26px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif;
+    line-height: 1.65; font-size: 16px;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 40px) 96px; }
+
+  code, pre, .mono { font-family: "Cascadia Code", "Cascadia Mono", Consolas, "D2Coding", ui-monospace, monospace; }
+
+  /* Header */
+  header { margin-bottom: 44px; }
+  .eyebrow {
+    font-size: 12.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(30px, 5.5vw, 46px); line-height: 1.1; letter-spacing: -.02em;
+    font-weight: 700; margin: 0 0 12px; text-wrap: balance;
+  }
+  .lede { font-size: clamp(16px, 2.2vw, 18.5px); color: var(--muted); margin: 0 0 22px; max-width: 60ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  }
+  .chip.status { color: var(--warn); background: var(--warn-weak); border-color: transparent; }
+  .chip.status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+  /* Sections */
+  section { margin-top: 46px; }
+  h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; }
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+  .muted { color: var(--muted); }
+  strong { font-weight: 700; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+
+  /* Insight callout */
+  .callout {
+    background: var(--accent-weak); border: 1px solid transparent; border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 20px 22px;
+  }
+  .callout h3 { margin: 0 0 8px; font-size: 17px; }
+  .callout p { margin: 0; }
+
+  /* Format comparison */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 22px; box-shadow: var(--shadow); position: relative;
+  }
+  .card.rec { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+  .card .tag {
+    position: absolute; top: -11px; left: 18px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .04em; padding: 3px 10px; border-radius: 999px;
+    background: var(--accent); color: #fff;
+  }
+  .card .tag.sec { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  :root[data-theme="dark"] .card.rec .tag, :root:not([data-theme]) .card.rec .tag { color: #0e1117; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.rec .tag { color: #0e1117; } }
+  .card h3 { margin: 6px 0 6px; font-size: 18px; }
+  .card .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .card li { position: relative; padding-left: 22px; font-size: 14.5px; }
+  .card li .ic { position: absolute; left: 0; top: 1px; font-weight: 700; }
+  .card li.pro .ic { color: var(--good); }
+  .card li.con .ic { color: var(--danger); }
+
+  /* Reuse pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+  .pill {
+    font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 8px;
+    background: var(--good-weak); color: var(--good); border: 1px solid transparent;
+  }
+
+  /* Code / file tree */
+  pre {
+    background: var(--code-bg); color: var(--code-text); border-radius: 10px;
+    padding: 18px 20px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; margin: 0;
+    border: 1px solid var(--border);
+  }
+  pre .c { color: var(--code-dim); }
+  pre .k { color: var(--accent); }
+  :where(p, li) code {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 6px; font-size: .88em;
+  }
+
+  /* Safety note */
+  .warnbox {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--warn-weak); border-radius: 10px; padding: 15px 18px; margin-top: 16px;
+    font-size: 14.5px;
+  }
+  .warnbox .ic { color: var(--warn); font-size: 18px; line-height: 1.4; }
+
+  /* Steps */
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  ol.steps li { counter-increment: s; display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px dashed var(--border); }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps li::before {
+    content: counter(s); flex: none; width: 30px; height: 30px; border-radius: 8px;
+    background: var(--accent-weak); color: var(--accent); font-weight: 700;
+    display: grid; place-items: center; font-size: 14px; font-variant-numeric: tabular-nums;
+  }
+  ol.steps .t { font-weight: 600; }
+  ol.steps .d { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+  /* Decisions */
+  .decisions { display: flex; flex-direction: column; gap: 12px; }
+  .decision {
+    display: flex; gap: 14px; align-items: flex-start; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px;
+  }
+  .decision .q { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--warn-weak); color: var(--warn); font-weight: 800; }
+  .decision .body b { display: block; margin-bottom: 3px; }
+  .decision .body span { color: var(--muted); font-size: 14px; }
+
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13.5px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a, .card { transition: box-shadow .15s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">DiskMigrator · 기능 계획</p>
+    <h1>이미지 백업 / 복원</h1>
+    <p class="lede">디스크를 파일로 떠두고 나중에 그대로 복원한다. 클론 엔진을 재사용해 최소 코드로 구현하는 설계.</p>
+    <div class="meta">
+      <span class="chip status"><span class="dot"></span>미착수 — 계획</span>
+      <span class="chip">작성 2026-07-24</span>
+      <span class="chip">기반 v0.8.8</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>핵심 통찰</h2>
+    <div class="callout">
+      <h3>엔진을 그대로 재사용한다</h3>
+      <p>클론 엔진은 <code>IBlockDevice</code>만 안다. <strong>이미지 파일도 하나의 “디스크”로 보면</strong> — 백업은 디스크→이미지 클론, 복원은 이미지→디스크 클론이 된다. 스마트 클론·복제 후 검증·GPT 보정·Universal Restore·부팅 복구가 <strong>전부 자동으로 딸려온다.</strong></p>
+    </div>
+    <div class="pills" style="margin-top:14px">
+      <span class="pill">스마트 클론</span>
+      <span class="pill">해시 검증</span>
+      <span class="pill">GPT 보정</span>
+      <span class="pill">Universal Restore</span>
+      <span class="pill">부팅 검사·복구</span>
+      <span class="pill">SafetyGuard</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>포맷 결정 <span class="muted" style="font-weight:600;letter-spacing:0;text-transform:none">— 여기서 방향이 갈린다</span></h2>
+    <div class="grid2">
+      <div class="card rec">
+        <span class="tag">v1 권장</span>
+        <h3>A · VHDX</h3>
+        <p class="sub">Windows VirtualDisk API</p>
+        <ul>
+          <li class="pro"><span class="ic">+</span><code>CreateVirtualDisk</code>(동적)→<code>AttachVirtualDisk</code>로 디스크로 마운트 → <strong>기존 whole-disk 클론 엔진 그대로</strong></li>
+          <li class="pro"><span class="ic">+</span>동적 VHDX는 쓴 블록만 할당 → 스마트 클론과 만나면 <strong>사용 영역만 저장</strong>(자동 희소)</li>
+          <li class="pro"><span class="ic">+</span>탐색기·diskpart로 <strong>마운트해 파일 꺼내기</strong>, Hyper-V 부팅 가능</li>
+          <li class="pro"><span class="ic">+</span>새 포맷 코드 최소 — <code>tools/DiskMigrator.VhdTest</code>로 VHD 경험 있음</li>
+          <li class="con"><span class="ic">−</span>백업·복원 중 가상 디스크가 잠깐 시스템에 붙음, 압축은 별도</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag sec">대안</span>
+        <h3>B · 커스텀 <span class="mono">.dmimg</span></h3>
+        <p class="sub">희소 + 압축</p>
+        <ul>
+          <li class="pro"><span class="ic">+</span>스마트 클론의 사용 런 목록 + 블록 데이터 + 내장 Deflate/Brotli 압축</li>
+          <li class="pro"><span class="ic">+</span>더 작음(압축), 추가 디스크 안 붙음</li>
+          <li class="con"><span class="ic">−</span><strong>DiskMigrator만 복원 가능</strong>(독점 포맷)</li>
+        </ul>
+        <p class="sub" style="margin:14px 0 0">압축이 정말 필요하면 A 이후 추가.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>새 컴포넌트 <span class="muted" style="font-weight:600;letter-spacing:0;text-transform:none">— A 기준</span></h2>
+    <pre><span class="c"># DiskMigrator.Windows/</span>
+Devices/<span class="k">VirtualDiskApi</span>.cs      <span class="c">Create/Attach/Detach VHDX (virtdisk.dll P/Invoke)</span>
+Jobs/<span class="k">BackupOrchestrator</span>.cs     <span class="c">디스크 → VHDX  (VSS 스냅샷 + 스마트 클론 + 검증)</span>
+Jobs/<span class="k">RestoreOrchestrator</span>.cs    <span class="c">VHDX → 디스크  (SafetyGuard + GPT보정 + UR + 부팅복구)</span></pre>
+    <p class="muted" style="margin-top:14px">메타데이터는 VHDX가 크기·지오메트리를 보존한다. 원본 모델·클론 시각은 사이드카 <code>.json</code>에 기록. 검증은 복제-중-해시 로그를 그대로 재사용.</p>
+  </section>
+
+  <section>
+    <h2>안전장치 <span class="muted" style="font-weight:600;letter-spacing:0;text-transform:none">— 기존 규칙 재사용</span></h2>
+    <p><strong>백업(디스크→파일)</strong> — 라이브 시스템은 VSS 스냅샷(클론과 동일), 대상 경로의 여유 공간 사전 확인, FAT32면 4GB 한계 경고(NTFS/exFAT 권장).</p>
+    <p><strong>복원(파일→디스크)</strong> — 대상 디스크를 파괴하므로 SafetyGuard 그대로: 시스템 디스크 차단, 모델명 직접 입력 확인, 쓰기 직전 재확인. 복원 후 자동 부팅 검사·복구·(옵션)UEFI 변환까지 클론과 동일하게 연결.</p>
+    <div class="warnbox">
+      <span class="ic">⚠︎</span>
+      <span>복원은 대상 디스크의 모든 데이터를 <strong>되돌릴 수 없이</strong> 덮어쓴다. 클론과 똑같은 안전 관문을 통과해야 진행된다.</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>UI / CLI</h2>
+    <p>시작 화면에 <strong>모드 선택</strong>을 추가한다 — 디스크 클론 · 이미지 백업 · 이미지 복원. 백업은 원본 디스크 + 저장 경로 + 옵션(스마트/압축), 복원은 이미지 파일 + 대상 디스크 + 확인. 진행률·검증 화면은 클론과 공유.</p>
+    <pre><span class="c"># 파일 기반으로 실디스크 없이 테스트 가능(VhdTest에 추가)</span>
+DiskMigrator.VhdTest.exe <span class="k">--backup</span>  &lt;디스크&gt; &lt;파일&gt;
+DiskMigrator.VhdTest.exe <span class="k">--restore</span> &lt;파일&gt; &lt;디스크&gt;</pre>
+  </section>
+
+  <section>
+    <h2>단계별 진행</h2>
+    <ol class="steps">
+      <li><div><div class="t">엔진</div><div class="d"><code>VirtualDiskApi</code> + 두 오케스트레이터를 <code>IBlockDevice</code>로 연결. VHD 대상 테스트(실디스크 불필요).</div></div></li>
+      <li><div><div class="t">CLI + 통합 테스트</div><div class="d"><code>--backup</code>/<code>--restore</code> + VHD↔VHD end-to-end(chkdsk 클린·해시 일치).</div></div></li>
+      <li><div><div class="t">복원 후처리</div><div class="d">GPT 보정·리사이즈·UR·부팅 복구 연결 — 클론 오케스트레이터 로직 공유.</div></div></li>
+      <li><div><div class="t">GUI</div><div class="d">모드 선택 + 백업/복원 화면.</div></div></li>
+      <li><div><div class="t">실기 검증</div><div class="d">실제 시스템 백업 → 복원 → 부팅.</div></div></li>
+      <li><div><div class="t">선택: 압축·분할</div><div class="d">커스텀 포맷 또는 VHDX 후처리 압축, FAT32 분할.</div></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>열린 결정</h2>
+    <div class="decisions">
+      <div class="decision"><span class="q">?</span><div class="body"><b>포맷 A(VHDX) vs B(커스텀)</b><span>추천은 A — 코드 최소, 마운트 가능, 엔진 재사용.</span></div></div>
+      <div class="decision"><span class="q">?</span><div class="body"><b>압축을 v1에 넣을지</b><span>나중으로 미뤄도 무방(A는 희소로 이미 작음).</span></div></div>
+      <div class="decision"><span class="q">?</span><div class="body"><b>복원 시 다른 크기 디스크 지원</b><span>클론의 리사이즈·맞춤 로직 재사용하면 가능.</span></div></div>
+    </div>
+  </section>
+
+  <footer>
+    DiskMigrator — Windows 디스크 클론·마이그레이션 도구 · 이 문서는 착수 전 설계 계획이며 구현에 따라 바뀔 수 있다. 결정(특히 포맷 A/B)이 정해지면 1단계부터 착수.
+  </footer>
+
+</div>
+</body>
+</html>
