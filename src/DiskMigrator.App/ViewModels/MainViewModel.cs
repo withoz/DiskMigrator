@@ -1406,6 +1406,16 @@ public sealed partial class MainViewModel : ObservableObject
             _pause = null;
             Stage = AppStage.Finished;
         }
+
+        // 클론이 성공했으면 부팅 검사를 자동으로 실행합니다.
+        //
+        // 예전엔 사용자가 완료 화면에서 '부팅 구성 검사'를 눌러야만 돌았습니다. 그래서 그 단계를
+        // 건너뛰고 대상을 옮기면, 원본·대상 동시 연결로 재서명돼 어긋난 BCD 장치 참조(0xc000000e)를
+        // 못 잡고 부팅이 실패했습니다. 이제 클론 직후 자동으로 검사해, 불일치가 있으면 '부팅 복구'
+        // 버튼을 스스로 띄웁니다 — 사용자가 몰라도 됩니다. 검사는 읽기 전용이라 안전하며,
+        // BootCheckAsync가 자체적으로 예외를 삼키므로 여기서 실패해도 흐름이 깨지지 않습니다.
+        if (ResultIsSuccess)
+            await BootCheckAsync();
     }
 
     private void OnProgress(CloneProgress p)
