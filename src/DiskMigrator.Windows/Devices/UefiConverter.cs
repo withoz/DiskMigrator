@@ -73,18 +73,26 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
         if (windows is null)
             return new(false, "\\Windows가 있는 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).", steps);
 
-        char? winTemp = null;
+        // 임시로 부여한 드라이브 문자들 — 끝에 모두 뗍니다.
+        var temps = new List<char>();
         try
         {
-            char winLetter = windows.DriveLetter is { } wl
-                ? wl[0]
-                : (winTemp = AssignTempLetter(windows.VolumeGuidPath!))
-                  ?? throw new InvalidOperationException("Windows 파티션에 임시 문자를 부여하지 못했습니다.");
+            char winLetter;
+            if (windows.DriveLetter is { } wl) winLetter = wl[0];
+            else
+            {
+                char? t = AssignTempLetter(windows.VolumeGuidPath!);
+                if (t is not { } tl) throw new InvalidOperationException("Windows 파티션에 임시 문자를 부여하지 못했습니다.");
+                winLetter = tl; temps.Add(tl);
+            }
             steps.Add($"Windows → {winLetter}:");
 
-            string biosBcd = $@"{winLetter}:\Boot\BCD";
-            if (!File.Exists(biosBcd))
-                return new(false, $"BCD를 찾지 못했습니다: {biosBcd}", steps);
+            // BIOS BCD(\Boot\BCD)는 보통 별도 "시스템 예약"(활성) 파티션에 있고, 단일 파티션
+            // 설치일 때만 Windows 파티션에 있습니다. Windows 파티션만 보던 예전 코드는 시스템
+            // 예약 레이아웃에서 "BCD를 찾지 못했습니다"로 실패했습니다 — 실기에서 규명.
+            if (LocateBcdPartition(disk, windows, winLetter, temps, steps) is not { } bcdLetter)
+                return new(false, "부팅 구성(BCD)을 담은 파티션을 찾지 못했습니다.", steps);
+            string biosBcd = $@"{bcdLetter}:\Boot\BCD";
 
             DropRecoveryEntries(biosBcd, steps);
 
@@ -118,7 +126,7 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
                 return new(false, "변환 후 디스크가 GPT로 보이지 않습니다.", steps);
             steps.Add("파티션 형식 → GPT");
 
-            string espMessage = BuildUefiBcd(converted, winLetter, steps);
+            string espMessage = BuildUefiBcd(converted, winLetter, biosBcd, steps);
 
             return new(true,
                 $"이 디스크를 GPT/UEFI로 변환했습니다. {espMessage} " +
@@ -133,8 +141,49 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
         }
         finally
         {
-            if (winTemp is { } w) TryRemoveLetter(w);
+            foreach (char t in temps) TryRemoveLetter(t);
         }
+    }
+
+    /// <summary>
+    /// BIOS BCD(<c>\Boot\BCD</c>)가 있는 파티션을 찾아 임시 문자를 부여하고 그 드라이브 문자를
+    /// 돌려줍니다. 활성("시스템 예약") 파티션을 먼저 보고, 없으면 Windows 파티션, 그다음 나머지.
+    /// </summary>
+    /// <remarks>
+    /// System Reserved 레이아웃에서는 BCD가 Windows 파티션이 아니라 활성 파티션에 있습니다.
+    /// 임시로 붙인 문자만 <paramref name="temps"/>에 넣어 호출부가 끝에 되돌리게 합니다.
+    /// </remarks>
+    private char? LocateBcdPartition(DiskInfo disk, PartitionInfo windows, char winLetter, List<char> temps, List<string> steps)
+    {
+        // 단일 파티션 설치: 이미 마운트된 Windows 파티션에 BCD가 있으면 그대로.
+        if (File.Exists($@"{winLetter}:\Boot\BCD"))
+        {
+            steps.Add($"BCD → {winLetter}: (Windows 파티션)");
+            return winLetter;
+        }
+
+        // 활성(시스템 예약) 우선, EFI·Windows 파티션 제외한 나머지.
+        var candidates = disk.Partitions
+            .Where(p => !p.IsEfiSystemPartition && p.Number != windows.Number)
+            .OrderByDescending(p => p.IsActive);
+
+        foreach (var p in candidates)
+        {
+            char letter;
+            bool temp = false;
+            if (p.DriveLetter is { } dl) letter = dl[0];
+            else if (p.VolumeGuidPath is { } gp && AssignTempLetter(gp) is { } al) { letter = al; temp = true; }
+            else continue;
+
+            if (File.Exists($@"{letter}:\Boot\BCD"))
+            {
+                if (temp) temps.Add(letter);
+                steps.Add($"BCD → {letter}: (시스템 예약 파티션)");
+                return letter;
+            }
+            if (temp) TryRemoveLetter(letter); // 여기엔 없었으니 임시 문자 반환
+        }
+        return null;
     }
 
     /// <summary>
@@ -195,7 +244,7 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
     /// 결과가 열리지 않는 저장소면 Windows 파티션의 정상 BIOS 저장소를 복사해 UEFI용으로 고칩니다.
     /// 고칠 것은 넷뿐입니다 — 부팅 관리자의 위치·경로, OS 로더의 장치·경로.
     /// </remarks>
-    private string BuildUefiBcd(DiskInfo converted, char winLetter, List<string> steps)
+    private string BuildUefiBcd(DiskInfo converted, char winLetter, string biosBcdSource, List<string> steps)
     {
         var esp = converted.Partitions.FirstOrDefault(p => p.IsEfiSystemPartition);
         if (esp?.VolumeGuidPath is null && esp?.DriveLetter is null)
@@ -229,7 +278,7 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
             steps.Add("bcdboot 저장소가 열리지 않음 — 정상 저장소를 복사해 고칩니다");
 
             Directory.CreateDirectory(Path.GetDirectoryName(espBcd)!);
-            File.Copy($@"{winLetter}:\Boot\BCD", espBcd, overwrite: true);
+            File.Copy(biosBcdSource, espBcd, overwrite: true);
 
             (string id, string element, string value)[] sets =
             [

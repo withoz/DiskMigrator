@@ -788,12 +788,16 @@
             </Border>
         </Grid>
 
-        <!-- ===== 3단계: 결과 ===== -->
-        <Grid Grid.Row="1" Margin="40,14,40,16"
-              Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Finished}">
+        <!-- ===== 3단계: 결과 =====
+             내용(부팅 검사·복구·UEFI 변환·파티션 확장·안전 제거)이 창 높이를 넘으면 스크롤합니다.
+             예전에는 ScrollViewer가 없고 박스가 세로 중앙 정렬이라, 검사 결과가 길어지면 그 아래
+             복구·변환·확장 버튼이 화면 밖으로 잘려 보이지 않았습니다. -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Finished}">
+        <Grid Margin="40,14,40,16">
             <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
                     BorderThickness="1" CornerRadius="10" Padding="40"
-                    VerticalAlignment="Center" MaxWidth="760">
+                    VerticalAlignment="Top" MaxWidth="760">
                 <StackPanel>
                     <TextBlock Text="{Binding ResultTitle}" TextWrapping="Wrap">
                         <TextBlock.Style>
@@ -1055,6 +1059,7 @@
                 </StackPanel>
             </Border>
         </Grid>
+        </ScrollViewer>
 
     </Grid>
 </Window>

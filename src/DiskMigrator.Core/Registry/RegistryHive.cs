@@ -85,7 +85,9 @@ public sealed class RegistryHive
 
     private IEnumerable<int> Subkeys(int nk)
     {
-        uint listOffset = U32(nk + 0x1C); // stable subkey list
+        // 안정(stable) 하위키 목록(nk+0x1C)만 읽습니다. 휘발성 하위키(nk+0x20)는 런타임 전용이라
+        // 디스크 하이브에 저장되지 않으므로 오프라인 편집 대상이 아닙니다 — 의도적으로 무시합니다.
+        uint listOffset = U32(nk + 0x1C);
         if (listOffset is 0 or InvalidOffset) yield break;
 
         foreach (int child in WalkSubkeyList(listOffset))
