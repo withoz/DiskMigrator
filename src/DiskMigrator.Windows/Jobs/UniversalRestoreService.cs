@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Registry;
+using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -62,48 +63,89 @@ public sealed class UniversalRestoreService(
                 "클론 후 대상 디스크를 다시 찾지 못해 하드웨어 독립화를 건너뜁니다.");
         }
 
-        // 대상의 NTFS 파티션들 중 Windows가 설치된 것을 찾습니다.
-        foreach (var partition in fresh.Partitions)
+        // 대상 파티션 중 Windows가 설치된 것을 찾습니다. 드라이브 문자가 없으면(재서명 충돌 등으로
+        // 자동 마운트가 안 된 경우) 볼륨 GUID 경로로 임시 문자를 부여해서라도 찾습니다 — 예전엔
+        // 문자가 있는 파티션만 봐서, 문자가 안 붙으면 UR이 조용히 건너뛰어졌습니다(실기 위험).
+        char? temp = null;
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            if (partition.DriveLetter is not { } letter) continue;
-
-            string hivePath = $@"{letter}:\Windows\System32\config\SYSTEM";
-            if (!File.Exists(hivePath)) continue;
-
-            _logger.LogInformation("Windows 파티션 발견: {Letter}: — SYSTEM 하이브 편집 시작.", letter);
-
-            try
+            foreach (var partition in fresh.Partitions)
             {
-                var result = UniversalRestore.Apply(hivePath, _logger);
+                ct.ThrowIfCancellationRequested();
 
-                // 최대 절전 이미지를 지웁니다 — 다른 하드웨어에서 세션 복원(로고 동그라미 멈춤) 예방.
-                // 하이브의 빠른시작/최대절전 값은 UniversalRestore.Apply가 이미 껐습니다(재생성 방지).
-                bool hiberfilDeleted = TryDeleteHiberfil(letter);
+                char letter;
+                if (partition.DriveLetter is { } dl) letter = dl[0];
+                else if (partition.VolumeGuidPath is { } gp && AssignTempLetter(gp) is { } al) { letter = al; temp = al; }
+                else continue;
 
-                string driverMsg = result.Enabled.Count > 0
-                    ? $"{letter}: 의 저장소 드라이버 {result.Enabled.Count}개를 부팅 시작으로 설정했습니다. " +
-                      "이제 다른 하드웨어(대개 AHCI/NVMe)에서도 부팅이 가능합니다. " +
-                      "대상 PC가 Intel VMD/RAID 모드라면 BIOS에서 AHCI로 바꾸십시오 " +
-                      "(해당 드라이버가 원본에 없으면 레지스트리만으로는 안 됩니다)."
-                    : $"{letter}: 의 저장소 드라이버가 이미 부팅 시작으로 설정돼 있습니다.";
+                string hivePath = $@"{letter}:\Windows\System32\config\SYSTEM";
+                if (!File.Exists(hivePath))
+                {
+                    if (temp == letter) { TryRemoveLetter(letter); temp = null; }
+                    continue;
+                }
 
-                string hiberMsg = (result.HibernationDisabled || hiberfilDeleted)
-                    ? " 또한 최대 절전/빠른 시작을 끄고 최대 절전 이미지를 제거해, 다른 PC에서 세션 복원으로 멈추지 않습니다."
-                    : "";
+                _logger.LogInformation("Windows 파티션 발견: {Letter}: — SYSTEM 하이브 편집 시작.", letter);
 
-                return new UniversalRestoreReport(true, $"{letter}:", result.Enabled, driverMsg + hiberMsg);
+                try
+                {
+                    var result = UniversalRestore.Apply(hivePath, _logger);
+
+                    // 최대 절전 이미지를 지웁니다 — 다른 하드웨어에서 세션 복원(로고 동그라미 멈춤) 예방.
+                    // 하이브의 빠른시작/최대절전 값은 UniversalRestore.Apply가 이미 껐습니다(재생성 방지).
+                    bool hiberfilDeleted = TryDeleteHiberfil(letter);
+
+                    string driverMsg = result.Enabled.Count > 0
+                        ? $"{letter}: 의 저장소 드라이버 {result.Enabled.Count}개를 부팅 시작으로 설정했습니다. " +
+                          "이제 다른 하드웨어(대개 AHCI/NVMe)에서도 부팅이 가능합니다. " +
+                          "대상 PC가 Intel VMD/RAID 모드라면 BIOS에서 AHCI로 바꾸십시오 " +
+                          "(해당 드라이버가 원본에 없으면 레지스트리만으로는 안 됩니다)."
+                        : $"{letter}: 의 저장소 드라이버가 이미 부팅 시작으로 설정돼 있습니다.";
+
+                    string hiberMsg = (result.HibernationDisabled || hiberfilDeleted)
+                        ? " 또한 최대 절전/빠른 시작을 끄고 최대 절전 이미지를 제거해, 다른 PC에서 세션 복원으로 멈추지 않습니다."
+                        : "";
+
+                    return new UniversalRestoreReport(true, $"{letter}:", result.Enabled, driverMsg + hiberMsg);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "{Letter}: 의 하이브 편집에 실패했습니다.", letter);
+                    return new UniversalRestoreReport(false, $"{letter}:", [],
+                        $"하이브 편집 실패: {ex.Message}. 클론 데이터는 정상입니다.");
+                }
             }
-            catch (Exception ex)
+
+            return new UniversalRestoreReport(false, null, [],
+                "대상에서 Windows 설치 파티션을 찾지 못했습니다 (Windows 시스템 디스크가 아닐 수 있음).");
+        }
+        finally
+        {
+            if (temp is { } t) TryRemoveLetter(t);
+        }
+    }
+
+    /// <summary>드라이브 문자가 없는 볼륨에 임시 문자를 부여합니다(볼륨 GUID 경로 기준).</summary>
+    private char? AssignTempLetter(string volumeGuidPath)
+    {
+        string vol = volumeGuidPath.EndsWith('\\') ? volumeGuidPath : volumeGuidPath + "\\";
+        var used = DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0])).ToHashSet();
+        foreach (char c in "STUVWYZRQPNM")
+        {
+            if (used.Contains(c)) continue;
+            if (NativeMethods.SetVolumeMountPoint($"{c}:\\", vol))
             {
-                _logger.LogError(ex, "{Letter}: 의 하이브 편집에 실패했습니다.", letter);
-                return new UniversalRestoreReport(false, $"{letter}:", [],
-                    $"하이브 편집 실패: {ex.Message}. 클론 데이터는 정상입니다.");
+                _logger.LogInformation("임시 마운트 {Letter}: → {Vol}", c, vol);
+                return c;
             }
         }
+        return null;
+    }
 
-        return new UniversalRestoreReport(false, null, [],
-            "대상에서 Windows 설치 파티션을 찾지 못했습니다 (Windows 시스템 디스크가 아닐 수 있음).");
+    private void TryRemoveLetter(char letter)
+    {
+        if (!NativeMethods.DeleteVolumeMountPoint($"{letter}:\\"))
+            _logger.LogWarning("임시 마운트 {Letter}: 해제 실패(무해).", letter);
     }
 
     /// <summary>
@@ -114,7 +156,7 @@ public sealed class UniversalRestoreService(
     /// hiberfil.sys는 SYSTEM 소유라 관리자여도 소유권을 먼저 가져와야 지워집니다. 실패해도
     /// 클론 데이터는 정상이며, 부팅 후 <c>powercfg /h off</c>로 정리할 수 있으므로 삼킵니다.
     /// </remarks>
-    private bool TryDeleteHiberfil(string letter)
+    private bool TryDeleteHiberfil(char letter)
     {
         string path = $@"{letter}:\hiberfil.sys";
         try

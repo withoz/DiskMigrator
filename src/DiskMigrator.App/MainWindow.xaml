@@ -164,7 +164,7 @@
                             </Border.Width>
                         </Border>
 
-                        <Thumb x:Name="ResizeThumb" Width="16" Margin="-8,0,0,0"
+                        <Thumb x:Name="ResizeThumb" Width="26" Margin="-13,0,0,0"
                                Cursor="SizeWE" Focusable="True"
                                DragDelta="ResizeThumb_DragDelta"
                                KeyDown="ResizeThumb_KeyDown"
@@ -172,14 +172,25 @@
                             <Thumb.Template>
                                 <ControlTemplate TargetType="Thumb">
                                     <!--
-                                        잡을 곳은 넓게(16px), 보이는 선은 가늘게 — 얇으면 못 잡습니다.
-                                        색은 빨강입니다. 막대의 파티션 색들이 차분한 계열이라
-                                        강조색으로는 손잡이가 묻혀 "끌 수 있다"는 것이 안 보였습니다.
+                                        잡을 곳은 넓게(26px 투명), 가운데 가는 빨간 경계 안내선 + 중앙에
+                                        흰 좌우 삼각형(◀▶)만. 예전엔 가는 선만 있어 "움직이는 막대"인지
+                                        구별이 안 됐습니다 — 삼각형으로 '양쪽으로 끌 수 있음'을 분명히 합니다.
                                     -->
-                                    <Border Background="Transparent">
-                                        <Border Width="6" CornerRadius="3" BorderThickness="2"
-                                                BorderBrush="White" Background="{StaticResource Danger}" />
-                                    </Border>
+                                    <Grid Background="Transparent">
+                                        <!-- 경계 안내선 -->
+                                        <Border Width="3" Background="{StaticResource Danger}"
+                                                HorizontalAlignment="Center" />
+                                        <!-- 중앙에 흰 좌우 삼각형(◀▶)만 — 배경 대비를 위해 옅은 그림자 -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <StackPanel.Effect>
+                                                <DropShadowEffect Color="Black" BlurRadius="3"
+                                                                  ShadowDepth="0" Opacity="0.6" />
+                                            </StackPanel.Effect>
+                                            <Path Data="M 7,0 L 0,6 L 7,12 Z" Fill="White" Margin="0,0,5,0" />
+                                            <Path Data="M 0,0 L 7,6 L 0,12 Z" Fill="White" Margin="5,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
                                 </ControlTemplate>
                             </Thumb.Template>
                         </Thumb>
