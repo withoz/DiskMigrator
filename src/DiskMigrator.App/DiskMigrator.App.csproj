@@ -19,12 +19,12 @@
     <Description>Windows 시스템 디스크를 통째로 복제해 다른 PC로 옮기는 도구</Description>
     <Copyright>Copyright © 2026 DiskMigrator</Copyright>
 
-    <!-- 마케팅 버전. 릴리스 태그(v0.8.1)와 맞춥니다. -->
-    <Version>0.8.1</Version>
-    <FileVersion>0.8.1.0</FileVersion>
-    <AssemblyVersion>0.8.1.0</AssemblyVersion>
-    <!-- 제품 버전에 git 커밋 해시가 붙지 않도록. 파일 속성에 "0.8.1"만 보입니다. -->
-    <InformationalVersion>0.8.1</InformationalVersion>
+    <!-- 마케팅 버전. 릴리스 태그(v0.8.2)와 맞춥니다. -->
+    <Version>0.8.2</Version>
+    <FileVersion>0.8.2.0</FileVersion>
+    <AssemblyVersion>0.8.2.0</AssemblyVersion>
+    <!-- 제품 버전에 git 커밋 해시가 붙지 않도록. 파일 속성에 "0.8.2"만 보입니다. -->
+    <InformationalVersion>0.8.2</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 

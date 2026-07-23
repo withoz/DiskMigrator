@@ -94,9 +94,10 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
             steps.Add($"mbr2gpt /validate → exit={vCode}");
             if (vCode != 0)
             {
+                string reason = MeaningfulError(vOut);
+                _logger.LogWarning("mbr2gpt /validate 실패 (exit {Code}): {Out}", vCode, vOut.Trim());
                 return new(false,
-                    $"변환할 수 없는 디스크입니다(mbr2gpt 검사 실패). {FirstLine(vOut)} " +
-                    "디스크 끝에 백업 GPT를 놓을 자리가 없거나 파티션이 4개를 넘을 수 있습니다.",
+                    $"UEFI 변환 전 검사(mbr2gpt)에 실패했습니다: {reason}",
                     steps);
             }
 
@@ -146,22 +147,37 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
     /// </remarks>
     private void DropRecoveryEntries(string bcdPath, List<string> steps)
     {
-        RunProcess("bcdedit.exe", "/store", bcdPath, "/deletevalue", "{default}", "recoverysequence");
-        RunProcess("bcdedit.exe", "/store", bcdPath, "/set", "{default}", "recoveryenabled", "No");
-
-        var (_, all) = RunProcess("bcdedit.exe", "/store", bcdPath, "/enum", "ALL");
-        var guids = Regex.Matches(all, @"\{[0-9a-fA-F-]{36}\}")
-            .Select(m => m.Value).Distinct().ToList();
-
         int dropped = 0;
+
+        // 1) {default}·{current}의 recoverysequence가 가리키는 복구 항목을 GUID로 직접 지웁니다.
+        //    복구 파티션이 마운트되지 않아 device가 해석되지 않는 항목이라도 GUID로는 삭제됩니다 —
+        //    이것이 텍스트 검색 방식(enum 실패로 놓치던)이 못 지우던 바로 그 항목입니다.
+        //    recoverysequence를 지우기 '전에' GUID를 읽어야 대상을 알 수 있습니다.
+        foreach (string owner in new[] { "{default}", "{current}" })
+        {
+            var (_, ownerOut) = RunProcess("bcdedit.exe", "/store", bcdPath, "/enum", owner);
+            foreach (Match m in Regex.Matches(ownerOut, @"recoverysequence\s+(\{[0-9a-fA-F-]{36}\})"))
+            {
+                var (code, _) = RunProcess("bcdedit.exe", "/store", bcdPath, "/delete", m.Groups[1].Value, "/f");
+                if (code == 0) dropped++;
+            }
+            RunProcess("bcdedit.exe", "/store", bcdPath, "/deletevalue", owner, "recoverysequence");
+            RunProcess("bcdedit.exe", "/store", bcdPath, "/set", owner, "recoveryenabled", "No");
+        }
+
+        // 2) 백스톱: 남아 있는 복구/WinRE 항목을 설명·ramdisk 단서로 한 번 더 훑어 지웁니다.
+        //    메인 Windows 항목({default})과 {bootmgr}은 이 단서에 걸리지 않아 안전합니다.
+        var (_, all) = RunProcess("bcdedit.exe", "/store", bcdPath, "/enum", "ALL");
+        var guids = Regex.Matches(all, @"\{[0-9a-fA-F-]{36}\}").Select(m => m.Value).Distinct();
         foreach (string guid in guids)
         {
             var (_, one) = RunProcess("bcdedit.exe", "/store", bcdPath, "/enum", guid);
-            if (!one.Contains("Recovery", StringComparison.OrdinalIgnoreCase) &&
-                !one.Contains("복구", StringComparison.Ordinal))
-            {
-                continue;
-            }
+            bool looksRecovery =
+                one.Contains("Recovery", StringComparison.OrdinalIgnoreCase) ||
+                one.Contains("복구", StringComparison.Ordinal) ||
+                one.Contains("winre", StringComparison.OrdinalIgnoreCase) ||
+                one.Contains("ramdisk", StringComparison.OrdinalIgnoreCase);
+            if (!looksRecovery) continue;
 
             var (code, _) = RunProcess("bcdedit.exe", "/store", bcdPath, "/delete", guid, "/f");
             if (code == 0) dropped++;
@@ -283,6 +299,27 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
 
     private static string FirstLine(string output) =>
         output.Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim() ?? "";
+
+    /// <summary>
+    /// mbr2gpt 출력에서 사람에게 의미 있는 오류 줄을 고릅니다.
+    /// </summary>
+    /// <remarks>
+    /// mbr2gpt는 진행 상황("Attempting to validate...", "Retrieving layout...")을 여러 줄 찍고
+    /// 실제 실패 이유("Cannot find OS partition(s)...")를 뒤에 붙입니다. 첫 줄만 보여 주던 탓에
+    /// 사용자는 "Attempting to validate disk 6"이라는 무의미한 문구만 봤습니다. 오류로 보이는
+    /// 줄(없으면 마지막 비어있지 않은 줄)을 돌려줍니다.
+    /// </remarks>
+    private static string MeaningfulError(string output)
+    {
+        var lines = output.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+        if (lines.Count == 0) return "(출력 없음)";
+
+        string? err = lines.LastOrDefault(l =>
+            l.Contains("Cannot", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("Error", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("fail", StringComparison.OrdinalIgnoreCase));
+        return err ?? lines[^1];
+    }
 
     private static (int Code, string Output) RunProcess(string exe, params string[] args)
     {

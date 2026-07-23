@@ -15,6 +15,18 @@ public static class UniversalRestore
     /// <summary>SERVICE_BOOT_START. 부팅 로더가 로드하는 드라이버.</summary>
     private const uint StartBoot = 0;
 
+    // --- 최대 절전/빠른 시작 무력화에 쓰는 값 위치 -------------------------
+    //
+    // 클론에 원본의 최대 절전 이미지(hiberfil.sys)가 있으면, 다른 하드웨어에서 부팅 시
+    // winresume가 원본 하드웨어의 세션을 복원하려다 로고 동그라미에서 멈춥니다(실기에서 규명).
+    // hiberfil.sys 자체는 파일이라 상위(Windows) 계층이 지우고, 여기서는 재생성을 막습니다:
+    //   Control\Session Manager\Power\HiberbootEnabled = 0  (빠른 시작 끔)
+    //   Control\Power\HibernateEnabled              = 0  (최대 절전 끔)
+    // 두 값 모두 최대 절전을 쓰던 원본엔 이미 존재하므로 SetDword로 덮어쓸 수 있습니다.
+
+    private const string HiberbootPowerKey = "Control\\Session Manager\\Power";
+    private const string HibernatePowerKey = "Control\\Power";
+
     /// <summary>
     /// 부팅 시작으로 켤 표준 인박스 저장소 드라이버들. 존재하는 것만 수정합니다.
     /// </summary>
@@ -47,9 +59,10 @@ public static class UniversalRestore
     public sealed record Result(
         IReadOnlyList<string> Enabled,
         IReadOnlyList<string> NotFound,
-        IReadOnlyList<string> ControlSets)
+        IReadOnlyList<string> ControlSets,
+        bool HibernationDisabled = false)
     {
-        public bool AnyChanged => Enabled.Count > 0;
+        public bool AnyChanged => Enabled.Count > 0 || HibernationDisabled;
     }
 
     /// <summary>
@@ -68,6 +81,7 @@ public static class UniversalRestore
         var enabled = new List<string>();
         var notFound = new HashSet<string>(StorageDrivers, StringComparer.OrdinalIgnoreCase);
         var controlSets = new List<string>();
+        bool hibernationDisabled = false;
 
         for (int n = 1; n <= 9; n++)
         {
@@ -91,6 +105,19 @@ public static class UniversalRestore
                     enabled.Add($"{cs}\\{driver}");
                 }
             }
+
+            // 빠른 시작/최대 절전 끄기 — 재생성 방지(hiberfil.sys 삭제는 상위 계층에서).
+            // 값이 없으면(최대 절전을 한 번도 안 쓴 원본) SetDword가 false를 반환하고 넘어갑니다.
+            if (hive.SetDword($"{cs}\\{HiberbootPowerKey}", "HiberbootEnabled", 0))
+            {
+                log.LogInformation("{Cs}\\...\\Power: HiberbootEnabled → 0 (빠른 시작 끔)", cs);
+                hibernationDisabled = true;
+            }
+            if (hive.SetDword($"{cs}\\{HibernatePowerKey}", "HibernateEnabled", 0))
+            {
+                log.LogInformation("{Cs}\\Control\\Power: HibernateEnabled → 0 (최대 절전 끔)", cs);
+                hibernationDisabled = true;
+            }
         }
 
         if (controlSets.Count == 0)
@@ -107,6 +134,6 @@ public static class UniversalRestore
             "Universal Restore 적용 완료: 드라이버 {Count}개 부팅 시작으로 설정, 컨트롤 세트 {Sets}.",
             enabled.Count, string.Join(", ", controlSets));
 
-        return new Result(enabled, notFound.ToList(), controlSets);
+        return new Result(enabled, notFound.ToList(), controlSets, hibernationDisabled);
     }
 }
