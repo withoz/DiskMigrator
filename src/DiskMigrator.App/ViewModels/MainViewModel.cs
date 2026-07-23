@@ -1014,6 +1014,13 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 치명 실패가 BCD 장치 참조(0xc000000e) 하나뿐인지. 그 경우는 재서명으로 어긋난 참조만
+    /// 고치면 부팅되므로 클론 직후 자동 복구가 안전합니다. 다른 치명 실패(부트로더 누락 등)가
+    /// 함께 있으면 자동 복구로 해결되지 않으므로 사용자 판단에 맡깁니다.
+    /// </summary>
+    private bool _deviceRefIsOnlyFatalFailure;
+
+    /// <summary>
     /// 부팅 구성 검사의 표시 상태만 초기화합니다. 후속 작업 버튼(UEFI 변환·파티션 확장·안전
     /// 제거)은 건드리지 않습니다 — 검사를 한 번 돌렸다고 그 버튼들이 사라지면 안 됩니다.
     /// </summary>
@@ -1026,6 +1033,7 @@ public sealed partial class MainViewModel : ObservableObject
         BootRepairAvailable = false;
         BootRepairRan = false;
         BootRepairMessage = "";
+        _deviceRefIsOnlyFatalFailure = false;
     }
 
     /// <summary>
@@ -1097,6 +1105,13 @@ public sealed partial class MainViewModel : ObservableObject
             // 이름은 언어에 따라 바뀌므로 안정 코드로 판별합니다.
             BootRepairAvailable = report.Items.Any(i =>
                 i.Passed == false && i.Code == BootReadinessCheck.CodeDeviceRef);
+
+            // 치명 실패가 장치 참조 하나뿐이면(다른 치명 항목은 모두 통과) 클론 직후 자동 복구가
+            // 안전합니다 — 재서명으로 어긋난 참조만 고치면 부팅되기 때문입니다.
+            _deviceRefIsOnlyFatalFailure = BootRepairAvailable && report.Items.All(i =>
+                i.Severity != BootCheckSeverity.Fatal ||
+                i.Passed == true ||
+                i.Code == BootReadinessCheck.CodeDeviceRef);
 
             BootCheckRan = true;
             _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
@@ -1411,11 +1426,28 @@ public sealed partial class MainViewModel : ObservableObject
         //
         // 예전엔 사용자가 완료 화면에서 '부팅 구성 검사'를 눌러야만 돌았습니다. 그래서 그 단계를
         // 건너뛰고 대상을 옮기면, 원본·대상 동시 연결로 재서명돼 어긋난 BCD 장치 참조(0xc000000e)를
-        // 못 잡고 부팅이 실패했습니다. 이제 클론 직후 자동으로 검사해, 불일치가 있으면 '부팅 복구'
-        // 버튼을 스스로 띄웁니다 — 사용자가 몰라도 됩니다. 검사는 읽기 전용이라 안전하며,
-        // BootCheckAsync가 자체적으로 예외를 삼키므로 여기서 실패해도 흐름이 깨지지 않습니다.
+        // 못 잡고 부팅이 실패했습니다. 이제 클론 직후 자동으로 검사합니다. 검사는 읽기 전용이라
+        // 안전하며, BootCheckAsync가 자체적으로 예외를 삼키므로 여기서 실패해도 흐름이 깨지지
+        // 않습니다.
         if (ResultIsSuccess)
+        {
             await BootCheckAsync();
+
+            // 치명 실패가 BCD 장치 참조 하나뿐이면(재서명으로 인한 0xc000000e) 자동으로 복구합니다.
+            //
+            // 우리 주 사용자 흐름 — 원본과 대상을 함께 연결해 복제한 뒤 대상을 새 PC로 옮기는 —
+            // 에서는 두 디스크의 식별자가 충돌해 Windows가 대상을 재서명하므로 이 불일치가 거의
+            // 항상 발생합니다. 예전에는 사용자가 '부팅 복구'를 직접 눌러야 했고, 모르면 "복제했는데
+            // 안 켜진다"가 됐습니다. BootRepair는 bcdedit /store로 클론의 BCD 저장소만 손대고
+            // 라이브 시스템은 건드리지 않으며(BootRepair.Repair), 복구 성공 시 자동으로 재검사하므로
+            // 자동 실행이 안전합니다. 다른 치명 실패가 함께 있으면 자동 복구로 해결되지 않으니
+            // 실행하지 않고 사용자 판단에 맡깁니다.
+            if (_deviceRefIsOnlyFatalFailure)
+            {
+                _logger.LogInformation("자동 부팅 복구: 치명 실패가 BCD 장치 참조 하나뿐 — 자동 복구를 실행합니다.");
+                await RepairBootAsync();
+            }
+        }
     }
 
     private void OnProgress(CloneProgress p)
