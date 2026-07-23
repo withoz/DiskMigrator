@@ -632,6 +632,20 @@
                                 </StackPanel>
                             </CheckBox>
 
+                            <!--
+                                BIOS→UEFI 자동 변환. 되돌릴 수 없는 변환이라 기본 꺼짐이며, 켜면 클론
+                                직후 자동으로 GPT/UEFI로 바꿔 완료 화면의 'UEFI로 변환' 버튼을 누를
+                                필요가 없습니다. GPT 원본에는 영향 없습니다.
+                            -->
+                            <CheckBox IsChecked="{Binding AutoConvertUefi}"
+                                      VerticalContentAlignment="Top" Margin="0,0,0,9">
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Loc AutoUefiTitle}" Style="{StaticResource Body}" />
+                                    <TextBlock Text="{loc:Loc AutoUefiDesc}"
+                                               Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
+                                </StackPanel>
+                            </CheckBox>
+
                         </StackPanel>
                     </Grid>
 
@@ -917,26 +931,31 @@
                     <!--
                         UEFI 변환 — 원본이 BIOS 전용(MBR·활성 파티션, ESP 없음) 배치였을 때만.
                         그 사본은 레거시 부팅을 지원하는 하드웨어에서만 켜지고, NVMe M.2에는
-                        레거시 옵션 ROM이 없어 아예 부팅되지 않습니다. 되돌릴 수 없는 변경이라
-                        자동으로 하지 않고 버튼으로 둡니다.
+                        레거시 옵션 ROM이 없어 아예 부팅되지 않습니다. '자동 변환' 옵션을 켜면 클론
+                        직후 자동으로 변환되고, 껐으면 여기 버튼으로 직접 변환합니다.
+                        섹션은 변환 가능하거나 이미 실행됐을 때 보이고(ShowUefiConvertSection),
+                        설명·버튼은 아직 변환 전(UefiConvertAvailable)일 때만 — 변환 후엔 결과만 남깁니다.
                     -->
                     <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
                             Background="{StaticResource SurfaceAlt}"
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
-                            Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
+                            Visibility="{Binding ShowUefiConvertSection, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="{loc:Loc MakeBootableTitle}"
                                        Style="{StaticResource Body}" FontWeight="SemiBold"
                                        Foreground="{StaticResource Accent}" />
-                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
-                                       Text="{loc:Loc MakeBootableDesc}" />
 
-                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="{loc:Loc ConvertUefiBtn}" Command="{Binding ConvertToUefiCommand}"
-                                        MinWidth="130" Padding="16,8" />
-                                <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
-                                           Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                           Text="{loc:Loc ConvertUefiTip}" />
+                            <StackPanel Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           Text="{loc:Loc MakeBootableDesc}" />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Content="{loc:Loc ConvertUefiBtn}" Command="{Binding ConvertToUefiCommand}"
+                                            MinWidth="130" Padding="16,8" />
+                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
+                                               Text="{loc:Loc ConvertUefiTip}" />
+                                </StackPanel>
                             </StackPanel>
 
                             <TextBlock Text="{loc:Loc Converting}" Margin="0,6,0,0"

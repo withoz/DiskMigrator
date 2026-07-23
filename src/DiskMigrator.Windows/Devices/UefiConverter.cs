@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Registry;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,52 +74,53 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
         if (windows is null)
             return new(false, "\\Windows가 있는 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).", steps);
 
-        // 임시로 부여한 드라이브 문자들 — 끝에 모두 뗍니다.
-        var temps = new List<char>();
         try
         {
-            char winLetter;
-            if (windows.DriveLetter is { } wl) winLetter = wl[0];
-            else
+            // ── 1·2단계: 복구 항목 정리 → mbr2gpt 검사 → 변환 ──────────────────
+            // 변환 전에 부여한 임시 문자는 파티션 테이블이 GPT로 재작성되면 무효가 될 수 있으므로,
+            // 이 블록 안에서만 쓰고 변환 직후 모두 반환합니다. 변환 후 작업은 새 문자로 다시 잡습니다.
+            var preTemps = new List<char>();
+            try
             {
-                char? t = AssignTempLetter(windows.VolumeGuidPath!);
-                if (t is not { } tl) throw new InvalidOperationException("Windows 파티션에 임시 문자를 부여하지 못했습니다.");
-                winLetter = tl; temps.Add(tl);
+                if (MountPartition(windows, preTemps) is not { } winLetter)
+                    return new(false, "Windows 파티션을 마운트하지 못했습니다.", steps);
+                steps.Add($"Windows → {winLetter}:");
+
+                // BIOS BCD(\Boot\BCD)는 보통 별도 "시스템 예약"(활성) 파티션에 있고, 단일 파티션
+                // 설치일 때만 Windows 파티션에 있습니다. Windows 파티션만 보던 예전 코드는 시스템
+                // 예약 레이아웃에서 "BCD를 찾지 못했습니다"로 실패했습니다 — 실기에서 규명.
+                if (LocateBcdPartition(disk, windows, winLetter, preTemps, steps) is not { } bcdLetter)
+                    return new(false, "부팅 구성(BCD)을 담은 파티션을 찾지 못했습니다.", steps);
+
+                // 1) 끊어진 복구 항목 정리 — 안 지우면 mbr2gpt가 Cannot find OS partition(s)로 거부.
+                DropRecoveryEntries($@"{bcdLetter}:\Boot\BCD", steps);
+
+                // mbr2gpt는 변환 전에 스스로 검사합니다. 먼저 물어보고 안 되면 손대지 않습니다 —
+                // 파티션 테이블을 바꾸다 중간에 멈추는 것보다 시작 전에 멈추는 편이 낫습니다.
+                var (vCode, vOut) = RunProcess("mbr2gpt.exe", "/validate", $"/disk:{disk.DeviceNumber}", "/allowFullOS");
+                steps.Add($"mbr2gpt /validate → exit={vCode}");
+                if (vCode != 0)
+                {
+                    _logger.LogWarning("mbr2gpt /validate 실패 (exit {Code}): {Out}", vCode, vOut.Trim());
+                    return new(false, $"UEFI 변환 전 검사(mbr2gpt)에 실패했습니다: {MeaningfulError(vOut)}", steps);
+                }
+
+                // 2) 변환 — MBR→GPT, ESP 생성 + 부팅 파일 설치.
+                var (cCode, cOut) = RunProcess("mbr2gpt.exe", "/convert", $"/disk:{disk.DeviceNumber}", "/allowFullOS");
+                steps.Add($"mbr2gpt /convert → exit={cCode}");
+                _logger.LogInformation("mbr2gpt 변환 출력: {Output}", cOut.Trim());
+
+                // 종료 코드 100은 "변환은 됐지만 부팅 항목은 직접 넣어라"입니다 — 아래에서 넣습니다.
+                if (cCode is not (0 or 100))
+                    return new(false, $"변환에 실패했습니다. {FirstLine(cOut)}", steps);
             }
-            steps.Add($"Windows → {winLetter}:");
-
-            // BIOS BCD(\Boot\BCD)는 보통 별도 "시스템 예약"(활성) 파티션에 있고, 단일 파티션
-            // 설치일 때만 Windows 파티션에 있습니다. Windows 파티션만 보던 예전 코드는 시스템
-            // 예약 레이아웃에서 "BCD를 찾지 못했습니다"로 실패했습니다 — 실기에서 규명.
-            if (LocateBcdPartition(disk, windows, winLetter, temps, steps) is not { } bcdLetter)
-                return new(false, "부팅 구성(BCD)을 담은 파티션을 찾지 못했습니다.", steps);
-            string biosBcd = $@"{bcdLetter}:\Boot\BCD";
-
-            DropRecoveryEntries(biosBcd, steps);
-
-            // mbr2gpt는 변환 전에 스스로 검사합니다. 먼저 물어보고 안 되면 손대지 않습니다 —
-            // 파티션 테이블을 바꾸다 중간에 멈추는 것보다 시작 전에 멈추는 편이 낫습니다.
-            var (vCode, vOut) = RunProcess("mbr2gpt.exe", "/validate", $"/disk:{disk.DeviceNumber}", "/allowFullOS");
-            steps.Add($"mbr2gpt /validate → exit={vCode}");
-            if (vCode != 0)
+            finally
             {
-                string reason = MeaningfulError(vOut);
-                _logger.LogWarning("mbr2gpt /validate 실패 (exit {Code}): {Out}", vCode, vOut.Trim());
-                return new(false,
-                    $"UEFI 변환 전 검사(mbr2gpt)에 실패했습니다: {reason}",
-                    steps);
+                foreach (char t in preTemps) TryRemoveLetter(t);
             }
 
-            var (cCode, cOut) = RunProcess("mbr2gpt.exe", "/convert", $"/disk:{disk.DeviceNumber}", "/allowFullOS");
-            steps.Add($"mbr2gpt /convert → exit={cCode}");
-            _logger.LogInformation("mbr2gpt 변환 출력: {Output}", cOut.Trim());
-
-            // 종료 코드 100은 "변환은 됐지만 부팅 항목은 직접 넣어라"입니다 — 아래에서 넣습니다.
-            if (cCode is not (0 or 100))
-                return new(false, $"변환에 실패했습니다. {FirstLine(cOut)}", steps);
-
+            // ── 변환 후: 디스크를 다시 열거해 새 배치·문자를 잡습니다 ────────────
             await Task.Delay(2000, ct);
-
             var converted = (await diskService.EnumerateDisksAsync(ct))
                 .FirstOrDefault(d => d.DeviceNumber == disk.DeviceNumber);
 
@@ -126,22 +128,71 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
                 return new(false, "변환 후 디스크가 GPT로 보이지 않습니다.", steps);
             steps.Add("파티션 형식 → GPT");
 
-            string espMessage = BuildUefiBcd(converted, winLetter, biosBcd, steps);
+            var postTemps = new List<char>();
+            try
+            {
+                var winPart = FindWindowsPartition(converted);
+                if (winPart is null)
+                    return new(false, "변환 후 Windows 파티션을 찾지 못했습니다.", steps);
+                if (MountPartition(winPart, postTemps) is not { } winLetter)
+                    return new(false, "변환 후 Windows 파티션을 마운트하지 못했습니다.", steps);
+                steps.Add($"Windows(변환 후) → {winLetter}:");
 
-            return new(true,
-                $"이 디스크를 GPT/UEFI로 변환했습니다. {espMessage} " +
-                "이제 UEFI 모드로 부팅할 수 있습니다 — BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오. " +
-                "부팅 후 관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다.",
-                steps);
+                // 3) mbr2gpt가 남긴 껍데기 BCD를 정상본으로 교체·UEFI용 수정.
+                string espMessage = BuildUefiBcd(converted, winPart, winLetter, postTemps, steps);
+
+                // 4) Universal Restore 재적용 — 저장소 드라이버 부팅 시작 + 최대 절전 off.
+                //    클론 때 이미 적용됐어도 멱등이며, 단독 변환(이미 만든 클론을 변환만) 시엔 필수입니다.
+                string urMessage = ApplyUniversalRestore(winLetter, steps);
+
+                return new(true,
+                    $"이 디스크를 GPT/UEFI로 변환했습니다. {espMessage}{urMessage} " +
+                    "이제 UEFI 모드로 부팅할 수 있습니다 — BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오. " +
+                    "부팅 후 관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다.",
+                    steps);
+            }
+            finally
+            {
+                foreach (char t in postTemps) TryRemoveLetter(t);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "UEFI 변환 중 오류.");
             return new(false, $"변환 중 오류: {ex.Message}", steps);
         }
-        finally
+    }
+
+    /// <summary>파티션에 접근할 드라이브 문자 — 있으면 그대로, 없으면 임시 부여(temps에 기록).</summary>
+    private char? MountPartition(PartitionInfo p, List<char> temps)
+    {
+        if (p.DriveLetter is { } dl) return dl[0];
+        if (p.VolumeGuidPath is { } gp && AssignTempLetter(gp) is { } al) { temps.Add(al); return al; }
+        return null;
+    }
+
+    /// <summary>
+    /// 변환된 대상 Windows에 Universal Restore를 적용합니다(저장소 드라이버 부팅 시작 + 최대 절전 off).
+    /// </summary>
+    /// <remarks>
+    /// 실패해도 변환 전체를 실패로 만들지 않습니다 — 부팅 구성은 이미 만들었고, 이쪽은 다른
+    /// 하드웨어에서 0x7B를 막는 추가 조치입니다. 클론 때 이미 적용됐어도 멱등입니다.
+    /// </remarks>
+    private string ApplyUniversalRestore(char winLetter, List<string> steps)
+    {
+        string hive = $@"{winLetter}:\Windows\System32\config\SYSTEM";
+        if (!File.Exists(hive)) { steps.Add("UR: SYSTEM 하이브 없음"); return ""; }
+        try
         {
-            foreach (char t in temps) TryRemoveLetter(t);
+            var r = UniversalRestore.Apply(hive, _logger);
+            steps.Add($"Universal Restore: 드라이버 {r.Enabled.Count}개 부팅 시작, 최대 절전 off={r.HibernationDisabled}");
+            return $" 저장소 드라이버 {r.Enabled.Count}개를 부팅 시작으로 설정하고 최대 절전을 껐습니다(다른 하드웨어 대비).";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "UEFI 변환 후 Universal Restore 적용 실패.");
+            steps.Add($"UR 실패: {ex.Message}");
+            return " (단, 하드웨어 독립화(저장소 드라이버 부팅 시작) 적용에는 실패했습니다 — 완료 화면의 '부팅 검사'로 확인하십시오.)";
         }
     }
 
@@ -244,65 +295,64 @@ public sealed class UefiConverter(WindowsDiskService diskService, ILogger? logge
     /// 결과가 열리지 않는 저장소면 Windows 파티션의 정상 BIOS 저장소를 복사해 UEFI용으로 고칩니다.
     /// 고칠 것은 넷뿐입니다 — 부팅 관리자의 위치·경로, OS 로더의 장치·경로.
     /// </remarks>
-    private string BuildUefiBcd(DiskInfo converted, char winLetter, string biosBcdSource, List<string> steps)
+    private string BuildUefiBcd(DiskInfo converted, PartitionInfo winPart, char winLetter, List<char> postTemps, List<string> steps)
     {
         var esp = converted.Partitions.FirstOrDefault(p => p.IsEfiSystemPartition);
-        if (esp?.VolumeGuidPath is null && esp?.DriveLetter is null)
+        if (esp is null || (esp.VolumeGuidPath is null && esp.DriveLetter is null))
         {
             steps.Add("ESP를 찾지 못했습니다");
             return "다만 EFI 시스템 파티션을 찾지 못해 부팅 파일을 넣지 못했습니다.";
         }
 
-        char? espTemp = null;
-        try
+        if (MountPartition(esp, postTemps) is not { } espLetter)
         {
-            char espLetter = esp.DriveLetter is { } el ? el[0] : (espTemp = AssignTempLetter(esp.VolumeGuidPath!)) ?? '\0';
-            if (espLetter == '\0')
-            {
-                steps.Add("ESP에 임시 문자를 부여하지 못했습니다");
-                return "다만 EFI 시스템 파티션을 마운트하지 못해 부팅 파일을 넣지 못했습니다.";
-            }
-            steps.Add($"ESP → {espLetter}:");
-
-            string espBcd = $@"{espLetter}:\EFI\Microsoft\Boot\BCD";
-
-            RunProcess("bcdboot.exe", $@"{winLetter}:\Windows", "/s", $"{espLetter}:", "/f", "UEFI");
-
-            if (StoreOpens(espBcd))
-            {
-                steps.Add("bcdboot이 만든 저장소 사용");
-                return "EFI 시스템 파티션에 UEFI 부팅 파일을 넣었습니다.";
-            }
-
-            // 여기부터가 실기에서 필요했던 우회입니다.
-            steps.Add("bcdboot 저장소가 열리지 않음 — 정상 저장소를 복사해 고칩니다");
-
-            Directory.CreateDirectory(Path.GetDirectoryName(espBcd)!);
-            File.Copy(biosBcdSource, espBcd, overwrite: true);
-
-            (string id, string element, string value)[] sets =
-            [
-                ("{bootmgr}", "device",   $"partition={espLetter}:"),
-                ("{bootmgr}", "path",     @"\EFI\Microsoft\Boot\bootmgfw.efi"),
-                ("{default}", "device",   $"partition={winLetter}:"),
-                ("{default}", "osdevice", $"partition={winLetter}:"),
-                ("{default}", "path",     @"\WINDOWS\system32\winload.efi"),
-            ];
-
-            foreach (var (id, element, value) in sets)
-            {
-                var (code, _) = RunProcess("bcdedit.exe", "/store", espBcd, "/set", id, element, value);
-                if (code != 0) steps.Add($"set {id} {element} 실패({code})");
-            }
-
-            return StoreOpens(espBcd)
-                ? "EFI 시스템 파티션에 UEFI 부팅 파일을 넣었습니다(정상 저장소를 옮겨 고침)."
-                : "다만 UEFI 부팅 구성을 만들지 못했습니다 — 완료 화면의 '부팅 검사'로 확인하십시오.";
+            steps.Add("ESP에 임시 문자를 부여하지 못했습니다");
+            return "다만 EFI 시스템 파티션을 마운트하지 못해 부팅 파일을 넣지 못했습니다.";
         }
-        finally
+        steps.Add($"ESP → {espLetter}:");
+
+        string espBcd = $@"{espLetter}:\EFI\Microsoft\Boot\BCD";
+
+        RunProcess("bcdboot.exe", $@"{winLetter}:\Windows", "/s", $"{espLetter}:", "/f", "UEFI");
+
+        if (StoreOpens(espBcd))
         {
-            if (espTemp is { } e) TryRemoveLetter(e);
+            steps.Add("bcdboot이 만든 저장소 사용");
+            return "EFI 시스템 파티션에 UEFI 부팅 파일을 넣었습니다.";
         }
+
+        // 여기부터가 실기에서 필요했던 우회입니다: mbr2gpt·bcdboot이 껍데기 BCD를 남기면 정상
+        // BIOS 저장소를 복사해 UEFI용으로 고칩니다. 복사 원본(BCD 파티션)은 변환 전 문자가 이미
+        // 무효이므로 변환된 배치에서 다시 찾습니다.
+        steps.Add("bcdboot 저장소가 열리지 않음 — 정상 저장소를 복사해 고칩니다");
+
+        if (LocateBcdPartition(converted, winPart, winLetter, postTemps, steps) is not { } bcdLetter)
+        {
+            steps.Add("복사할 정상 BIOS BCD를 찾지 못했습니다");
+            return "다만 UEFI 부팅 구성을 만들지 못했습니다(정상 BCD 없음) — 완료 화면의 '부팅 검사'로 확인하십시오.";
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(espBcd)!);
+        File.Copy($@"{bcdLetter}:\Boot\BCD", espBcd, overwrite: true);
+
+        (string id, string element, string value)[] sets =
+        [
+            ("{bootmgr}", "device",   $"partition={espLetter}:"),
+            ("{bootmgr}", "path",     @"\EFI\Microsoft\Boot\bootmgfw.efi"),
+            ("{default}", "device",   $"partition={winLetter}:"),
+            ("{default}", "osdevice", $"partition={winLetter}:"),
+            ("{default}", "path",     @"\WINDOWS\system32\winload.efi"),
+        ];
+
+        foreach (var (id, element, value) in sets)
+        {
+            var (code, _) = RunProcess("bcdedit.exe", "/store", espBcd, "/set", id, element, value);
+            if (code != 0) steps.Add($"set {id} {element} 실패({code})");
+        }
+
+        return StoreOpens(espBcd)
+            ? "EFI 시스템 파티션에 UEFI 부팅 파일을 넣었습니다(정상 저장소를 옮겨 고침)."
+            : "다만 UEFI 부팅 구성을 만들지 못했습니다 — 완료 화면의 '부팅 검사'로 확인하십시오.";
     }
 
     /// <summary>bcdedit이 이 저장소를 열 수 있는지 — 껍데기 파일과 진짜 저장소를 가릅니다.</summary>

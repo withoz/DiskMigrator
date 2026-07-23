@@ -82,6 +82,8 @@
   <data name="SmartDesc" xml:space="preserve"><value>Copies only the used blocks, so it’s faster · needs a snapshot</value></data>
   <data name="NewHwTitle" xml:space="preserve"><value>Prepare for new hardware</value></data>
   <data name="NewHwDesc" xml:space="preserve"><value>Enables storage drivers so it still boots on a different PC</value></data>
+  <data name="AutoUefiTitle" xml:space="preserve"><value>Auto-convert BIOS source to UEFI</value></data>
+  <data name="AutoUefiDesc" xml:space="preserve"><value>When the source is BIOS/MBR, converts the clone to GPT/UEFI after cloning so it boots on NVMe / UEFI-only PCs. Irreversible (changes the target only; source untouched). No effect on GPT sources.</value></data>
   <data name="Step3Title" xml:space="preserve"><value>Review and start</value></data>
   <data name="StartClone" xml:space="preserve"><value>Start clone</value></data>
   <data name="IrreversibleWarn" xml:space="preserve"><value>This can’t be undone. Double-check the target disk.</value></data>

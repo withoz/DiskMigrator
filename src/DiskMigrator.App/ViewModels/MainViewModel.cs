@@ -110,6 +110,17 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _universalRestore = true;
 
+    /// <summary>
+    /// 원본이 BIOS/MBR 전용 배치일 때, 클론 후 대상을 자동으로 GPT/UEFI로 변환할지.
+    /// </summary>
+    /// <remarks>
+    /// MBR 사본은 NVMe·UEFI 전용 PC에서 부팅되지 않습니다(레거시 옵션 ROM 없음). 이 옵션을 켜면
+    /// 완료 화면의 'UEFI로 변환' 버튼을 누를 필요 없이 클론 직후 자동으로 변환합니다.
+    /// 되돌릴 수 없는 파티션 테이블 변경이라 기본은 꺼짐입니다 — 사용자가 명시적으로 켭니다.
+    /// GPT 원본에는 아무 영향이 없습니다(변환 대상이 아니므로 건너뜀).
+    /// </remarks>
+    [ObservableProperty] private bool _autoConvertUefi;
+
     // --- 남는 공간 처리 ----------------------------------------------------
     //
     // 세 방법은 같은 질문("남는 공간을 누구에게?")의 답이라 배타적입니다. 예전에는 별개
@@ -428,7 +439,9 @@ public sealed partial class MainViewModel : ObservableObject
     // 바꿔야 합니다. 실기에서 이 변환을 손으로 하느라 여러 시간을 썼습니다.
 
     /// <summary>대상이 BIOS 전용 배치라 UEFI 변환 버튼을 보여줄지.</summary>
-    [ObservableProperty] private bool _uefiConvertAvailable;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUefiConvertSection))]
+    private bool _uefiConvertAvailable;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConvertToUefiCommand))]
@@ -436,9 +449,18 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool CanConvertToUefi => !IsConvertingToUefi;
 
-    [ObservableProperty] private bool _uefiConvertRan;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUefiConvertSection))]
+    private bool _uefiConvertRan;
     [ObservableProperty] private string _uefiConvertMessage = "";
     [ObservableProperty] private bool _uefiConvertSuccess;
+
+    /// <summary>
+    /// UEFI 변환 영역을 보여줄지 — 변환 가능(버튼 노출)하거나 이미 실행됨(결과 메시지)일 때.
+    /// 자동 변환이 성공하면 UefiConvertAvailable이 꺼지므로, 결과 메시지가 사라지지 않도록
+    /// Ran도 함께 봅니다.
+    /// </summary>
+    public bool ShowUefiConvertSection => UefiConvertAvailable || UefiConvertRan;
 
     // --- 대상 안전하게 제거 ------------------------------------------------
     //
@@ -1431,6 +1453,16 @@ public sealed partial class MainViewModel : ObservableObject
         // 않습니다.
         if (ResultIsSuccess)
         {
+            // 'BIOS 원본을 UEFI로 자동 변환' 옵션이 켜져 있고 원본이 BIOS 전용 배치이면(UefiConvertAvailable),
+            // 부팅 검사 전에 먼저 GPT/UEFI로 변환합니다. MBR 사본은 NVMe·UEFI 전용 PC에서 부팅되지
+            // 않으므로, 이 변환까지 마쳐야 검사가 실제 부팅 상태를 반영합니다. 변환은 되돌릴 수 없어
+            // 옵션이 켜졌을 때만 자동 실행하며, ConvertToUefiAsync가 예외를 삼켜 흐름을 깨지 않습니다.
+            if (AutoConvertUefi && UefiConvertAvailable)
+            {
+                _logger.LogInformation("자동 UEFI 변환: 옵션 켜짐 + BIOS 전용 원본 — 자동 변환을 실행합니다.");
+                await ConvertToUefiAsync();
+            }
+
             await BootCheckAsync();
 
             // 치명 실패가 BCD 장치 참조 하나뿐이면(재서명으로 인한 0xc000000e) 자동으로 복구합니다.
