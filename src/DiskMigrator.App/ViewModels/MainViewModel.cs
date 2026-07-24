@@ -247,18 +247,27 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _resizeSizeGb = "";
 
     /// <summary>
-    /// 대상이 원본보다 커서 확대할 여지가 있는지. 리사이즈는 <b>GPT 원본</b>만, 그리고 원본과
-    /// 대상의 <b>논리 섹터 크기가 같을 때</b>만 지원합니다(GPT 엔트리 위치가 LBA 단위라
-    /// 섹터 크기가 다르면 재배치가 어긋납니다).
+    /// 원본 파티션 끝 뒤로 남는 공간이 있어 확대할 여지가 있는지. 리사이즈는 <b>GPT 원본</b>만,
+    /// 그리고 원본과 대상의 <b>논리 섹터 크기가 같을 때</b>만 지원합니다(GPT 엔트리 위치가 LBA
+    /// 단위라 섹터 크기가 다르면 재배치가 어긋납니다).
     /// </summary>
     public bool CanResize =>
         SelectedSource is not null && SelectedTarget is not null &&
         SelectedSource.Disk.PartitionStyle is PartitionStyle.Gpt or PartitionStyle.Mbr &&
         SelectedSource.Disk.LogicalSectorSize == SelectedTarget.Disk.LogicalSectorSize &&
-        SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes &&
+        SelectedTarget.Disk.SizeBytes - SelectedSourceOccupiedEnd >= DiskLayoutMap.GapNoiseThreshold &&
         !SelectedSource.Disk.HasExtendedPartition &&
         !ExceedsMbrLimit &&
         ResizablePartitions.Count > 0;
+
+    /// <summary>
+    /// 원본 파티션이 실제로 끝나는 지점(마지막 파티션의 끝). 확대·확장 여지는 원본 <b>디스크
+    /// 크기</b>가 아니라 이 값을 기준으로 판단해야 합니다 — 예컨대 250GB만 쓰고 나머지가 미할당인
+    /// 1TB 원본을 같은 크기 1TB 대상에 클론할 때도, 파티션 끝 뒤의 750GB를 남는 공간으로 옳게
+    /// 인식하기 위함입니다(디스크 크기끼리 비교하면 "같은 크기 → 남는 공간 없음"으로 오판합니다).
+    /// </summary>
+    private long SelectedSourceOccupiedEnd =>
+        SelectedSource is null ? 0 : DiskLayoutMap.OccupiedEnd(SelectedSource.Disk);
 
     /// <summary>
     /// MBR 원본인데 대상이 약 2 TB를 넘는지. MBR의 시작·크기 필드는 32비트 섹터 수라
@@ -790,10 +799,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool HasFreeSpaceError => FreeSpaceError.Length > 0;
 
-    /// <summary>대상이 원본보다 커서 남는 공간이 생기는지.</summary>
+    /// <summary>원본 파티션 끝 뒤로 대상에 남는 공간이 생기는지(원본 꼬리 미할당까지 포함).</summary>
     public bool HasFreeSpace =>
         SelectedSource is not null && SelectedTarget is not null &&
-        SelectedTarget.Disk.SizeBytes > SelectedSource.Disk.SizeBytes;
+        SelectedTarget.Disk.SizeBytes - SelectedSourceOccupiedEnd >= DiskLayoutMap.GapNoiseThreshold;
 
     /// <summary>"남는 공간 2.73 TB 를 어떻게 할까요" — 무엇에 대한 선택인지 바로 알 수 있게.</summary>
     public string FreeSpaceText
@@ -801,7 +810,7 @@ public sealed partial class MainViewModel : ObservableObject
         get
         {
             if (!HasFreeSpace) return "";
-            long free = SelectedTarget!.Disk.SizeBytes - SelectedSource!.Disk.SizeBytes;
+            long free = SelectedTarget!.Disk.SizeBytes - SelectedSourceOccupiedEnd;
             return string.Format(CultureInfo.CurrentCulture, Strings.Get("FreeSpaceHeaderFmt"), SizeFormatter.Format(free));
         }
     }
@@ -1620,7 +1629,7 @@ public sealed partial class MainViewModel : ObservableObject
         // 뒤 이 버튼으로 마무리하는 것이 정석입니다.
         bool alreadyExpanded = report.PartitionExpand is { Success: true };
         PartitionExpandAvailable = ResultIsSuccess &&
-                                   report.Target.SizeBytes > report.Source.SizeBytes &&
+                                   report.Target.SizeBytes - DiskLayoutMap.OccupiedEnd(report.Source) >= DiskLayoutMap.GapNoiseThreshold &&
                                    !alreadyExpanded;
 
         // 원본이 BIOS 전용 배치였으면 사본도 그렇습니다. 요즘 PC(특히 NVMe)에서는 부팅하지
