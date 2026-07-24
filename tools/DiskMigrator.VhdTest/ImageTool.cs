@@ -46,7 +46,8 @@ internal static class ImageTool
         return Report(result, imagePath);
     }
 
-    public static async Task<int> RestoreAsync(string imagePath, int targetDiskNumber, bool verify, ILoggerFactory lf)
+    public static async Task<int> RestoreAsync(
+        string imagePath, int targetDiskNumber, bool universalRestore, bool verify, ILoggerFactory lf)
     {
         var diskService = new WindowsDiskService(lf.CreateLogger<WindowsDiskService>());
         if (!diskService.IsElevated) { Console.Error.WriteLine("오류: 관리자 권한이 필요합니다."); return 3; }
@@ -67,13 +68,19 @@ internal static class ImageTool
         }
 
         Console.WriteLine($"복원: {imagePath} → [{target.DeviceNumber}] {target.Model} " +
-                          $"({SizeFormatter.Format(target.SizeBytes)}) — 이 디스크의 데이터가 사라집니다.");
+                          $"({SizeFormatter.Format(target.SizeBytes)}) — 이 디스크의 데이터가 사라집니다. " +
+                          $"(UR={universalRestore})");
 
         var options = new CloneOptions { BufferSize = 4 * 1024 * 1024, VerifyAfterClone = verify };
         var svc = new ImageRestoreService(diskService, lf);
-        var result = await svc.RestoreAsync(imagePath, target, options, MakeProgress());
+        var report = await svc.RestoreAsync(imagePath, target, universalRestore, options, MakeProgress());
 
-        return Report(result, imagePath);
+        int code = Report(report.Result, imagePath);
+        if (report.GptRepair is { } g)
+            Console.WriteLine($"GPT 보정: {(g.WasRepaired ? "적용됨" : "미적용")} — {g.Description}");
+        if (report.UniversalRestore is { } u)
+            Console.WriteLine($"Universal Restore: {u.Message}");
+        return code;
     }
 
     private static IProgress<CloneProgress> MakeProgress()

@@ -124,17 +124,17 @@ attach vdisk
     Invoke-Diskpart "select vdisk file=`"$script:SourceVhd`"`ndetach vdisk" | Out-Null
     Start-Sleep -Milliseconds 800
 
-    # --- 빈 대상 준비 ----------------------------------------------------
-    Write-Step "빈 대상 VHD 생성 (1GB)"
+    # --- 빈 대상 준비 (2GB — 이미지보다 크게 해서 GPT 보정을 실증) --------
+    Write-Step "빈 대상 VHD 생성 (2GB, 이미지보다 큼)"
     Invoke-Diskpart @"
-create vdisk file="$script:TargetVhd" maximum=1024 type=expandable
+create vdisk file="$script:TargetVhd" maximum=2048 type=expandable
 select vdisk file="$script:TargetVhd"
 attach vdisk
 "@ | Out-Null
     Start-Sleep -Milliseconds 500
     $targetNum = Get-VhdDiskNumber $script:TargetVhd
     if ((Get-Disk -Number $targetNum).BusType -ne 'File Backed Virtual') { throw "대상이 가상 디스크가 아닙니다." }
-    Write-Ok "빈 대상 준비: 디스크 $targetNum"
+    Write-Ok "빈 대상 준비: 디스크 $targetNum (2GB)"
 
     # --- 복원 ------------------------------------------------------------
     Write-Step "복원: $($script:Image) → 디스크 $targetNum"
@@ -165,6 +165,12 @@ attach vdisk
 
     if ($td.Guid -eq $sourceGuid) { Write-Ok "디스크 GUID가 원본과 일치 (섹터 단위 복제 증거)" }
     else { Write-Fail "디스크 GUID 불일치: 원본 $sourceGuid / 대상 $($td.Guid)"; $failures++ }
+
+    # GPT 보정: 대상(2GB)이 이미지(1GB)보다 크므로 백업 헤더가 끝으로 옮겨져 ~1GB가 미할당이어야 함.
+    $unalloc = $td.LargestFreeExtent
+    Write-Info "대상 미할당 공간: $([math]::Round($unalloc / 1GB, 2)) GB"
+    if ($unalloc -gt 900MB) { Write-Ok "미할당 ~1GB 인식 → GPT 백업 헤더가 디스크 끝으로 옮겨짐(보정 성공)" }
+    else { Write-Fail "미할당이 $([math]::Round($unalloc / 1MB)) MB 뿐 — GPT 보정이 안 된 것으로 보입니다"; $failures++ }
 
     # NTFS 볼륨 찾기
     $vol = $null; $vpart = $null

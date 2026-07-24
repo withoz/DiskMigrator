@@ -32,7 +32,8 @@ if (args.Length >= 3 && args[0] == "--restore" && int.TryParse(args[2], out int 
 {
     Console.OutputEncoding = System.Text.Encoding.UTF8;
     using var lfr = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
-    return await DiskMigrator.VhdTest.ImageTool.RestoreAsync(args[1], restoreTgt, !args.Contains("--no-verify"), lfr);
+    return await DiskMigrator.VhdTest.ImageTool.RestoreAsync(
+        args[1], restoreTgt, args.Contains("--universal-restore"), !args.Contains("--no-verify"), lfr);
 }
 
 // 가상 디스크(VHD)를 대상으로 클론 전체 경로를 실제로 실행해 보는 통합 테스트 도구입니다.

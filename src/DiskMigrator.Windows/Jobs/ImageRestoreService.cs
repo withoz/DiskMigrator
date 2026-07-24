@@ -2,23 +2,35 @@ using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Engine;
 using DiskMigrator.Core.Models;
+using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Windows.Devices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DiskMigrator.Windows.Jobs;
 
+/// <summary>이미지 복원 한 건의 결과(복제 + 후처리).</summary>
+public sealed record ImageRestoreReport(
+    CloneResult Result,
+    GptRepairResult? GptRepair,
+    UniversalRestoreReport? UniversalRestore);
+
 /// <summary>
-/// VHDX 이미지 파일을 디스크로 복원합니다(이미지 → 디스크 섹터 복제).
+/// VHDX 이미지 파일을 디스크로 복원하고, 클론과 동일한 후처리를 적용합니다.
 /// </summary>
 /// <remarks>
 /// 이미지를 읽기 전용으로 부착해 <c>\\.\PhysicalDriveN</c>으로 만든 뒤, 대상 실디스크를
-/// 클론과 <b>똑같이</b> 배타적 쓰기(오프라인+볼륨 잠금)로 열어 기존 클론 엔진으로 복제합니다.
+/// 클론과 <b>똑같이</b> 배타적 쓰기(오프라인+볼륨 잠금)로 열어 복제합니다. 이어서 클론
+/// 오케스트레이터와 같은 후처리를 합니다:
+/// <list type="number">
+/// <item><b>GPT 백업 헤더 보정</b> — 대상이 이미지보다 크면 이미지에서 온 백업 헤더가 디스크
+///   중간에 놓이므로, 대상 끝으로 옮기고 남는 공간을 쓸 수 있게 합니다.</item>
+/// <item><b>Universal Restore</b> — (요청 시) 복원된 Windows의 저장소 드라이버를 부팅 시작으로
+///   설정해 다른 하드웨어에서도 부팅되게 합니다.</item>
+/// </list>
 ///
-/// <para>복원은 대상 디스크를 파괴하므로, 호출자가 <b>먼저 SafetyGuard 검사와 사용자 확인</b>을
-/// 마쳐야 합니다(일반 클론과 동일). 이번 단계는 전체 섹터 복제이며, 대상이 이미지보다 클 때의
-/// GPT 백업 헤더 보정·하드웨어 독립화·부팅 복구는 다음 단계에서 클론 오케스트레이터 로직을
-/// 공유해 붙입니다.</para>
+/// <para>복원은 대상 디스크를 파괴하므로 호출자가 <b>먼저 SafetyGuard 검사와 사용자 확인</b>을
+/// 마쳐야 합니다(일반 클론과 동일).</para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory? loggerFactory = null)
@@ -27,9 +39,10 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
 
     /// <param name="imagePath">복원할 .vhdx 이미지 경로.</param>
     /// <param name="target">덮어쓸 대상 디스크. 모든 데이터가 파괴됩니다.</param>
-    public async Task<CloneResult> RestoreAsync(
-        string imagePath, DiskInfo target, CloneOptions options,
-        IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
+    /// <param name="universalRestore">true면 복원 후 대상 Windows를 하드웨어 독립화합니다.</param>
+    public async Task<ImageRestoreReport> RestoreAsync(
+        string imagePath, DiskInfo target, bool universalRestore,
+        CloneOptions options, IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imagePath);
         ArgumentNullException.ThrowIfNull(target);
@@ -40,40 +53,85 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
         // 이미지를 읽기 전용으로 부착 → 물리 디스크로 읽습니다.
         using var vhd = VirtualDisk.OpenAndAttach(imagePath, readOnly: true);
         using var source = RawDiskDevice.OpenRead(vhd.PhysicalPath);
+        long imageLength = AlignDown(source.Length, source.SectorSize);
+
         logger.LogInformation(
-            "이미지 복원 시작 — {Image} → {Phys} ({Size:N0} 바이트) → 대상 [{Num}] {Model}",
-            imagePath, vhd.PhysicalPath, source.Length, target.DeviceNumber, target.Model);
+            "이미지 복원 시작 — {Image} → {Phys} ({Size:N0} 바이트) → 대상 [{Num}] {Model} ({TSize:N0} 바이트)",
+            imagePath, vhd.PhysicalPath, source.Length, target.DeviceNumber, target.Model, target.SizeBytes);
 
-        // 대상(실디스크)을 오프라인+잠금으로 배타적 쓰기 오픈(일반 클론의 대상 준비와 동일).
-        using var targetDevice = diskService.OpenWriteExclusive(target);
+        CloneResult result;
+        GptRepairResult? gptRepair = null;
 
-        long length = Math.Min(
-            AlignDown(source.Length, source.SectorSize),
-            AlignDown(targetDevice.Length, targetDevice.SectorSize));
-
-        var plan = new ClonePlan
+        // 대상(실디스크)을 오프라인+잠금으로 배타적 쓰기 오픈. GPT 보정까지 마친 뒤 닫아야
+        // (닫으면 온라인이 되어 볼륨이 마운트되고, 그다음 Universal Restore가 하이브에 접근).
+        var targetDevice = diskService.OpenWriteExclusive(target);
+        try
         {
-            Name = $"이미지 복원 {Path.GetFileName(imagePath)} → [{target.DeviceNumber}] {target.Model}",
-            Target = targetDevice,
-            Regions =
-            [
-                new CopyRegion
+            long length = Math.Min(imageLength, AlignDown(targetDevice.Length, targetDevice.SectorSize));
+
+            var plan = new ClonePlan
+            {
+                Name = $"이미지 복원 {Path.GetFileName(imagePath)} → [{target.DeviceNumber}] {target.Model}",
+                Target = targetDevice,
+                Regions =
+                [
+                    new CopyRegion
+                    {
+                        Source = source, SourceOffset = 0, TargetOffset = 0,
+                        Length = length, Description = "전체 이미지",
+                    },
+                ],
+            };
+
+            var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
+            result = await engine.RunAsync(plan, options, progress, null, ct);
+            targetDevice.Flush();
+
+            // 대상이 이미지보다 크면 GPT 백업 헤더가 디스크 중간에 있으므로 끝으로 옮깁니다.
+            if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors &&
+                targetDevice.Length > imageLength)
+            {
+                try
                 {
-                    Source = source,
-                    SourceOffset = 0,
-                    TargetOffset = 0,
-                    Length = length,
-                    Description = "전체 이미지",
-                },
-            ],
-        };
+                    gptRepair = new GptRepair(_loggerFactory.CreateLogger<GptRepair>()).RepairIfNeeded(targetDevice);
+                    logger.LogInformation("GPT 보정: {Desc}", gptRepair.Description);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "GPT 백업 헤더 보정 실패.");
+                    gptRepair = new GptRepairResult(false,
+                        $"데이터 복원은 정상이지만 GPT 백업 헤더 보정에 실패했습니다: {ex.Message} " +
+                        "Windows 디스크 관리에서 자동 복구를 제안할 수 있습니다.");
+                }
+            }
+        }
+        finally
+        {
+            // 대상을 닫으면 다시 온라인이 되어 볼륨이 마운트됩니다. Universal Restore는 이 뒤에.
+            targetDevice.Dispose();
+        }
 
-        var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-        var result = await engine.RunAsync(plan, options, progress, null, ct);
+        // Universal Restore — 복원된 Windows를 하드웨어 독립화(요청 시, 복제 성공 시).
+        UniversalRestoreReport? ur = null;
+        if (universalRestore &&
+            result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
+        {
+            try
+            {
+                var svc = new UniversalRestoreService(
+                    diskService, _loggerFactory.CreateLogger<UniversalRestoreService>());
+                ur = await svc.ApplyAsync(target, ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Universal Restore 적용 중 오류. 복원 데이터는 정상입니다.");
+                ur = new UniversalRestoreReport(false, null, [],
+                    $"하드웨어 독립화 실패: {ex.Message}. 복원 데이터 자체는 정상입니다.");
+            }
+        }
 
-        targetDevice.Flush();
         logger.LogInformation("이미지 복원 종료: {Outcome}", result.Outcome);
-        return result;
+        return new ImageRestoreReport(result, gptRepair, ur);
     }
 
     private static long AlignDown(long value, int alignment) => value - (value % alignment);
