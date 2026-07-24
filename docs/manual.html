@@ -17,22 +17,34 @@
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Segoe UI", "Malgun Gothic", sans-serif;
     line-height: 1.65; font-size: 15px;
+    -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 820px; margin: 0 auto; padding: 36px 20px 80px; }
-  header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 28px; }
-  header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: 1px; }
-  header p { margin: 0; color: var(--muted); }
-  .badge { display: inline-block; background: var(--ink); color: #fff; border-radius: 20px;
+  header { display: flex; align-items: center; gap: 16px;
+           border-bottom: 2px solid var(--ink); padding-bottom: 18px; }
+  .logo { width: 48px; height: 48px; border-radius: 12px; background: var(--ink); color: #fff;
+          font-weight: 900; font-size: 20px; letter-spacing: -1px; flex: none;
+          display: flex; align-items: center; justify-content: center; }
+  header h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: 1px; }
+  header p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .badge { display: inline-block; background: var(--accent); color: #fff; border-radius: 20px;
            padding: 2px 12px; font-size: 12px; font-weight: 700; margin-left: 8px; vertical-align: middle; }
-  h2 { font-size: 19px; margin: 40px 0 12px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+  .toc a { text-decoration: none; color: var(--accent); background: var(--accent-soft);
+           border: 1px solid #d3dde7; border-radius: 20px; padding: 4px 13px; font-size: 12.5px;
+           transition: background .15s, color .15s; }
+  .toc a:hover { background: var(--accent); color: #fff; }
+  h2 { font-size: 19px; margin: 44px 0 12px; padding-left: 10px;
+       border-left: 4px solid var(--accent); scroll-margin-top: 16px; }
   h3 { font-size: 15.5px; margin: 20px 0 8px; }
   p { margin: 8px 0; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 12px 0; }
   .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
-  .mode { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .mode { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; }
   .mode b { color: var(--accent); font-size: 15.5px; }
-  .mode p { font-size: 13.5px; color: var(--muted); margin: 6px 0 0; }
+  .mode .ico { font-size: 19px; margin-right: 7px; vertical-align: -2px; }
+  .mode p { font-size: 13.5px; color: var(--muted); margin: 7px 0 0; }
   ol.steps { counter-reset: n; list-style: none; padding: 0; margin: 10px 0; }
   ol.steps li { counter-increment: n; position: relative; padding: 10px 14px 10px 48px;
                 background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
@@ -48,21 +60,38 @@
           border-radius: 10px; overflow: hidden; font-size: 14px; }
   th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
   th { background: #f3efe9; font-size: 13px; }
-  dt { font-weight: 700; color: var(--accent); margin-top: 14px; }
-  dd { margin: 2px 0 0 0; color: var(--ink); }
+  tr:nth-child(odd) td { background: #fbfaf7; }
+  dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 26px; margin: 0; }
+  @media (max-width: 640px) { dl { grid-template-columns: 1fr; } }
+  dt { font-weight: 700; color: var(--accent); font-size: 13px; }
+  dd { margin: 2px 0 0 0; color: var(--ink); font-size: 12.5px; line-height: 1.55; }
   .term { border-bottom: 1px dotted var(--accent); cursor: help; }
   code { background: #f3efe9; border-radius: 4px; padding: 1px 6px; font-size: 13px; }
-  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
-           color: var(--muted); font-size: 12.5px; }
+  footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: 12.5px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.0</span></h1>
-  <p>윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 — 컴퓨터 초보자용 안내</p>
+  <div class="logo">DM</div>
+  <div>
+    <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.0</span></h1>
+    <p>윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 — 컴퓨터 초보자용 안내</p>
+  </div>
 </header>
+
+<nav class="toc">
+  <a href="#before">시작 전에</a>
+  <a href="#modes">네 가지 모드</a>
+  <a href="#clone">① 클론</a>
+  <a href="#backup">② 백업</a>
+  <a href="#restore">③ 복원</a>
+  <a href="#fixboot">④ 부팅 복구</a>
+  <a href="#faq">FAQ</a>
+  <a href="#terms">용어 설명</a>
+</nav>
 
 <div class="card" style="margin-top:0;">
   <p>지금 쓰는 컴퓨터의 디스크를 <b>윈도우·프로그램·파일까지 통째로</b> 새로운 디스크에 복사하거나,
@@ -71,7 +100,7 @@
   <p style="color:var(--muted); font-size:13.5px;">예: 느린 하드디스크 → 새 SSD로 이사, 고장 대비 전체 백업, 새 컴퓨터로 시스템 옮기기</p>
 </div>
 
-<h2>시작하기 전에 (꼭 읽어주세요)</h2>
+<h2 id="before">시작하기 전에 (꼭 읽어주세요)</h2>
 <div class="warn"><b>⚠ 대상 디스크는 완전히 지워집니다.</b> 복사를 "받는" 쪽 디스크의 기존 내용은 모두 사라집니다.
   중요한 파일이 있다면 먼저 옮겨 두세요.</div>
 <div class="card">
@@ -80,15 +109,15 @@
   <p>• 데이터 양에 따라 30분~수 시간 걸립니다. 도중에 컴퓨터를 끄지 마세요.</p>
 </div>
 
-<h2>네 가지 모드 — 화면 위쪽에서 선택</h2>
+<h2 id="modes">네 가지 모드 — 화면 위쪽에서 선택</h2>
 <div class="modes">
-  <div class="mode"><b>디스크 클론</b><p>디스크 → 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
-  <div class="mode"><b>이미지 백업</b><p>디스크 → 파일(.vhdx)로 보관.<br>고장 대비 보험용.</p></div>
-  <div class="mode"><b>이미지 복원</b><p>보관한 파일 → 디스크로 복구.<br>백업해 둔 시스템 되살리기.</p></div>
-  <div class="mode"><b>부팅 복구</b><p>복사해 둔 디스크가 안 켜질 때.<br>복제 없이 검사하고 고칩니다.</p></div>
+  <div class="mode"><span class="ico">💽</span><b>디스크 클론</b><p>디스크 → 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
+  <div class="mode"><span class="ico">📦</span><b>이미지 백업</b><p>디스크 → 파일(.vhdx)로 보관.<br>고장 대비 보험용.</p></div>
+  <div class="mode"><span class="ico">♻️</span><b>이미지 복원</b><p>보관한 파일 → 디스크로 복구.<br>백업해 둔 시스템 되살리기.</p></div>
+  <div class="mode"><span class="ico">🛠️</span><b>부팅 복구</b><p>복사해 둔 디스크가 안 켜질 때.<br>복제 없이 검사하고 고칩니다.</p></div>
 </div>
 
-<h2>① 디스크 클론 — 따라하기</h2>
+<h2 id="clone">① 디스크 클론 — 따라하기</h2>
 <ol class="steps">
   <li><b>원본</b>(복사할 디스크, 보통 <code>시스템</code> 표시)을 왼쪽에서 선택</li>
   <li><b>대상</b>(새 디스크)을 오른쪽에서 선택 — <b style="color:var(--danger)">이 디스크가 지워집니다</b></li>
@@ -100,7 +129,7 @@
   대상이 <b>작으면</b> 가장 큰 파티션을 <b>자동으로 줄여</b> 맞춥니다(안내 문구로 알려줌).
   실제 데이터가 대상보다 많으면 시작 전에 이유를 알려주고 멈춥니다.</div>
 
-<h2>② 이미지 백업 — 따라하기</h2>
+<h2 id="backup">② 이미지 백업 — 따라하기</h2>
 <div class="tip"><b>✓ 지금 컴퓨터(C:\)를 통째로 파일 하나에 저장해 두세요 (권장)</b><br>
   디스크를 바꾸거나 고장 나도, 복원하면 쓰던 모습 그대로 살아납니다.</div>
 <ol class="steps">
@@ -110,12 +139,22 @@
 </ol>
 <div class="note">만들어진 .vhdx 파일은 탐색기에서 더블클릭하면 내용물을 열어볼 수도 있습니다.</div>
 
-<h2>③ 이미지 복원 — 따라하기</h2>
+<h2 id="restore">③ 이미지 복원 — 따라하기</h2>
 <ol class="steps">
   <li><b>찾아보기</b>로 백업해 둔 <code>.vhdx</code> 파일 선택</li>
   <li><b>대상</b> 디스크 선택 — 지워집니다. 작은 디스크면 자동 축소 안내가 뜹니다</li>
   <li>다른 컴퓨터에서 쓸 거면 <b>"새 하드웨어 대비"</b> 켜기 → 모델명 입력 → <b>복원 시작</b></li>
 </ol>
+
+<h2 id="fixboot">④ 부팅 복구 — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">클론·복원해 둔 디스크가 부팅되지 않을 때 쓰는 도구입니다. 복사를 다시 하지 않습니다.</p>
+<ol class="steps">
+  <li>안 켜지던 디스크를 <b>USB 어댑터 등으로 이 컴퓨터에 연결</b></li>
+  <li><b>부팅 복구</b> 탭에서 그 디스크 선택</li>
+  <li><b>부팅 검사</b> 누르기 — 읽기만 하므로 안전합니다</li>
+  <li>문제가 발견되면 나타나는 <b>부팅 복구</b> 버튼 누르기 — 고친 뒤 자동으로 다시 검사됩니다</li>
+</ol>
+<div class="note">지금 컴퓨터가 부팅에 쓰고 있는 디스크는 고칠 필요가 없어 복구가 적용되지 않습니다. 검사 결과에 "부팅 준비됨"이 나오면 디스크를 다시 장착해 부팅해 보세요.</div>
 
 <h2>복사한 디스크로 부팅하기</h2>
 <div class="card">
@@ -125,14 +164,13 @@
 
 <h2>부팅이 안 될 때</h2>
 <div class="card">
-  <p><b>당황하지 마세요.</b> 대부분 부팅 설정이 살짝 어긋난 것이라 고칠 수 있습니다.</p>
-  <p>• 그 디스크를 USB 등으로 원래 컴퓨터에 연결하고 → <b>부팅 복구</b> 탭에서 디스크를 고른 뒤
-  <b>부팅 검사</b>를 누르세요. 검사는 읽기만 해서 안전하고, 문제가 발견되면 <b>복구 버튼</b>이 나타납니다.</p>
+  <p><b>당황하지 마세요.</b> 대부분 부팅 설정이 살짝 어긋난 것이라 고칠 수 있습니다.
+  위의 <b>④ 부팅 복구 — 따라하기</b> 순서대로 하면 대부분 해결됩니다.</p>
   <p>• 클론/복원이 끝난 직후라면 완료 화면에도 같은 버튼이 있습니다. (완료 시 자동으로 한 번 실행됩니다.)</p>
   <p>• 옛날 방식(BIOS)으로 설치된 윈도우가 요즘 컴퓨터에서 안 켜지면 완료 화면의 <b>UEFI로 변환</b>이 필요합니다.</p>
 </div>
 
-<h2>자주 묻는 질문</h2>
+<h2 id="faq">자주 묻는 질문</h2>
 <table>
   <tr><th style="width:38%">질문</th><th>답</th></tr>
   <tr><td>원본 디스크가 손상되지 않나요?</td><td>아니요. 원본은 <b>읽기만</b> 합니다. 어떤 모드에서도 원본은 바뀌지 않습니다.</td></tr>
@@ -141,22 +179,22 @@
   <tr><td>시간이 얼마나 걸리나요?</td><td>사용 중인 데이터 양과 디스크 속도에 달렸습니다. 대략 300GB 기준 30분~1시간입니다.</td></tr>
 </table>
 
-<h2>용어 설명</h2>
+<h2 id="terms">용어 설명</h2>
 <div class="card">
 <dl>
-  <dt>클론(Clone)</dt><dd>디스크를 다른 디스크로 통째로 복사하는 것. 복사본도 그대로 부팅됩니다.</dd>
-  <dt>이미지 / .vhdx</dt><dd>디스크 전체를 담은 <b>파일 한 개</b>. 마이크로소프트 표준 형식이라 탐색기에서 열어볼 수 있습니다.</dd>
-  <dt>파티션(Partition)</dt><dd>디스크 안을 나눈 칸. 보통 윈도우용 큰 칸(C:)과 부팅용 작은 칸들이 있습니다.</dd>
-  <dt>부팅(Boot)</dt><dd>컴퓨터를 켰을 때 윈도우가 시작되는 과정.</dd>
-  <dt>관리자 권한</dt><dd>디스크를 통째로 읽고 쓰려면 필요한 윈도우의 높은 권한. 실행 시 파란 확인 창이 뜹니다.</dd>
-  <dt>스냅샷(VSS)</dt><dd>사용 중인 디스크의 "그 순간 모습"을 얼려서 복사하는 윈도우 기능. 복사 중에 파일이 바뀌어도 결과가 안 깨집니다.</dd>
-  <dt>스마트 클론</dt><dd>빈 공간은 건너뛰고 실제 데이터만 복사해 시간을 크게 줄이는 기능.</dd>
-  <dt>새 하드웨어 대비 (Universal Restore)</dt><dd>복사본을 <b>다른 컴퓨터</b>에 꽂아도 부팅되도록 윈도우 내부 설정을 손봐 주는 기능. 다른 PC로 옮길 땐 꼭 켜세요.</dd>
-  <dt>자동 축소</dt><dd>대상 디스크가 원본보다 작을 때, 데이터를 안전하게 앞으로 모아 파티션을 줄여서 맞추는 기능. 원본은 건드리지 않습니다.</dd>
-  <dt>BIOS / UEFI</dt><dd>컴퓨터가 켜질 때 제일 먼저 도는 기본 프로그램. <b>BIOS는 옛 방식, UEFI가 요즘 방식</b>이며, 최신 M.2 디스크는 UEFI로만 부팅됩니다.</dd>
-  <dt>MBR / GPT</dt><dd>디스크의 칸 나눔(파티션) 정보를 적는 방식. MBR은 옛 방식(BIOS 짝), GPT가 요즘 방식(UEFI 짝)입니다.</dd>
-  <dt>M.2 / NVMe / SSD</dt><dd>요즘 쓰는 빠르고 작은 저장장치. M.2는 껌처럼 생긴 모양, NVMe는 빠른 연결 방식, SSD는 반도체 저장장치라는 뜻입니다.</dd>
-  <dt>부팅 복구</dt><dd>복사한 디스크의 부팅 설정(BCD)이 어긋났을 때 자동으로 바로잡는 기능. 이 프로그램이 완료 후 자동 실행합니다.</dd>
+  <div><dt>클론(Clone)</dt><dd>디스크를 다른 디스크로 통째로 복사하는 것. 복사본도 그대로 부팅됩니다.</dd></div>
+  <div><dt>이미지 / .vhdx</dt><dd>디스크 전체를 담은 <b>파일 한 개</b>. 마이크로소프트 표준 형식이라 탐색기에서 열어볼 수 있습니다.</dd></div>
+  <div><dt>파티션(Partition)</dt><dd>디스크 안을 나눈 칸. 보통 윈도우용 큰 칸(C:)과 부팅용 작은 칸들이 있습니다.</dd></div>
+  <div><dt>부팅(Boot)</dt><dd>컴퓨터를 켰을 때 윈도우가 시작되는 과정.</dd></div>
+  <div><dt>관리자 권한</dt><dd>디스크를 통째로 읽고 쓰려면 필요한 윈도우의 높은 권한. 실행 시 파란 확인 창이 뜹니다.</dd></div>
+  <div><dt>스냅샷(VSS)</dt><dd>사용 중인 디스크의 "그 순간 모습"을 얼려서 복사하는 윈도우 기능. 복사 중에 파일이 바뀌어도 결과가 안 깨집니다.</dd></div>
+  <div><dt>스마트 클론</dt><dd>빈 공간은 건너뛰고 실제 데이터만 복사해 시간을 크게 줄이는 기능.</dd></div>
+  <div><dt>새 하드웨어 대비 (Universal Restore)</dt><dd>복사본을 <b>다른 컴퓨터</b>에 꽂아도 부팅되도록 윈도우 내부 설정을 손봐 주는 기능. 다른 PC로 옮길 땐 꼭 켜세요.</dd></div>
+  <div><dt>자동 축소</dt><dd>대상 디스크가 원본보다 작을 때, 데이터를 안전하게 앞으로 모아 파티션을 줄여서 맞추는 기능. 원본은 건드리지 않습니다.</dd></div>
+  <div><dt>BIOS / UEFI</dt><dd>컴퓨터가 켜질 때 제일 먼저 도는 기본 프로그램. <b>BIOS는 옛 방식, UEFI가 요즘 방식</b>이며, 최신 M.2 디스크는 UEFI로만 부팅됩니다.</dd></div>
+  <div><dt>MBR / GPT</dt><dd>디스크의 칸 나눔(파티션) 정보를 적는 방식. MBR은 옛 방식(BIOS 짝), GPT가 요즘 방식(UEFI 짝)입니다.</dd></div>
+  <div><dt>M.2 / NVMe / SSD</dt><dd>요즘 쓰는 빠르고 작은 저장장치. M.2는 껌처럼 생긴 모양, NVMe는 빠른 연결 방식, SSD는 반도체 저장장치라는 뜻입니다.</dd></div>
+  <div><dt>부팅 복구</dt><dd>복사한 디스크의 부팅 설정(BCD)이 어긋났을 때 자동으로 바로잡는 기능. 이 프로그램이 완료 후 자동 실행합니다.</dd></div>
 </dl>
 </div>
 
