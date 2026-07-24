@@ -895,6 +895,28 @@
                     </StackPanel>
                 </CheckBox>
 
+                <!-- 축소 복원: 더 작은 대상에 맞춰 선택한 NTFS 파티션을 줄여 복원 -->
+                <CheckBox IsChecked="{Binding ShrinkRestore}" VerticalContentAlignment="Top" Margin="0,14,0,0"
+                          Visibility="{Binding IsShrinkAvailable, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc ShrinkTitle}" Style="{StaticResource Body}" />
+                        <TextBlock Text="{loc:Loc ShrinkDesc}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
+                    </StackPanel>
+                </CheckBox>
+                <StackPanel Margin="26,8,0,0"
+                            Visibility="{Binding ShowShrinkOptions, Converter={StaticResource BoolToVisibility}}">
+                    <ComboBox ItemsSource="{Binding ShrinkPartitions}" SelectedItem="{Binding SelectedShrinkPartition}"
+                              DisplayMemberPath="DisplayLabel" Padding="8,5" />
+                    <DockPanel Margin="0,8,0,0" LastChildFill="False">
+                        <TextBlock Text="{loc:Loc ShrinkTargetGbLabel}" VerticalAlignment="Center" Style="{StaticResource Body}" />
+                        <TextBox Text="{Binding ShrinkTargetGb, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                 Margin="8,0,0,0" Padding="8,5" VerticalContentAlignment="Center"
+                                 FontFamily="Consolas, D2Coding" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding ShrinkTargetHint}" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+
                 <TextBlock Text="{loc:Loc RestoreHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,10,0,0" />
 
                 <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"

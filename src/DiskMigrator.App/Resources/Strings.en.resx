@@ -103,6 +103,12 @@
   <data name="RestoreStartBtn" xml:space="preserve"><value>Start restore</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>Choose image to restore</value></data>
   <data name="RestoreHint" xml:space="preserve"><value>Writes the selected .vhdx image onto the target disk in full. If the target is larger than the image, the GPT is fixed up so the extra space is usable, and 'Prepare for new hardware' makes it boot on a different PC.</value></data>
+  <data name="ShrinkTitle" xml:space="preserve"><value>Shrink on restore (fit a smaller disk)</value></data>
+  <data name="ShrinkDesc" xml:space="preserve"><value>Shrinks the selected NTFS partition to a target size so it fits a disk smaller than the image. Partitions after it are pulled forward automatically, and the original image is preserved.</value></data>
+  <data name="ShrinkTargetGbLabel" xml:space="preserve"><value>Target size (GB):</value></data>
+  <data name="ShrinkHintCurrentFmt" xml:space="preserve"><value>Current {0} · enter a smaller size (GB).</value></data>
+  <data name="ShrinkHintTooBigFmt" xml:space="preserve"><value>Enter a value smaller than the current {0}.</value></data>
+  <data name="ShrinkHintOkFmt" xml:space="preserve"><value>Shrink from {0} to {1}.</value></data>
   <data name="RestoreWarn" xml:space="preserve"><value>This overwrites all data on the target disk and cannot be undone. Double-check the target disk.</value></data>
   <data name="RestoreDoneTitle" xml:space="preserve"><value>Restore complete</value></data>
   <data name="RestoreDoneMsgFmt" xml:space="preserve"><value>Restored the image to disk [{0}] {1}.</value></data>

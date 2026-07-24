@@ -1801,6 +1801,103 @@ public sealed partial class MainViewModel : ObservableObject
         ResultDetails = string.Join("\n", details);
     }
 
+    // --- 축소 복원 (더 작은 대상에 맞춰 파티션을 줄여 복원) ------------------
+
+    /// <summary>이미지 축소 복원을 켤지. 켜면 선택한 NTFS 파티션을 목표 크기로 줄여 복원합니다.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowShrinkOptions))]
+    private bool _shrinkRestore;
+
+    /// <summary>이미지 안의 축소 가능한(NTFS) 파티션 목록. 이미지를 고르면 채워집니다.</summary>
+    public ObservableCollection<ShrinkPartitionChoice> ShrinkPartitions { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
+    [NotifyPropertyChangedFor(nameof(ShrinkTargetHint))]
+    private ShrinkPartitionChoice? _selectedShrinkPartition;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
+    [NotifyPropertyChangedFor(nameof(ShrinkTargetHint))]
+    private string _shrinkTargetGb = "";
+
+    /// <summary>이미지에 NTFS 파티션이 있어 축소 복원을 제안할 수 있는지(체크박스 표시 여부).</summary>
+    public bool IsShrinkAvailable => ShrinkPartitions.Count > 0;
+
+    /// <summary>축소 옵션(파티션·크기 입력)을 보일지 — 축소 복원을 켰을 때만.</summary>
+    public bool ShowShrinkOptions => ShrinkRestore;
+
+    /// <summary>현재 크기·목표 크기 안내 문구(입력 검증 상태를 그대로 보여 줍니다).</summary>
+    public string ShrinkTargetHint
+    {
+        get
+        {
+            if (SelectedShrinkPartition is not { } p) return "";
+            string cur = SizeFormatter.Format(p.CurrentBytes);
+            if (!FreeSpacePlanner.TryParseSizeGb(ShrinkTargetGb, out double gb) || gb <= 0)
+                return Strings.Format("ShrinkHintCurrentFmt", cur);
+            long target = (long)(gb * FreeSpacePlanner.BytesPerGb);
+            if (target >= p.CurrentBytes)
+                return Strings.Format("ShrinkHintTooBigFmt", cur);
+            return Strings.Format("ShrinkHintOkFmt", cur, SizeFormatter.Format(target));
+        }
+    }
+
+    /// <summary>복원할 이미지가 바뀌면 그 안의 축소 가능 파티션을 다시 읽습니다.</summary>
+    partial void OnImagePathChanged(string value)
+    {
+        ShrinkRestore = false;
+        _ = LoadImagePartitionsAsync();
+    }
+
+    /// <summary>고른 이미지를 잠깐 부착해 NTFS 파티션 목록을 읽어 축소 후보로 채웁니다(볼륨 수정 없음).</summary>
+    private async Task LoadImagePartitionsAsync()
+    {
+        ShrinkPartitions.Clear();
+        SelectedShrinkPartition = null;
+        OnPropertyChanged(nameof(IsShrinkAvailable));
+        OnPropertyChanged(nameof(ShrinkTargetHint));
+
+        if (!IsRestoreMode || string.IsNullOrWhiteSpace(ImagePath) || !File.Exists(ImagePath)) return;
+
+        string path = ImagePath;
+        try
+        {
+            var found = new List<ShrinkPartitionChoice>();
+            await Task.Run(() =>
+            {
+                using var img = VirtualDisk.OpenAndAttach(path, readOnly: true);
+                var disks = _diskService.EnumerateDisksAsync().GetAwaiter().GetResult();
+                var d = disks.FirstOrDefault(x => x.DeviceNumber == img.DiskNumber);
+                if (d is not null)
+                {
+                    foreach (var p in d.Partitions
+                        .Where(p => string.Equals(p.FileSystem, "NTFS", StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(p => p.LengthBytes))
+                    {
+                        found.Add(new ShrinkPartitionChoice(p.Number, p.LengthBytes, p.DriveLetter, p.FileSystem));
+                    }
+                }
+            });
+
+            // 이미지가 그새 바뀌었으면(빠르게 다른 파일 선택) 결과를 버립니다.
+            if (path != ImagePath) return;
+
+            foreach (var c in found) ShrinkPartitions.Add(c);
+            SelectedShrinkPartition = ShrinkPartitions.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "축소 복원용 이미지 파티션을 읽지 못했습니다.");
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(IsShrinkAvailable));
+            OnPropertyChanged(nameof(ShrinkTargetHint));
+        }
+    }
+
     // --- 이미지 복원 (.vhdx → 디스크) --------------------------------------
 
     /// <summary>복원 대상은 파괴되므로, 대상 모델명을 직접 입력하라는 안내.</summary>
@@ -1834,6 +1931,14 @@ public sealed partial class MainViewModel : ObservableObject
 
             var t = SelectedTarget.Disk;
             if (t.IsSystemDisk || t.IsBootDisk || t.HasPageFile || t.IsReadOnly) return false;
+
+            // 축소 복원이면 줄일 파티션과 유효한(현재보다 작은) 목표 크기가 있어야 합니다.
+            if (ShrinkRestore)
+            {
+                if (SelectedShrinkPartition is not { } p) return false;
+                if (!FreeSpacePlanner.TryParseSizeGb(ShrinkTargetGb, out double gb) || gb <= 0) return false;
+                if ((long)(gb * FreeSpacePlanner.BytesPerGb) >= p.CurrentBytes) return false;
+            }
 
             return SafetyGuard.IsConfirmationValid(t, ConfirmationText);
         }
@@ -1882,7 +1987,18 @@ public sealed partial class MainViewModel : ObservableObject
             };
 
             var svc = new ImageRestoreService(_diskService, _loggerFactory);
-            var report = await svc.RestoreAsync(imagePath, target, UniversalRestore, options, progress, _cts.Token);
+            ImageRestoreReport report;
+            if (ShrinkRestore && SelectedShrinkPartition is { } sp &&
+                FreeSpacePlanner.TryParseSizeGb(ShrinkTargetGb, out double sgb) && sgb > 0)
+            {
+                long newBytes = (long)(sgb * FreeSpacePlanner.BytesPerGb);
+                report = await svc.RestoreWithShrinkAsync(
+                    imagePath, target, sp.Number, newBytes, UniversalRestore, options, progress, _cts.Token);
+            }
+            else
+            {
+                report = await svc.RestoreAsync(imagePath, target, UniversalRestore, options, progress, _cts.Token);
+            }
 
             ShowRestoreResult(report, target);
         }
