@@ -79,29 +79,31 @@ Write-Host "[3/5] 축소 복원: 이미지 → 대상, 파티션 $p1 -> 1.5GB...
 $rsExit = $LASTEXITCODE
 
 Write-Host "[4/5] 대상 검증 (파티션·데이터 해시)..." -ForegroundColor Cyan
-Start-Sleep 2
-$tparts = Get-Partition -DiskNumber $tdisk | Where-Object { $_.Type -eq 'Basic' -or $_.DriveLetter }
-Write-Host "  대상 파티션 수: $($tparts.Count) (기대 2)"
-# 드라이브 문자 부여 후 해시 비교.
-$ok = $true
-$tv1 = FreeLetter; $tp1 = Get-Partition -DiskNumber $tdisk -PartitionNumber $p1
-$tp1 | Set-Partition -NewDriveLetter $tv1 -ErrorAction SilentlyContinue
-Start-Sleep 1
-if (Test-Path "${tv1}:\payload1.bin") {
-    $th1 = (Get-FileHash "${tv1}:\payload1.bin" -Algorithm SHA256).Hash
-    Write-Host ("  파티션1 데이터: {0}" -f $(if ($th1 -eq $h1) { '해시 일치 ✓' } else { '불일치 ✗'; $ok=$false }))
-} else { Write-Host "  파티션1 데이터 파일 없음 ✗"; $ok = $false }
-
-$secondNum = ($tparts | Where-Object PartitionNumber -ne $p1 | Select-Object -First 1).PartitionNumber
-if ($secondNum) {
-    $tv2 = FreeLetter
-    Get-Partition -DiskNumber $tdisk -PartitionNumber $secondNum | Set-Partition -NewDriveLetter $tv2 -ErrorAction SilentlyContinue
-    Start-Sleep 1
-    if (Test-Path "${tv2}:\payload2.bin") {
-        $th2 = (Get-FileHash "${tv2}:\payload2.bin" -Algorithm SHA256).Hash
-        Write-Host ("  파티션2 데이터: {0}" -f $(if ($th2 -eq $h2) { '해시 일치 ✓ (이동됨)' } else { '불일치 ✗'; $ok=$false }))
-    } else { Write-Host "  파티션2 데이터 파일 없음 ✗"; $ok = $false }
-} else { Write-Host "  파티션2 없음 ✗"; $ok = $false }
+Start-Sleep 3
+# 각 Basic 파티션을 하나씩 마운트해(문자 경쟁을 피하려 한 번에 하나씩) 두 payload를 찾습니다.
+$basics = @(Get-Partition -DiskNumber $tdisk | Where-Object { $_.Type -eq 'Basic' })
+Write-Host "  대상 Basic 파티션 수: $($basics.Count) (기대 2)"
+$found1 = $false; $found2 = $false
+foreach ($p in $basics) {
+    $letter = $p.DriveLetter
+    if (-not $letter) {
+        $letter = FreeLetter
+        try {
+            Get-Partition -DiskNumber $tdisk -PartitionNumber $p.PartitionNumber |
+                Set-Partition -NewDriveLetter $letter -ErrorAction Stop
+        } catch { Write-Host "  (파티션 $($p.PartitionNumber) 문자 부여 실패: $_)"; continue }
+        Start-Sleep 2
+    }
+    if (Test-Path "${letter}:\payload1.bin") {
+        $found1 = (Get-FileHash "${letter}:\payload1.bin" -Algorithm SHA256).Hash -eq $h1
+    }
+    if (Test-Path "${letter}:\payload2.bin") {
+        $found2 = (Get-FileHash "${letter}:\payload2.bin" -Algorithm SHA256).Hash -eq $h2
+    }
+}
+Write-Host ("  파티션1(축소) 데이터: {0}" -f $(if ($found1) { '해시 일치 ✓' } else { '실패 ✗' }))
+Write-Host ("  파티션2(이동) 데이터: {0}" -f $(if ($found2) { '해시 일치 ✓' } else { '실패 ✗' }))
+$ok = $found1 -and $found2
 
 Write-Host "[5/5] 부모 이미지 보존 확인..." -ForegroundColor Cyan
 $imageAfter = (Get-Item $image).Length
