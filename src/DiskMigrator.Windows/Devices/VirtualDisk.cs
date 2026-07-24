@@ -81,6 +81,61 @@ public sealed class VirtualDisk : IDisposable
     }
 
     /// <summary>
+    /// <paramref name="parentPath"/>를 부모로 하는 <b>차등(differencing) VHDX</b>를 만들어 쓰기
+    /// 가능하게 부착합니다. 쓰기는 모두 자식 파일로만 가고 <b>부모는 절대 바뀌지 않습니다</b>.
+    /// </summary>
+    /// <remarks>
+    /// 축소 리사이즈에서 원본 이미지를 보존하기 위한 것입니다. 부모(백업 이미지)는 읽기 전용으로
+    /// 두고, 얇은 자식에 파일시스템 축소(Windows 축소기)를 적용한 뒤 복원은 자식(=부모+변경분의
+    /// 병합 뷰)에서 읽습니다. 작업이 끝나면 자식 파일만 지우면 됩니다 — 전체 복사 없이(바뀐
+    /// 블록만) 부모가 그대로 남습니다. 크기·섹터는 부모에서 상속합니다.
+    /// </remarks>
+    /// <param name="childPath">만들 자식 .vhdx 경로. 이미 있으면 실패합니다.</param>
+    /// <param name="parentPath">부모 .vhdx 경로(그대로 유지됨).</param>
+    public static VirtualDisk CreateDifferencingAndAttach(string childPath, string parentPath)
+    {
+        if (!File.Exists(parentPath))
+            throw new FileNotFoundException($"부모 VHDX를 찾지 못했습니다: {parentPath}", parentPath);
+
+        var storageType = new VIRTUAL_STORAGE_TYPE
+        {
+            DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX,
+            VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT,
+        };
+
+        // ParentPath가 설정되면 차등 디스크가 됩니다. 크기·섹터는 부모에서 상속하므로 0으로 둡니다.
+        IntPtr parentPtr = Marshal.StringToHGlobalUni(parentPath);
+        try
+        {
+            var createParams = new CREATE_VIRTUAL_DISK_PARAMETERS
+            {
+                Version = CREATE_VIRTUAL_DISK_VERSION_2,
+                UniqueId = Guid.NewGuid(),
+                MaximumSize = 0,                        // 부모 상속
+                BlockSizeInBytes = 0,
+                SectorSizeInBytes = 0,                  // 부모 상속
+                PhysicalSectorSizeInBytes = 0,
+                ParentPath = parentPtr,                 // 설정 → 차등 디스크
+                ParentVirtualStorageType = storageType,
+            };
+
+            uint result = CreateVirtualDisk(
+                ref storageType, childPath, VIRTUAL_DISK_ACCESS_NONE, IntPtr.Zero,
+                CREATE_VIRTUAL_DISK_FLAG_NONE, 0, ref createParams, IntPtr.Zero, out SafeFileHandle handle);
+
+            if (result != ERROR_SUCCESS)
+                throw new Win32Exception((int)result, $"차등 VHDX 생성 실패: {childPath} (부모 {parentPath})");
+
+            // 크기는 부모에서 상속하므로 생성 시점엔 모릅니다(0). 필요하면 디스크 열거로 확인합니다.
+            return AttachAndDescribe(handle, childPath, sizeBytes: 0, readOnly: false);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(parentPtr);
+        }
+    }
+
+    /// <summary>
     /// 기존 VHDX를 열어 물리 디스크로 부착합니다(복원 원본). 기본은 읽기 전용.
     /// </summary>
     public static VirtualDisk OpenAndAttach(string path, bool readOnly = true)
