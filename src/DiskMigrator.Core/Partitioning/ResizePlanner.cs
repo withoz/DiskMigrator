@@ -9,6 +9,15 @@ namespace DiskMigrator.Core.Partitioning;
 /// </param>
 public sealed record PartitionGrowRequest(int PartitionNumber, long? NewLengthBytes);
 
+/// <summary>파티션 하나를 축소하라는 요청.</summary>
+/// <param name="PartitionNumber">축소할 파티션 번호(<see cref="PartitionInfo.Number"/>).</param>
+/// <param name="NewLengthBytes">
+/// 원하는 새 크기(바이트). 파일시스템 실제 사용량 + 여유 이상이어야 하며(호출자가 보장),
+/// 1MB 정렬은 계획기가 맞춥니다. 정렬 때문에 실제 결과 크기는 이 값 <b>이상</b>이 됩니다
+/// (요청보다 작게 만들지 않아, 축소한 파일시스템이 파티션에 못 들어가는 일을 막습니다).
+/// </param>
+public sealed record PartitionShrinkRequest(int PartitionNumber, long NewLengthBytes);
+
 /// <summary>대상 디스크에서 파티션 하나의 최종 배치.</summary>
 /// <param name="SourceNumber">원본 파티션 번호(데이터를 어디서 복사할지 대응).</param>
 /// <param name="StartingOffset">대상에서의 시작 오프셋(바이트).</param>
@@ -18,15 +27,25 @@ public sealed record TargetPartition(int SourceNumber, long StartingOffset, long
 {
     /// <summary>파티션 끝의 배타적 오프셋.</summary>
     public long EndOffset => StartingOffset + LengthBytes;
+
+    /// <summary>
+    /// 이 파티션이 축소되었는지. 축소면 데이터를 놓기 <b>전에</b> 파일시스템을 이 크기(<see
+    /// cref="LengthBytes"/>)로 먼저 줄여야 합니다(상위 계층의 몫). 확대(<see cref="Grown"/>)와 달리
+    /// GPT 엔트리에는 줄어든 크기를 그대로 적습니다(뒤에 미할당을 남기지 않음).
+    /// </summary>
+    public bool Shrunk { get; init; }
 }
 
-/// <summary>확대 계획의 결과 — 각 파티션이 대상 어디에 놓이는지.</summary>
+/// <summary>리사이즈 계획의 결과 — 각 파티션이 대상 어디에 놓이는지.</summary>
 public sealed class ResizeLayout
 {
     public required IReadOnlyList<TargetPartition> Partitions { get; init; }
 
     /// <summary>확대된 파티션(없으면 null).</summary>
     public TargetPartition? GrownPartition => Partitions.FirstOrDefault(p => p.Grown);
+
+    /// <summary>축소된 파티션(없으면 null).</summary>
+    public TargetPartition? ShrunkPartition => Partitions.FirstOrDefault(p => p.Shrunk);
 }
 
 /// <summary>
@@ -39,8 +58,9 @@ public sealed class ResizeLayout
 /// 계획기의 목적입니다.
 ///
 /// 이 클래스는 순수 계산입니다(디스크에 손대지 않음). 실제 데이터 복사·GPT 재작성·NTFS
-/// 확장은 상위 계층이 이 배치를 받아 수행합니다. 축소(대상 &lt; 원본)는 파일시스템 인식
-/// 클러스터 재배치가 필요해 범위 밖입니다(다음 버전).
+/// 확장은 상위 계층이 이 배치를 받아 수행합니다. 축소 배치는 <see cref="PlanShrink"/>가 계산하며,
+/// 파일시스템을 실제로 줄이는 일(NTFS를 앞으로 모으고 $MFT·부트섹터 갱신)은 상위 계층이 데이터를
+/// 놓기 전에 먼저 수행합니다 — 계획기는 "어디에 얼마 크기로 놓을지"만 정합니다.
 ///
 /// <para><b>정렬 규칙:</b> 확대량(delta)을 1MB 배수로 맞춥니다. 원본 파티션이 1MB 정렬돼
 /// 있으면(Windows 표준) 뒤 파티션을 delta만큼 밀어도 정렬이 유지되고, 정렬이 아니었더라도
@@ -211,6 +231,98 @@ public static class ResizePlanner
                 result.Add(new TargetPartition(p.Number, p.StartingOffset + delta, p.LengthBytes, Grown: false));
             }
         }
+
+        Validate(result, targetSizeBytes, maxEnd);
+        return new ResizeLayout { Partitions = result };
+    }
+
+    /// <summary>
+    /// 파티션 하나를 축소하고 그 <b>뒤</b> 파티션들을 왼쪽으로 당기는 배치를 계산합니다(<b>축소 전용</b>).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Plan"/>(확대)의 거울상입니다. 고른 파티션을 <paramref name="request"/> 크기로 줄이고,
+    /// 줄인 만큼(delta) 그 <b>뒤</b> 파티션들을 왼쪽으로 당겨 빈틈을 없앱니다. 앞 파티션은 그대로입니다.
+    /// 그 결과 마지막 파티션 끝이 delta만큼 앞으로 와, <b>원본보다 작은 대상</b>에도 들어갑니다. 전형적인
+    /// <c>[ESP][MSR][C:][복구]</c>에서 C:를 줄이면 복구 파티션을 왼쪽으로 당기는 것이 이 계획기의 목적입니다.
+    ///
+    /// <para>이 클래스는 순수 계산입니다 — 디스크에 손대지 않습니다. <b>파일시스템 실제 축소</b>(NTFS를
+    /// 이 크기로 줄여 데이터를 앞으로 모으고 $MFT·부트섹터를 갱신)는 상위 계층이 데이터를 놓기 전에
+    /// 먼저 수행합니다(부착 이미지에 Windows 축소기 적용). 계획기는 "어디에 얼마 크기로 놓을지"만 정합니다.</para>
+    ///
+    /// <para><b>정렬 규칙:</b> 축소량(delta)을 1MB 배수로 <b>내림</b>합니다 — 뒤 파티션의 정렬을 보존하고,
+    /// 결과 파티션 크기가 요청보다 작아지지 않게 합니다(축소한 파일시스템이 안 들어가는 일 방지).</para>
+    /// </remarks>
+    /// <param name="source">원본 파티션 목록(순서 무관 — 내부에서 오프셋순 정렬).</param>
+    /// <param name="targetSizeBytes">대상 디스크 전체 크기(바이트). 원본보다 작아도 됩니다.</param>
+    /// <param name="request">어느 파티션을 얼마로 줄일지.</param>
+    /// <exception cref="ArgumentException">파티션 번호가 없거나 원본이 비었을 때.</exception>
+    /// <exception cref="InvalidOperationException">축소가 불가능할 때(새 크기가 현재 이상·너무 작음·대상 초과).</exception>
+    public static ResizeLayout PlanShrink(
+        IReadOnlyList<PartitionInfo> source,
+        long targetSizeBytes,
+        PartitionShrinkRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (source.Count == 0)
+            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+
+        var ordered = source.OrderBy(p => p.StartingOffset).ToList();
+        int shrinkIndex = ordered.FindIndex(p => p.Number == request.PartitionNumber);
+        if (shrinkIndex < 0)
+            throw new ArgumentException(
+                $"파티션 {request.PartitionNumber}을(를) 원본에서 찾지 못했습니다.", nameof(request));
+
+        var shrink = ordered[shrinkIndex];
+        long oldLen = shrink.LengthBytes;
+
+        if (request.NewLengthBytes <= 0)
+            throw new InvalidOperationException("새 크기는 0보다 커야 합니다.");
+
+        if (request.NewLengthBytes >= oldLen)
+            throw new InvalidOperationException(
+                $"새 크기({SizeGb(request.NewLengthBytes)})가 현재 크기({SizeGb(oldLen)}) 이상입니다. " +
+                "축소는 현재보다 작은 크기로만 가능합니다(확대는 Plan을 쓰십시오).");
+
+        // 축소량을 1MB 배수로 내림 → 결과 크기가 요청 이상이 되어 축소한 파일시스템이 반드시 들어갑니다.
+        long delta = AlignDown(oldLen - request.NewLengthBytes, Alignment);
+        if (delta <= 0)
+            throw new InvalidOperationException(
+                $"요청한 축소량이 너무 작습니다(1MB 미만). 현재 {SizeGb(oldLen)}에서 최소 1MB 이상 " +
+                "줄일 크기를 지정하십시오.");
+
+        long newLen = oldLen - delta;   // 요청 이상, 1MB 정렬된 delta만큼만 줄임
+
+        long maxEnd = AlignDown(targetSizeBytes, Alignment) - EndReserve;
+
+        var result = new List<TargetPartition>(ordered.Count);
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            var p = ordered[i];
+            if (i < shrinkIndex)
+            {
+                // 앞 파티션: 그대로.
+                result.Add(new TargetPartition(p.Number, p.StartingOffset, p.LengthBytes, Grown: false));
+            }
+            else if (i == shrinkIndex)
+            {
+                // 축소 파티션: 시작은 그대로, 크기만 줄임.
+                result.Add(new TargetPartition(p.Number, p.StartingOffset, newLen, Grown: false) { Shrunk = true });
+            }
+            else
+            {
+                // 뒤 파티션: delta만큼 왼쪽으로 당김(크기 불변, GUID·내용 보존한 채 이동).
+                result.Add(new TargetPartition(p.Number, p.StartingOffset - delta, p.LengthBytes, Grown: false));
+            }
+        }
+
+        // 축소했는데도 대상에 안 들어가면(덜 줄임), 더 줄이라고 명확히 알려 줍니다.
+        long lastEnd = result[^1].EndOffset;
+        if (lastEnd > maxEnd)
+            throw new InvalidOperationException(
+                $"축소 후에도 파티션이 대상에 들어가지 않습니다(끝 {SizeGb(lastEnd)} > 한계 {SizeGb(maxEnd)}, " +
+                $"대상 {SizeGb(targetSizeBytes)}). 파티션 {request.PartitionNumber}을(를) 더 작게 지정하십시오.");
 
         Validate(result, targetSizeBytes, maxEnd);
         return new ResizeLayout { Partitions = result };

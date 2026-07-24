@@ -237,4 +237,152 @@ public class ResizePlannerTests
         var layout = ResizePlanner.PlanFit(src, ResizePlanner.MinimumTargetSize(src));
         Assert.Single(layout.Partitions);
     }
+
+    // --- 축소(PlanShrink) — 파티션을 줄이고 뒤 파티션을 왼쪽으로 당김 ----------------
+
+    [Fact]
+    public void 가운데_파티션_축소는_뒤_파티션을_당긴다()
+    {
+        var src = WindowsLayout();                       // 20GB, C:(3)가 대부분
+        long cLenBefore = src.Single(p => p.Number == 3).LengthBytes;
+        long recStartBefore = src.Single(p => p.Number == 4).StartingOffset;
+
+        var layout = ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(3, 5 * Gb));
+
+        var c = layout.Partitions.Single(p => p.SourceNumber == 3);
+        var rec = layout.Partitions.Single(p => p.SourceNumber == 4);
+
+        Assert.True(c.Shrunk);
+        Assert.False(c.Grown);
+        Assert.True(c.LengthBytes < cLenBefore);
+        Assert.True(c.LengthBytes >= 5 * Gb);            // 요청 이상(정렬 내림이라 안 작아짐)
+        Assert.Equal(src.Single(p => p.Number == 3).StartingOffset, c.StartingOffset); // 시작 불변
+
+        // 복구 파티션은 왼쪽으로 당겨졌고 크기는 그대로.
+        Assert.True(rec.StartingOffset < recStartBefore);
+        Assert.Equal(500 * Mb, rec.LengthBytes);
+        Assert.False(rec.Shrunk);
+
+        // 축소량(delta)만큼 정확히 당겨졌다.
+        long delta = cLenBefore - c.LengthBytes;
+        Assert.Equal(recStartBefore - delta, rec.StartingOffset);
+    }
+
+    [Fact]
+    public void 축소량은_1MB_정렬된다()
+    {
+        var src = WindowsLayout();
+        // 정렬 경계에 안 맞는 크기를 요청해도 delta는 1MB 배수여야 한다.
+        var layout = ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(3, 5 * Gb + 123_456));
+
+        var rec = layout.Partitions.Single(p => p.SourceNumber == 4);
+        long recStartBefore = src.Single(p => p.Number == 4).StartingOffset;
+        long delta = recStartBefore - rec.StartingOffset;
+        Assert.Equal(0, delta % ResizePlanner.Alignment);
+    }
+
+    [Fact]
+    public void 축소하면_더_작은_대상에_들어간다()
+    {
+        var src = WindowsLayout();                        // 원본 20GB 배치
+        // C:를 5GB로 줄이면 전체가 ~6GB 안으로 들어와, 8GB 대상에 맞는다.
+        var layout = ResizePlanner.PlanShrink(src, 8 * Gb, new PartitionShrinkRequest(3, 5 * Gb));
+
+        long lastEnd = layout.Partitions.Max(p => p.EndOffset);
+        Assert.True(lastEnd <= 8L * Gb - ResizePlanner.EndReserve);
+    }
+
+    [Fact]
+    public void 마지막_파티션_축소는_뒤에_아무것도_안_당긴다()
+    {
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 100 * Mb), Part(2, 101 * Mb, 10 * Gb) };
+
+        var layout = ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(2, 3 * Gb));
+
+        var p2 = layout.Partitions.Single(p => p.SourceNumber == 2);
+        Assert.True(p2.Shrunk);
+        Assert.Equal(101 * Mb, p2.StartingOffset);        // 시작 불변
+        Assert.True(p2.LengthBytes >= 3 * Gb && p2.LengthBytes < 10 * Gb);
+        // 앞 파티션 불변.
+        Assert.Equal(1 * Mb, layout.Partitions.Single(p => p.SourceNumber == 1).StartingOffset);
+    }
+
+    [Fact]
+    public void 앞_파티션은_축소에_영향받지_않는다()
+    {
+        var src = WindowsLayout();
+        var layout = ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(3, 4 * Gb));
+
+        foreach (int n in new[] { 1, 2 })   // ESP, MSR — C:(3) 앞
+        {
+            var before = src.Single(p => p.Number == n);
+            var after = layout.Partitions.Single(p => p.SourceNumber == n);
+            Assert.Equal(before.StartingOffset, after.StartingOffset);
+            Assert.Equal(before.LengthBytes, after.LengthBytes);
+            Assert.False(after.Shrunk);
+        }
+    }
+
+    [Fact]
+    public void 축소_파티션은_ShrunkPartition으로_노출된다()
+    {
+        var src = WindowsLayout();
+        var layout = ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(3, 6 * Gb));
+
+        Assert.NotNull(layout.ShrunkPartition);
+        Assert.Equal(3, layout.ShrunkPartition!.SourceNumber);
+        Assert.Null(layout.GrownPartition);
+    }
+
+    [Fact]
+    public void 현재보다_큰_크기는_거부된다()
+    {
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 100 * Mb), Part(2, 101 * Mb, 5 * Gb) };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(2, 8 * Gb)));
+    }
+
+    [Fact]
+    public void 축소량이_1MB_미만이면_거부된다()
+    {
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 100 * Mb), Part(2, 101 * Mb, 5 * Gb) };
+
+        // 5GB에서 겨우 몇백 KB만 줄이려 하면 1MB 정렬 내림으로 delta=0 → 거부.
+        Assert.Throws<InvalidOperationException>(() =>
+            ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(2, 5 * Gb - 500_000)));
+    }
+
+    [Fact]
+    public void 축소_후에도_대상에_안_들어가면_거부된다()
+    {
+        var src = WindowsLayout();   // 복구 파티션 끝이 ~20GB 근처
+
+        // C:를 18GB로 살짝만 줄여선 6GB 대상에 못 들어간다 → 거부(더 줄이라고 안내).
+        Assert.Throws<InvalidOperationException>(() =>
+            ResizePlanner.PlanShrink(src, 6 * Gb, new PartitionShrinkRequest(3, 18 * Gb)));
+    }
+
+    [Fact]
+    public void 없는_파티션_번호는_축소에서도_거부된다()
+    {
+        var src = new List<PartitionInfo> { Part(1, 1 * Mb, 5 * Gb) };
+
+        Assert.Throws<ArgumentException>(() =>
+            ResizePlanner.PlanShrink(src, 20 * Gb, new PartitionShrinkRequest(99, 1 * Gb)));
+    }
+
+    [Fact]
+    public void 축소_배치도_겹치지_않고_대상_안에_있다()
+    {
+        var src = WindowsLayout();
+        var layout = ResizePlanner.PlanShrink(src, 10 * Gb, new PartitionShrinkRequest(3, 4 * Gb));
+
+        var ps = layout.Partitions.OrderBy(p => p.StartingOffset).ToList();
+        for (int i = 1; i < ps.Count; i++)
+            Assert.True(ps[i - 1].EndOffset <= ps[i].StartingOffset, "겹치면 안 됨");
+
+        Assert.True(ps[0].StartingOffset >= 0);
+        Assert.True(ps[^1].EndOffset <= 10L * Gb - ResizePlanner.EndReserve);
+    }
 }
