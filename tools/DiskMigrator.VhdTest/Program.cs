@@ -19,6 +19,28 @@ if (args.Length >= 2 && args[0] == "--bat-info")
     return 0;
 }
 
+// 부팅 USB(WinPE) 재료 탐지 — 읽기 전용, ADK 없이 시스템 내장 재료만 찾습니다.
+if (args.Length >= 1 && args[0] == "--pe-check")
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    using var lfp = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    var dsvc = new DiskMigrator.Windows.Devices.WindowsDiskService(lfp.CreateLogger<DiskMigrator.Windows.Devices.WindowsDiskService>());
+    var ing = await new DiskMigrator.Windows.Pe.WinPeIngredients(dsvc, lfp.CreateLogger("WinPe")).LocateAsync();
+    Console.WriteLine();
+    Console.WriteLine($"Winre.wim    : {ing.WinreWimPath ?? "없음"}" +
+                      (ing.WinreWimPath is null ? "" : $"  ({ing.WinreWimBytes / 1048576.0:F1} MB)"));
+    Console.WriteLine($"boot.sdi     : {ing.BootSdiPath ?? "없음"}");
+    Console.WriteLine($"bootmgfw.efi : {ing.BootMgfwEfiPath ?? "없음"}");
+    Console.WriteLine($"DISM         : {ing.DismPath ?? "없음"}");
+    Console.WriteLine($"bcdedit      : {ing.BcdeditPath ?? "없음"}");
+    foreach (var n in ing.Notes) Console.WriteLine($"  · {n}");
+    Console.WriteLine();
+    Console.WriteLine(ing.AllFound
+        ? "*** 재료 완비 — ADK 설치 없이 부팅 USB를 만들 수 있습니다 ***"
+        : "*** 재료 부족 — 위 메모를 확인하세요 ***");
+    return ing.AllFound ? 0 : 1;
+}
+
 // 하이브 편집(Universal Restore) 진단 — 인자를 미리 처리 (디스크 열거 불필요).
 if (args.Length >= 2 && args[0] == "--hive-read")
     return DiskMigrator.VhdTest.HiveTool.Read(args[1]);
