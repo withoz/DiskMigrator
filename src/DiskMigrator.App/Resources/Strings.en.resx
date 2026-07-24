@@ -93,6 +93,8 @@
   <data name="BackupStartBtn" xml:space="preserve"><value>Start backup</value></data>
   <data name="BackupChoosePath" xml:space="preserve"><value>Save backup image as</value></data>
   <data name="BackupHint" xml:space="preserve"><value>Saves the selected disk as a single .vhdx image — smart clone stores only used areas, VSS keeps it consistent. Restore it later with 'Restore image'.</value></data>
+  <data name="BackupRecommendTitle" xml:space="preserve"><value>Save your current PC (C:\) whole into a single file (recommended)</value></data>
+  <data name="BackupRecommendDesc" xml:space="preserve"><value>Even if you replace the disk or it fails, one restore brings your PC back exactly as it was.</value></data>
   <data name="BackupDoneTitle" xml:space="preserve"><value>Backup complete</value></data>
   <data name="BackupDoneMsgFmt" xml:space="preserve"><value>Image saved: {0}</value></data>
   <data name="BackupImageSizeFmt" xml:space="preserve"><value>Image file size: {0}</value></data>

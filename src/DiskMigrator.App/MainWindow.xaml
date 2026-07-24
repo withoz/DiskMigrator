@@ -825,6 +825,15 @@
             <StackPanel MaxWidth="760" HorizontalAlignment="Left"
                         Visibility="{Binding IsBackupMode, Converter={StaticResource BoolToVisibility}}">
 
+                <!-- 왜 백업해 두어야 하는지 — 기능 설명보다 먼저 말해 줍니다. -->
+                <Border Background="#EDF7F2" BorderBrush="#CDE8DB" BorderThickness="1" CornerRadius="10"
+                        Padding="14,10" Margin="0,4,0,14">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc BackupRecommendTitle}" Style="{StaticResource Body}" FontWeight="Bold" />
+                        <TextBlock Text="{loc:Loc BackupRecommendDesc}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
                     <TextBlock Text="{loc:Loc BackupSourceLabel}" Style="{StaticResource SubHeading}"
                                FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />

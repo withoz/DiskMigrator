@@ -93,6 +93,8 @@
   <data name="BackupStartBtn" xml:space="preserve"><value>백업 시작</value></data>
   <data name="BackupChoosePath" xml:space="preserve"><value>백업 이미지 저장 위치</value></data>
   <data name="BackupHint" xml:space="preserve"><value>선택한 디스크를 통째로 .vhdx 이미지 파일로 저장합니다. 스마트 클론으로 사용 영역만, VSS 스냅샷으로 일관되게 담습니다. 나중에 '이미지 복원'으로 되돌릴 수 있습니다.</value></data>
+  <data name="BackupRecommendTitle" xml:space="preserve"><value>지금 컴퓨터(C:\)를 통째로 파일 하나에 저장해 두세요 (권장)</value></data>
+  <data name="BackupRecommendDesc" xml:space="preserve"><value>디스크를 바꾸거나 고장 나도, 복원하면 쓰던 모습 그대로 살아납니다.</value></data>
   <data name="BackupDoneTitle" xml:space="preserve"><value>백업 완료</value></data>
   <data name="BackupDoneMsgFmt" xml:space="preserve"><value>이미지를 저장했습니다: {0}</value></data>
   <data name="BackupImageSizeFmt" xml:space="preserve"><value>이미지 파일 크기: {0}</value></data>
