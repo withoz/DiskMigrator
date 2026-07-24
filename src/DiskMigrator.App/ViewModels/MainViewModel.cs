@@ -36,6 +36,8 @@ public enum AppMode
     Backup,
     /// <summary>이미지 파일(.vhdx) → 디스크.</summary>
     Restore,
+    /// <summary>클론/복원해 둔 디스크의 부팅 구성 검사·복구(독립 도구 — 복제 없이).</summary>
+    FixBoot,
 }
 
 [SupportedOSPlatform("windows")]
@@ -81,12 +83,14 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsCloneMode))]
     [NotifyPropertyChangedFor(nameof(IsBackupMode))]
     [NotifyPropertyChangedFor(nameof(IsRestoreMode))]
+    [NotifyPropertyChangedFor(nameof(IsFixBootMode))]
     [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
     private AppMode _mode = AppMode.Clone;
 
     public bool IsCloneMode => Mode == AppMode.Clone;
     public bool IsBackupMode => Mode == AppMode.Backup;
     public bool IsRestoreMode => Mode == AppMode.Restore;
+    public bool IsFixBootMode => Mode == AppMode.FixBoot;
 
     /// <summary>
     /// 완료 화면의 부팅 관련 후속 작업(부팅 검사·복구 등)을 보일지. 클론·복원 성공 시 보이고
@@ -104,7 +108,11 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void SetMode(string mode)
     {
-        if (Enum.TryParse<AppMode>(mode, out var m)) Mode = m;
+        if (!Enum.TryParse<AppMode>(mode, out var m) || m == Mode) return;
+        Mode = m;
+        // 부팅 복구 도구의 검사 결과는 그 모드의 화면 내용이므로, 모드를 떠나면 지웁니다
+        // (다른 디스크로 돌아왔을 때 이전 결과가 남아 있으면 오해를 부릅니다).
+        ResetBootCheck();
     }
 
     /// <summary>백업 저장 위치를 고릅니다(.vhdx).</summary>
@@ -1243,6 +1251,18 @@ public sealed partial class MainViewModel : ObservableObject
             if (target is null)
             {
                 BootRepairMessage = Strings.Get("TargetNotFoundAgain");
+                BootRepairSuccess = false;
+                BootRepairRan = true;
+                return;
+            }
+
+            // 지금 실행 중인 시스템 디스크에는 쓰지 않습니다. 클론/복원 대상은 어차피 시스템
+            // 디스크가 될 수 없지만, 독립 부팅 복구 도구에서는 사용자가 아무 디스크나 고를 수
+            // 있으므로 여기서 막습니다 — 이 컴퓨터가 그 디스크로 이미 부팅돼 있다면 BCD는
+            // 정상이고, 건드릴 이유가 없습니다.
+            if (target.IsSystemDisk || target.IsBootDisk)
+            {
+                BootRepairMessage = Strings.Get("FixBootBlockedSystem");
                 BootRepairSuccess = false;
                 BootRepairRan = true;
                 return;

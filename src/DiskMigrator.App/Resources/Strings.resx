@@ -87,6 +87,11 @@
   <data name="ModeClone" xml:space="preserve"><value>디스크 클론</value></data>
   <data name="ModeBackup" xml:space="preserve"><value>이미지 백업</value></data>
   <data name="ModeRestore" xml:space="preserve"><value>이미지 복원</value></data>
+  <data name="ModeFixBoot" xml:space="preserve"><value>부팅 복구</value></data>
+  <data name="FixBootHint" xml:space="preserve"><value>클론·복원해 둔 디스크가 부팅되지 않을 때 쓰는 도구입니다. 그 디스크를 USB 등으로 이 컴퓨터에 연결하고 검사하세요 — 복제 없이 부팅 구성만 검사·복구합니다.</value></data>
+  <data name="FixBootTargetLabel" xml:space="preserve"><value>검사할 디스크</value></data>
+  <data name="FixBootReadOnlyNote" xml:space="preserve"><value>검사는 읽기만 하므로 안전합니다. 문제가 발견되면 복구 버튼이 나타납니다.</value></data>
+  <data name="FixBootBlockedSystem" xml:space="preserve"><value>지금 실행 중인 시스템 디스크에는 부팅 복구를 적용하지 않습니다 — 이 컴퓨터가 이미 그 디스크로 부팅되어 있어 고칠 것이 없습니다.</value></data>
   <data name="Browse" xml:space="preserve"><value>찾아보기…</value></data>
   <data name="BackupSourceLabel" xml:space="preserve"><value>백업할 원본 (읽기)</value></data>
   <data name="BackupPathLabel" xml:space="preserve"><value>저장 위치 (.vhdx)</value></data>

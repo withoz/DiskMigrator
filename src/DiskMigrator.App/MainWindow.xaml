@@ -414,6 +414,18 @@
                             </Style>
                         </Button.Style>
                     </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </StackPanel>
             </Border>
 
@@ -930,6 +942,109 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
+            </StackPanel>
+
+            <!-- ===== 부팅 복구 모드 (독립 도구 — 복제 없이 검사·복구) ===== -->
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+                        Visibility="{Binding IsFixBootMode, Converter={StaticResource BoolToVisibility}}">
+
+                <TextBlock Text="{loc:Loc FixBootHint}" Style="{StaticResource Caption}"
+                           TextWrapping="Wrap" Margin="0,4,0,10" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                    <TextBlock Text="{loc:Loc FixBootTargetLabel}" Style="{StaticResource SubHeading}"
+                               FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                    <Button Command="{Binding RefreshDisksCommand}" Padding="8,3" MinWidth="0" Margin="12,0,0,0"
+                            VerticalAlignment="Center" BorderBrush="{StaticResource Success}">
+                        <TextBlock Text="{loc:Loc Refresh}" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
+                    </Button>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
+                         Style="{StaticResource DiskListStyle}" Height="220" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <Button Content="{loc:Loc BootCheckBtn}" Command="{Binding BootCheckCommand}"
+                            Style="{StaticResource AccentButton}" MinWidth="130" Padding="16,8" />
+                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" MaxWidth="440" Text="{loc:Loc FixBootReadOnlyNote}" />
+                </StackPanel>
+
+                <TextBlock Text="{loc:Loc Checking}" Margin="0,8,0,0" Style="{StaticResource Caption}"
+                           Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
+
+                <!-- 검사 결과 (완료 화면과 같은 표시) -->
+                <StackPanel Margin="0,12,0,0"
+                            Visibility="{Binding BootCheckRan, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding BootCheckVerdict}" TextWrapping="Wrap" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
+                                <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BootCheckVerdictIsGood}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                            BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0">
+                        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding BootCheckItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="74" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" CornerRadius="3" Padding="5,1"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                    Background="{Binding StatusBrush}">
+                                                <TextBlock Text="{Binding Mark}" Foreground="White"
+                                                           Style="{StaticResource Micro}" FontWeight="SemiBold" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding Name}" Style="{StaticResource Body}"
+                                                           FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Micro}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- 부팅 복구 (BCD 장치 참조 문제 시) -->
+                    <StackPanel Margin="0,12,0,0"
+                                Visibility="{Binding BootRepairAvailable, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{loc:Loc RepairBootBtn}" Command="{Binding RepairBootCommand}"
+                                    MinWidth="120" Padding="14,7" />
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}"
+                                       TextWrapping="Wrap" MaxWidth="420" Text="{loc:Loc RepairBootTip}" />
+                        </StackPanel>
+                        <TextBlock Text="{loc:Loc Repairing}" Margin="0,6,0,0" Style="{StaticResource Caption}"
+                                   Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
 
         </StackPanel>

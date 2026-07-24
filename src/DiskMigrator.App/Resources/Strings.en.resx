@@ -87,6 +87,11 @@
   <data name="ModeClone" xml:space="preserve"><value>Clone disk</value></data>
   <data name="ModeBackup" xml:space="preserve"><value>Back up to image</value></data>
   <data name="ModeRestore" xml:space="preserve"><value>Restore image</value></data>
+  <data name="ModeFixBoot" xml:space="preserve"><value>Boot repair</value></data>
+  <data name="FixBootHint" xml:space="preserve"><value>Use this when a cloned or restored disk won't boot. Connect that disk to this PC (e.g. via USB) and inspect it — no copying involved, only the boot configuration is checked and repaired.</value></data>
+  <data name="FixBootTargetLabel" xml:space="preserve"><value>Disk to inspect</value></data>
+  <data name="FixBootReadOnlyNote" xml:space="preserve"><value>The check is read-only and safe. If a problem is found, a repair button appears.</value></data>
+  <data name="FixBootBlockedSystem" xml:space="preserve"><value>Boot repair is not applied to the currently running system disk — this PC already booted from it, so there is nothing to fix.</value></data>
   <data name="Browse" xml:space="preserve"><value>Browse…</value></data>
   <data name="BackupSourceLabel" xml:space="preserve"><value>Source to back up (read)</value></data>
   <data name="BackupPathLabel" xml:space="preserve"><value>Save location (.vhdx)</value></data>

@@ -28,7 +28,7 @@
   h3 { font-size: 15.5px; margin: 20px 0 8px; }
   p { margin: 8px 0; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 12px 0; }
-  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
   .mode { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
   .mode b { color: var(--accent); font-size: 15.5px; }
@@ -64,8 +64,7 @@
   <p>윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 — 컴퓨터 초보자용 안내</p>
 </header>
 
-<h2>이 프로그램은 무엇을 하나요?</h2>
-<div class="card">
+<div class="card" style="margin-top:0;">
   <p>지금 쓰는 컴퓨터의 디스크를 <b>윈도우·프로그램·파일까지 통째로</b> 새로운 디스크에 복사하거나,
   파일 하나로 만들어 보관했다가 나중에 필요시 되돌립니다. 복사된 디스크는 <b>그대로 부팅</b>되므로
   윈도우를 새로 설치할 필요가 없습니다.</p>
@@ -81,11 +80,12 @@
   <p>• 데이터 양에 따라 30분~수 시간 걸립니다. 도중에 컴퓨터를 끄지 마세요.</p>
 </div>
 
-<h2>세 가지 모드 — 화면 위쪽에서 선택</h2>
+<h2>네 가지 모드 — 화면 위쪽에서 선택</h2>
 <div class="modes">
   <div class="mode"><b>디스크 클론</b><p>디스크 → 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
   <div class="mode"><b>이미지 백업</b><p>디스크 → 파일(.vhdx)로 보관.<br>고장 대비 보험용.</p></div>
   <div class="mode"><b>이미지 복원</b><p>보관한 파일 → 디스크로 복구.<br>백업해 둔 시스템 되살리기.</p></div>
+  <div class="mode"><b>부팅 복구</b><p>복사해 둔 디스크가 안 켜질 때.<br>복제 없이 검사하고 고칩니다.</p></div>
 </div>
 
 <h2>① 디스크 클론 — 따라하기</h2>
@@ -125,9 +125,11 @@
 
 <h2>부팅이 안 될 때</h2>
 <div class="card">
-  <p><b>당황하지 마세요.</b> 그 디스크를 다시 USB로 원래 컴퓨터에 연결하고, 완료 화면(또는 다시 클론/복원)의
-  <b>부팅 검사 → 부팅 복구</b> 버튼을 누르면 대부분 해결됩니다. 필요하면 <b>UEFI로 변환</b>도 눌러 보세요
-  (옛날 방식으로 설치된 윈도우는 요즘 컴퓨터에서 이 변환이 필요합니다).</p>
+  <p><b>당황하지 마세요.</b> 대부분 부팅 설정이 살짝 어긋난 것이라 고칠 수 있습니다.</p>
+  <p>• 그 디스크를 USB 등으로 원래 컴퓨터에 연결하고 → <b>부팅 복구</b> 탭에서 디스크를 고른 뒤
+  <b>부팅 검사</b>를 누르세요. 검사는 읽기만 해서 안전하고, 문제가 발견되면 <b>복구 버튼</b>이 나타납니다.</p>
+  <p>• 클론/복원이 끝난 직후라면 완료 화면에도 같은 버튼이 있습니다. (완료 시 자동으로 한 번 실행됩니다.)</p>
+  <p>• 옛날 방식(BIOS)으로 설치된 윈도우가 요즘 컴퓨터에서 안 켜지면 완료 화면의 <b>UEFI로 변환</b>이 필요합니다.</p>
 </div>
 
 <h2>자주 묻는 질문</h2>
