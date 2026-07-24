@@ -88,8 +88,11 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsBackupMode => Mode == AppMode.Backup;
     public bool IsRestoreMode => Mode == AppMode.Restore;
 
-    /// <summary>완료 화면의 클론 전용 후속 작업(부팅 검사·UEFI 변환 등)을 보일지 — 클론 모드 성공 시만.</summary>
-    public bool ShowCloneResultActions => ResultIsSuccess && IsCloneMode;
+    /// <summary>
+    /// 완료 화면의 부팅 관련 후속 작업(부팅 검사·복구 등)을 보일지. 클론·복원 성공 시 보이고
+    /// 백업 모드에선 숨깁니다(백업은 대상 디스크가 없어 부팅 검사가 무의미).
+    /// </summary>
+    public bool ShowCloneResultActions => ResultIsSuccess && !IsBackupMode;
 
     /// <summary>백업 저장 경로 또는 복원 원본 경로(.vhdx).</summary>
     [ObservableProperty]
@@ -1721,10 +1724,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            // 취소된 백업은 불완전한 .vhdx를 남기므로 지웁니다(서비스가 이미 VHDX를 detach함).
+            TryDeletePartialImage(imagePath);
             ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("BackupCancelledMsg"), "");
         }
         catch (Exception ex)
         {
+            TryDeletePartialImage(imagePath);
             _logger.LogError(ex, "이미지 백업에 실패했습니다.");
             ShowFailure(Strings.Get("ResTitleFailed"), ex.Message, Strings.Get("FailSeeLog"));
         }
@@ -1735,6 +1741,19 @@ public sealed partial class MainViewModel : ObservableObject
             _pause?.Dispose();
             _pause = null;
             Stage = AppStage.Finished;
+        }
+    }
+
+    /// <summary>취소·실패로 남은 불완전한 백업 이미지 파일을 지웁니다(best-effort).</summary>
+    private void TryDeletePartialImage(string imagePath)
+    {
+        try
+        {
+            if (File.Exists(imagePath)) File.Delete(imagePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "불완전한 백업 이미지를 지우지 못했습니다: {Path}", imagePath);
         }
     }
 
@@ -1880,6 +1899,31 @@ public sealed partial class MainViewModel : ObservableObject
             _pause = null;
             Stage = AppStage.Finished;
         }
+
+        // 복원 후처리 — 복원은 곧 "백업 파일에서의 클론"이므로, 복원한 시스템 디스크도 다른
+        // 하드웨어에서 부팅되도록 클론과 같은 절차를 밟습니다: (옵션)UEFI 자동 변환 → 부팅 검사 →
+        // 자동 부팅 복구. (GPT 보정·Universal Restore는 ImageRestoreService가 이미 수행함.)
+        if (ResultIsSuccess)
+        {
+            // 복원된 대상을 다시 열거해, BIOS 전용 배치면 UEFI 변환을 제안/자동 실행합니다.
+            var fresh = await ResolveCurrentTargetAsync();
+            if (fresh is not null)
+                UefiConvertAvailable = UefiConverter.NeedsConversion(fresh);
+
+            if (AutoConvertUefi && UefiConvertAvailable)
+            {
+                _logger.LogInformation("복원 후 자동 UEFI 변환: 옵션 켜짐 + BIOS 전용 원본 — 실행합니다.");
+                await ConvertToUefiAsync();
+            }
+
+            await BootCheckAsync();
+
+            if (_deviceRefIsOnlyFatalFailure)
+            {
+                _logger.LogInformation("복원 후 자동 부팅 복구: 치명 실패가 BCD 장치 참조 하나뿐 — 실행합니다.");
+                await RepairBootAsync();
+            }
+        }
     }
 
     private void ShowRestoreResult(ImageRestoreReport report, DiskInfo target)
@@ -1911,6 +1955,13 @@ public sealed partial class MainViewModel : ObservableObject
         if (report.UniversalRestore is { } u) details.Add(Strings.Format("ResNewHwFmt", u.Message));
 
         ResultDetails = string.Join("\n", details);
+
+        // 후속 작업 가용성. UEFI 변환 가용성은 복원된 배치를 봐야 하므로 복원 후처리에서 재열거로
+        // 판정합니다. 안전 제거·파티션 확장은 여기서 정합니다.
+        SafeRemoveRan = false;
+        SafeRemoveAvailable = target.IsRemovable || target.BusType == DiskBusType.Usb;
+        // 대상이 이미지보다 커서 GPT 백업 헤더를 끝으로 옮겼으면, 그만큼 미할당이 생겨 확장할 수 있습니다.
+        PartitionExpandAvailable = ok && report.GptRepair is { WasRepaired: true };
     }
 
     // --- 업데이트 확인 -----------------------------------------------------

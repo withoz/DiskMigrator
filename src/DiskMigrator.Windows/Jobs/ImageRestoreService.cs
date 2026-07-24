@@ -67,7 +67,19 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
         var targetDevice = diskService.OpenWriteExclusive(target);
         try
         {
-            long length = Math.Min(imageLength, AlignDown(targetDevice.Length, targetDevice.SectorSize));
+            // 대상이 이미지(원본 디스크 전체)보다 작으면 조용히 잘라 넣지 않습니다 — 파티션
+            // 테이블은 원본 크기를 가리키는데 데이터가 잘려 부팅·사용 불가가 됩니다. 클론과 같은
+            // 규칙으로 차단합니다(대상이 크면 뒤에서 GPT 백업 헤더를 보정해 남는 공간을 씁니다).
+            long targetLength = AlignDown(targetDevice.Length, targetDevice.SectorSize);
+            if (targetLength < imageLength)
+            {
+                throw new InvalidOperationException(
+                    $"대상 디스크가 이미지보다 작아 복원할 수 없습니다. " +
+                    $"이미지 {imageLength:N0}바이트, 대상 {targetLength:N0}바이트. " +
+                    "이미지 전체가 들어가는 크기 이상의 디스크에 복원하십시오.");
+            }
+
+            long length = imageLength;
 
             var plan = new ClonePlan
             {
