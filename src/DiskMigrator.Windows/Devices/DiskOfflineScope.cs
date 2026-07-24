@@ -57,10 +57,19 @@ public sealed class DiskOfflineScope : IDisposable
     public static DiskOfflineScope Take(DiskInfo disk, ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(disk);
+        return Take(disk.DevicePath, disk.DeviceNumber, logger);
+    }
+
+    /// <summary>
+    /// 디스크 경로·번호만으로 오프라인 스코프를 잡습니다(부착한 VHDX 등, DiskInfo가 없는 대상).
+    /// </summary>
+    public static DiskOfflineScope Take(string devicePath, int deviceNumber, ILogger? logger = null)
+    {
+        ArgumentNullException.ThrowIfNull(devicePath);
         var log = logger ?? NullLogger.Instance;
 
         var handle = NativeMethods.CreateFile(
-            disk.DevicePath,
+            devicePath,
             NativeMethods.GENERIC_READ | NativeMethods.GENERIC_WRITE,
             NativeMethods.FILE_SHARE_READ | NativeMethods.FILE_SHARE_WRITE,
             0, NativeMethods.OPEN_EXISTING, NativeMethods.FILE_ATTRIBUTE_NORMAL, 0);
@@ -70,7 +79,7 @@ public sealed class DiskOfflineScope : IDisposable
             int error = Marshal.GetLastWin32Error();
             handle.Dispose();
             throw new Win32Exception(error,
-                $"{disk.DevicePath} 을(를) 속성 변경용으로 열지 못했습니다.");
+                $"{devicePath} 을(를) 속성 변경용으로 열지 못했습니다.");
         }
 
         try
@@ -79,7 +88,7 @@ public sealed class DiskOfflineScope : IDisposable
 
             log.LogInformation(
                 "대상 디스크 {Disk} 현재 속성: 오프라인={Offline}, 읽기전용={ReadOnly}",
-                disk.DeviceNumber, wasOffline, wasReadOnly);
+                deviceNumber, wasOffline, wasReadOnly);
 
             // 오프라인으로 내리고, 혹시 읽기 전용이면 해제합니다.
             SetAttributes(
@@ -90,9 +99,9 @@ public sealed class DiskOfflineScope : IDisposable
             // 속성 변경을 실제 상태에 반영시킵니다.
             DiskIoctl.TryControl(handle, NativeMethods.IOCTL_DISK_UPDATE_PROPERTIES);
 
-            log.LogInformation("대상 디스크 {Disk} 을(를) 오프라인으로 내렸습니다.", disk.DeviceNumber);
+            log.LogInformation("대상 디스크 {Disk} 을(를) 오프라인으로 내렸습니다.", deviceNumber);
 
-            return new DiskOfflineScope(handle, disk.DeviceNumber, wasOffline, wasReadOnly, log);
+            return new DiskOfflineScope(handle, deviceNumber, wasOffline, wasReadOnly, log);
         }
         catch
         {

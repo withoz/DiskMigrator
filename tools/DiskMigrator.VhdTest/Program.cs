@@ -17,6 +17,22 @@ if (args.Length >= 2 && args[0] == "--hive-fix")
     return DiskMigrator.VhdTest.HiveTool.Fix(args[1], lf0.CreateLogger("HiveFix"));
 }
 
+// 이미지 백업/복원 — 디스크 번호 파싱 전에 조기 처리합니다.
+//   --backup <원본디스크번호> <이미지.vhdx>   : 디스크 → 새 VHDX
+//   --restore <이미지.vhdx> <대상디스크번호>  : VHDX → 디스크(가상 디스크만 허용)
+if (args.Length >= 3 && args[0] == "--backup" && int.TryParse(args[1], out int backupSrc))
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    using var lfb = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    return await DiskMigrator.VhdTest.ImageTool.BackupAsync(backupSrc, args[2], !args.Contains("--no-verify"), lfb);
+}
+if (args.Length >= 3 && args[0] == "--restore" && int.TryParse(args[2], out int restoreTgt))
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    using var lfr = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    return await DiskMigrator.VhdTest.ImageTool.RestoreAsync(args[1], restoreTgt, !args.Contains("--no-verify"), lfr);
+}
+
 // 가상 디스크(VHD)를 대상으로 클론 전체 경로를 실제로 실행해 보는 통합 테스트 도구입니다.
 // 쓰기 경로 · 볼륨 잠금 · VSS 스냅샷 · GPT 보정은 단위 테스트로는 확인할 수 없습니다.
 
