@@ -109,11 +109,11 @@ attach vdisk
     $sourceGuid = (Get-Disk -Number $sourceNum).Guid
     Write-Ok "원본 준비 완료: ${srcLetter}: (디스크 $sourceNum, 파일 $($expected.Count)개, GUID $sourceGuid)"
 
-    # --- 백업 ------------------------------------------------------------
-    Write-Step "백업: 디스크 $sourceNum → $($script:Image)"
-    & $exe --backup $sourceNum $script:Image
+    # --- 백업 (VSS 스냅샷 + 스마트 클론) ---------------------------------
+    Write-Step "백업: 디스크 $sourceNum → $($script:Image)  (--snapshot --skip-unused)"
+    & $exe --backup $sourceNum $script:Image --snapshot --skip-unused
     if ($LASTEXITCODE -ne 0) { Write-Fail "백업 도구 exit $LASTEXITCODE"; $failures++ }
-    else { Write-Ok "백업 완료" }
+    else { Write-Ok "백업 완료 (스냅샷+스마트 클론)" }
 
     if (Test-Path $script:Image) {
         $imgMb = [math]::Round((Get-Item $script:Image).Length / 1MB, 1)

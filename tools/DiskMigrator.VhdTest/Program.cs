@@ -24,7 +24,9 @@ if (args.Length >= 3 && args[0] == "--backup" && int.TryParse(args[1], out int b
 {
     Console.OutputEncoding = System.Text.Encoding.UTF8;
     using var lfb = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
-    return await DiskMigrator.VhdTest.ImageTool.BackupAsync(backupSrc, args[2], !args.Contains("--no-verify"), lfb);
+    return await DiskMigrator.VhdTest.ImageTool.BackupAsync(
+        backupSrc, args[2], args.Contains("--snapshot"), args.Contains("--skip-unused"),
+        !args.Contains("--no-verify"), lfb);
 }
 if (args.Length >= 3 && args[0] == "--restore" && int.TryParse(args[2], out int restoreTgt))
 {

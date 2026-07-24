@@ -3,6 +3,7 @@ using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 using DiskMigrator.Windows.Devices;
 using DiskMigrator.Windows.Jobs;
+using DiskMigrator.Windows.Snapshots;
 using Microsoft.Extensions.Logging;
 
 namespace DiskMigrator.VhdTest;
@@ -14,7 +15,8 @@ namespace DiskMigrator.VhdTest;
 /// </summary>
 internal static class ImageTool
 {
-    public static async Task<int> BackupAsync(int sourceDiskNumber, string imagePath, bool verify, ILoggerFactory lf)
+    public static async Task<int> BackupAsync(
+        int sourceDiskNumber, string imagePath, bool useSnapshot, bool skipUnused, bool verify, ILoggerFactory lf)
     {
         var diskService = new WindowsDiskService(lf.CreateLogger<WindowsDiskService>());
         if (!diskService.IsElevated) { Console.Error.WriteLine("오류: 관리자 권한이 필요합니다."); return 3; }
@@ -29,12 +31,17 @@ internal static class ImageTool
         var source = disks.FirstOrDefault(d => d.DeviceNumber == sourceDiskNumber);
         if (source is null) { Console.Error.WriteLine($"디스크 {sourceDiskNumber}을(를) 찾지 못했습니다."); return 2; }
 
-        Console.WriteLine($"백업: [{source.DeviceNumber}] {source.Model} " +
-                          $"({SizeFormatter.Format(source.SizeBytes)}) → {imagePath}");
+        // 스마트 클론(빈 영역 건너뛰기)은 NTFS 할당 비트맵을 스냅샷에서 읽으므로 스냅샷이 전제입니다.
+        if (skipUnused) useSnapshot = true;
 
+        Console.WriteLine($"백업: [{source.DeviceNumber}] {source.Model} " +
+                          $"({SizeFormatter.Format(source.SizeBytes)}) → {imagePath}  " +
+                          $"(스냅샷={useSnapshot}, 스마트={skipUnused})");
+
+        var snapshotProvider = new VssSnapshotProvider(lf.CreateLogger<VssSnapshotProvider>());
         var options = new CloneOptions { BufferSize = 4 * 1024 * 1024, VerifyAfterClone = verify };
-        var svc = new ImageBackupService(lf);
-        var result = await svc.BackupAsync(source.DevicePath, imagePath, options, MakeProgress());
+        var svc = new ImageBackupService(diskService, snapshotProvider, lf);
+        var result = await svc.BackupAsync(source, imagePath, useSnapshot, skipUnused, options, MakeProgress());
 
         return Report(result, imagePath);
     }
