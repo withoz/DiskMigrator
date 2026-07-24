@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace DiskMigrator.Core.Engine;
 
 /// <summary>
@@ -18,6 +20,34 @@ public static class AllocationBitmap
     public readonly record struct Run(long OffsetBytes, long LengthBytes)
     {
         public long EndBytes => OffsetBytes + LengthBytes;
+    }
+
+    /// <summary>볼륨 사용량 측정 결과 — 축소 리사이즈의 안전한 목표 크기를 정하는 데 씁니다.</summary>
+    /// <param name="TotalBytes">볼륨 전체 크기(클러스터 수 × 클러스터 크기).</param>
+    /// <param name="UsedBytes">할당된 클러스터의 총 크기 — 이론적 최소(완벽히 조각모음했을 때).</param>
+    /// <param name="HighestUsedByte">
+    /// 마지막 할당 클러스터의 끝(배타적). 파일을 하나도 <b>안 옮기고</b> 줄일 수 있는 <b>보장된
+    /// 하한</b>입니다 — 이 위로 줄이면 아무것도 재배치할 필요가 없어 Windows 축소가 반드시
+    /// 성공합니다. 조각난 볼륨에서는 <see cref="UsedBytes"/>보다 훨씬 클 수 있습니다.
+    /// </param>
+    public readonly record struct NtfsUsage(long TotalBytes, long UsedBytes, long HighestUsedByte)
+    {
+        /// <summary>자유 공간(전체 − 사용).</summary>
+        public long FreeBytes => TotalBytes - UsedBytes;
+
+        /// <summary>
+        /// 파일을 안 옮기고 안전하게 줄일 수 있는 최소 크기 제안 — 마지막 사용 클러스터 끝에 여유를
+        /// 더한 값입니다. 시스템 볼륨은 페이지파일·업데이트·임시파일에 숨 쉴 공간이 필요합니다.
+        /// </summary>
+        /// <param name="headroomFraction">여유 비율(0.15 = 마지막 사용 끝의 15%).</param>
+        /// <param name="minHeadroomBytes">비율이 작아도 최소 이만큼은 더합니다(기본 2GB).</param>
+        /// <returns>제안 크기(현재 전체 크기를 넘지 않도록 클램프). 사용이 없으면 여유분만.</returns>
+        public long SuggestedMinShrinkBytes(double headroomFraction = 0.15, long minHeadroomBytes = 2L << 30)
+        {
+            if (HighestUsedByte <= 0) return Math.Min(minHeadroomBytes, TotalBytes);
+            long headroom = Math.Max((long)(HighestUsedByte * headroomFraction), minHeadroomBytes);
+            return Math.Min(HighestUsedByte + headroom, TotalBytes);
+        }
     }
 
     /// <summary>
@@ -85,6 +115,52 @@ public static class AllocationBitmap
             AddRun(runs, runStartCluster, runEndCluster, bytesPerCluster, capBytes);
 
         return runs;
+    }
+
+    /// <summary>
+    /// 할당 비트맵에서 볼륨 사용량을 측정합니다(사용 바이트 + 파일 이동 없는 축소 하한).
+    /// </summary>
+    /// <param name="bitmap">클러스터 할당 비트맵. LSB-first.</param>
+    /// <param name="clusterCount">유효한 클러스터(비트) 수.</param>
+    /// <param name="bytesPerCluster">클러스터 크기(바이트).</param>
+    public static NtfsUsage MeasureUsage(ReadOnlySpan<byte> bitmap, long clusterCount, long bytesPerCluster)
+    {
+        if (clusterCount <= 0 || bytesPerCluster <= 0) return new NtfsUsage(0, 0, 0);
+
+        long totalBytes = clusterCount * bytesPerCluster;
+        long maxByBitmap = (long)bitmap.Length * 8;
+        long clusters = Math.Min(clusterCount, maxByBitmap);
+
+        int fullBytes = (int)(clusters / 8);
+        int remainderBits = (int)(clusters % 8);
+
+        long usedClusters = 0;
+        long highestUsedCluster = -1;
+
+        // 완전한 바이트: popcount로 세고, non-zero면 그 바이트의 최고 set 비트로 하한을 갱신합니다.
+        // 오름차순 처리라 마지막 non-zero 바이트가 자연히 최고 클러스터를 남깁니다.
+        for (int i = 0; i < fullBytes; i++)
+        {
+            byte b = bitmap[i];
+            if (b == 0) continue;
+            usedClusters += BitOperations.PopCount((uint)b);
+            highestUsedCluster = (long)i * 8 + (31 - BitOperations.LeadingZeroCount((uint)b));
+        }
+
+        // 부분 바이트(clusterCount가 8의 배수가 아닐 때): 꼬리 패딩 비트를 마스킹해 무시합니다.
+        if (remainderBits > 0 && fullBytes < bitmap.Length)
+        {
+            byte b = (byte)(bitmap[fullBytes] & ((1 << remainderBits) - 1));
+            if (b != 0)
+            {
+                usedClusters += BitOperations.PopCount((uint)b);
+                highestUsedCluster = (long)fullBytes * 8 + (31 - BitOperations.LeadingZeroCount((uint)b));
+            }
+        }
+
+        long usedBytes = usedClusters * bytesPerCluster;
+        long highestUsedByte = highestUsedCluster < 0 ? 0 : (highestUsedCluster + 1) * bytesPerCluster;
+        return new NtfsUsage(totalBytes, usedBytes, highestUsedByte);
     }
 
     private static void AddRun(List<Run> runs, long startCluster, long endCluster, long bpc, long capBytes)

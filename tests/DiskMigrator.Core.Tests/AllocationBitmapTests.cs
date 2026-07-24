@@ -104,4 +104,99 @@ public class AllocationBitmapTests
         Assert.Single(runs);
         Assert.Equal(new AllocationBitmap.Run(0, 3 * Bpc), runs[0]);
     }
+
+    // --- 사용량 측정(MeasureUsage) — 축소 한계 산정 ---------------------------
+
+    [Fact]
+    public void 빈_볼륨은_사용_0이고_전체는_클러스터수로_계산된다()
+    {
+        var u = AllocationBitmap.MeasureUsage(Bitmap(64), 64, Bpc);
+
+        Assert.Equal(64 * Bpc, u.TotalBytes);
+        Assert.Equal(0, u.UsedBytes);
+        Assert.Equal(0, u.HighestUsedByte);
+        Assert.Equal(64 * Bpc, u.FreeBytes);
+    }
+
+    [Fact]
+    public void 사용_클러스터_수를_바이트로_센다()
+    {
+        // 클러스터 0,1,2,10 할당 = 4개.
+        var u = AllocationBitmap.MeasureUsage(Bitmap(64, 0, 1, 2, 10), 64, Bpc);
+
+        Assert.Equal(4 * Bpc, u.UsedBytes);
+        Assert.Equal(60 * Bpc, u.FreeBytes);
+    }
+
+    [Fact]
+    public void 마지막_사용_클러스터의_끝이_축소_하한이다()
+    {
+        // 사용은 4클러스터지만 마지막이 클러스터 40 → 하한은 (40+1)*Bpc.
+        // 조각난 볼륨: 하한(41)이 사용량(4)보다 훨씬 크다 — 파일을 안 옮기면 여기까지만 줄어든다.
+        var u = AllocationBitmap.MeasureUsage(Bitmap(64, 0, 1, 2, 40), 64, Bpc);
+
+        Assert.Equal(41 * Bpc, u.HighestUsedByte);
+        Assert.Equal(4 * Bpc, u.UsedBytes);
+        Assert.True(u.HighestUsedByte > u.UsedBytes);
+    }
+
+    [Fact]
+    public void 하한은_사용량_이상이다()
+    {
+        var u = AllocationBitmap.MeasureUsage(Bitmap(100, 0, 1, 2, 3, 99), 100, Bpc);
+
+        Assert.True(u.HighestUsedByte >= u.UsedBytes);
+        Assert.Equal(100 * Bpc, u.HighestUsedByte);   // 클러스터 99가 마지막 → 100*Bpc
+        Assert.Equal(5 * Bpc, u.UsedBytes);
+    }
+
+    [Fact]
+    public void 꼬리_패딩_비트는_사용량에서_무시된다()
+    {
+        // 1바이트 전부 1이지만 유효 클러스터는 3개 → 사용 3, 하한 3*Bpc.
+        var u = AllocationBitmap.MeasureUsage(new byte[] { 0b1111_1111 }, 3, Bpc);
+
+        Assert.Equal(3 * Bpc, u.UsedBytes);
+        Assert.Equal(3 * Bpc, u.HighestUsedByte);
+    }
+
+    [Fact]
+    public void 최고_비트_계산은_바이트_경계를_넘어_정확하다()
+    {
+        // 클러스터 8(두 번째 바이트의 bit0)만 할당 → 하한은 9*Bpc, 사용 1.
+        var u = AllocationBitmap.MeasureUsage(Bitmap(64, 8), 64, Bpc);
+
+        Assert.Equal(1 * Bpc, u.UsedBytes);
+        Assert.Equal(9 * Bpc, u.HighestUsedByte);
+    }
+
+    [Fact]
+    public void 제안_최소_크기는_마지막_사용_끝에_여유를_더한다()
+    {
+        long gb = 1L << 30;
+        // 마지막 사용 끝 100GB, 여유 15% → 115GB (전체 200GB 이내).
+        var u = new AllocationBitmap.NtfsUsage(200 * gb, 40 * gb, 100 * gb);
+
+        Assert.Equal(115 * gb, u.SuggestedMinShrinkBytes(0.15, minHeadroomBytes: 0));
+    }
+
+    [Fact]
+    public void 제안_최소_크기는_전체를_넘지_않는다()
+    {
+        long gb = 1L << 30;
+        // 거의 꽉 찬 볼륨: 190GB + 15% = 218GB > 200GB → 전체로 클램프.
+        var u = new AllocationBitmap.NtfsUsage(200 * gb, 180 * gb, 190 * gb);
+
+        Assert.Equal(200 * gb, u.SuggestedMinShrinkBytes(0.15, minHeadroomBytes: 0));
+    }
+
+    [Fact]
+    public void 제안_최소_크기는_최소_여유분을_보장한다()
+    {
+        long gb = 1L << 30;
+        // 마지막 끝 10GB, 15%=1.5GB지만 최소 여유 2GB가 더 크다 → 12GB.
+        var u = new AllocationBitmap.NtfsUsage(200 * gb, 5 * gb, 10 * gb);
+
+        Assert.Equal(12 * gb, u.SuggestedMinShrinkBytes(0.15, minHeadroomBytes: 2L << 30));
+    }
 }

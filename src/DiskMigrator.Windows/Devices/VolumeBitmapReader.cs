@@ -46,6 +46,27 @@ internal sealed class VolumeBitmapReader(ILogger? logger = null)
         return runs;
     }
 
+    /// <summary>
+    /// 볼륨의 NTFS 사용량을 측정합니다(사용 바이트 + 파일 이동 없는 축소 하한). 볼륨을 수정하지
+    /// 않으며, 축소 <b>제안</b> 용도라 라이브 볼륨에서 읽어도 됩니다(이 값으로 데이터를 복사하지
+    /// 않으므로 스마트 클론과 달리 스냅샷이 필수는 아닙니다).
+    /// </summary>
+    public AllocationBitmap.NtfsUsage MeasureUsage(string volumePath)
+    {
+        using var handle = OpenVolume(volumePath);
+
+        var (bytesPerCluster, totalClusters) = ReadNtfsData(handle);
+        byte[] bitmap = ReadBitmap(handle, totalClusters);
+
+        var usage = AllocationBitmap.MeasureUsage(bitmap, totalClusters, bytesPerCluster);
+        _logger.LogInformation(
+            "NTFS 사용량: 전체 {Total:N0} / 사용 {Used:N0} / 마지막 사용 끝 {High:N0} 바이트 " +
+            "(제안 최소 축소 {Sug:N0}).",
+            usage.TotalBytes, usage.UsedBytes, usage.HighestUsedByte, usage.SuggestedMinShrinkBytes());
+
+        return usage;
+    }
+
     private static SafeFileHandle OpenVolume(string volumePath)
     {
         // FSCTL은 후행 백슬래시 없는 볼륨 경로를 받습니다.
