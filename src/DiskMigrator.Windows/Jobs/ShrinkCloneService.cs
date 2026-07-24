@@ -37,7 +37,8 @@ public sealed class ShrinkCloneService(
     public async Task<ImageRestoreReport> RunAsync(
         DiskInfo source, DiskInfo target, ShrinkCloneDecision decision, string tempImagePath,
         bool useSnapshot, bool universalRestore, CloneOptions options,
-        IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
+        IProgress<CloneProgress>? progress = null,
+        PauseController? pause = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(target);
@@ -77,7 +78,7 @@ public sealed class ShrinkCloneService(
             var backupSvc = new ImageBackupService(diskService, snapshotProvider, _loggerFactory);
             var backupResult = await backupSvc.BackupAsync(
                 source, tempImagePath, useSnapshot, skipUnusedBlocks: true,
-                backupOptions, backupProgress, ct);
+                backupOptions, backupProgress, pause, ct);
 
             if (backupResult.Outcome is not (CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors) ||
                 backupResult.VerificationPassed == false)
@@ -91,7 +92,7 @@ public sealed class ShrinkCloneService(
             var restoreSvc = new ImageRestoreService(diskService, _loggerFactory);
             var report = await restoreSvc.RestoreWithShrinkAsync(
                 tempImagePath, target, decision.PartitionNumber, decision.NewBytes,
-                universalRestore, options, restoreProgress, ct);
+                universalRestore, options, restoreProgress, pause, ct);
 
             logger.LogInformation("=== 축소 클론 종료: {Outcome} ===", report.Result.Outcome);
             return report;

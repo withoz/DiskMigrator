@@ -38,7 +38,8 @@ public sealed class ImageBackupService(
     /// <param name="skipUnusedBlocks">true면 스마트 클론(NTFS 빈 영역 건너뛰기). 스냅샷이 전제입니다.</param>
     public async Task<CloneResult> BackupAsync(
         DiskInfo source, string imagePath, bool useSnapshot, bool skipUnusedBlocks,
-        CloneOptions options, IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
+        CloneOptions options, IProgress<CloneProgress>? progress = null,
+        PauseController? pause = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(imagePath);
@@ -75,7 +76,7 @@ public sealed class ImageBackupService(
         };
 
         var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-        var result = await engine.RunAsync(plan, options, progress, null, ct);
+        var result = await engine.RunAsync(plan, options, progress, pause, ct);
 
         target.Flush();
         logger.LogInformation("이미지 백업 종료: {Outcome}", result.Outcome);

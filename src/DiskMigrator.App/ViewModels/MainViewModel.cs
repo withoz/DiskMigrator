@@ -1524,7 +1524,7 @@ public sealed partial class MainViewModel : ObservableObject
                 var shrinkSvc = new ShrinkCloneService(_diskService, _snapshotProvider, _loggerFactory);
                 var shrinkReport = await shrinkSvc.RunAsync(
                     source, target, shrinkClone, shrinkTempImage,
-                    UseSnapshot, UniversalRestore, options, progress, _cts.Token);
+                    UseSnapshot, UniversalRestore, options, progress, _pause, _cts.Token);
 
                 ShowResult(new CloneJobReport
                 {
@@ -1783,7 +1783,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             var svc = new ImageBackupService(_diskService, _snapshotProvider, _loggerFactory);
             var result = await svc.BackupAsync(
-                source, imagePath, UseSnapshot, SkipUnusedBlocks, options, progress, _cts.Token);
+                source, imagePath, UseSnapshot, SkipUnusedBlocks, options, progress, _pause, _cts.Token);
 
             ShowBackupResult(result, imagePath);
         }
@@ -2139,11 +2139,13 @@ public sealed partial class MainViewModel : ObservableObject
                     "자동 축소 복원: 파티션 {Part} {Cur:N0} → {New:N0} 바이트 (대상이 이미지보다 작음).",
                     auto.PartitionNumber, auto.CurrentBytes, auto.NewBytes);
                 report = await svc.RestoreWithShrinkAsync(
-                    imagePath, target, auto.PartitionNumber, auto.NewBytes, UniversalRestore, options, progress, _cts.Token);
+                    imagePath, target, auto.PartitionNumber, auto.NewBytes, UniversalRestore,
+                    options, progress, _pause, _cts.Token);
             }
             else
             {
-                report = await svc.RestoreAsync(imagePath, target, UniversalRestore, options, progress, _cts.Token);
+                report = await svc.RestoreAsync(
+                    imagePath, target, UniversalRestore, options, progress, _pause, _cts.Token);
             }
 
             ShowRestoreResult(report, target);
@@ -2222,6 +2224,7 @@ public sealed partial class MainViewModel : ObservableObject
             null => Strings.Get("ResVerifyNone"),
         });
 
+        if (report.Shrink is { } s) details.Add(Strings.Format("ResShrinkFmt", s.Message));
         if (report.GptRepair is { } g) details.Add(Strings.Format("ResPartTableFmt", g.Description));
         if (report.UniversalRestore is { } u) details.Add(Strings.Format("ResNewHwFmt", u.Message));
 
@@ -2231,8 +2234,10 @@ public sealed partial class MainViewModel : ObservableObject
         // 판정합니다. 안전 제거·파티션 확장은 여기서 정합니다.
         SafeRemoveRan = false;
         SafeRemoveAvailable = target.IsRemovable || target.BusType == DiskBusType.Usb;
-        // 대상이 이미지보다 커서 GPT 백업 헤더를 끝으로 옮겼으면, 그만큼 미할당이 생겨 확장할 수 있습니다.
-        PartitionExpandAvailable = ok && report.GptRepair is { WasRepaired: true };
+        // 대상이 이미지보다 커서 GPT 백업 헤더를 끝으로 옮겼으면, 그만큼 미할당이 생겨 확장할 수
+        // 있습니다. 축소 복원은 대상을 정확히 채우도록 줄인 것이라 확장할 공간이 없습니다 —
+        // 눌러 봤자 "미완료"만 나오는 버튼을 제안하지 않습니다.
+        PartitionExpandAvailable = ok && report.Shrink is null && report.GptRepair is { WasRepaired: true };
     }
 
     // --- 업데이트 확인 -----------------------------------------------------

@@ -103,6 +103,7 @@
   <data name="RestoreStartBtn" xml:space="preserve"><value>Start restore</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>Choose image to restore</value></data>
   <data name="RestoreHint" xml:space="preserve"><value>Writes the selected .vhdx image onto the target disk in full. If the target is larger than the image, the GPT is fixed up so the extra space is usable, and 'Prepare for new hardware' makes it boot on a different PC.</value></data>
+  <data name="ResShrinkFmt" xml:space="preserve"><value>Shrink: {0}</value></data>
   <data name="FailShrinkTempTitle" xml:space="preserve"><value>Not enough temporary space</value></data>
   <data name="ShrinkTempNoneFmt" xml:space="preserve"><value>A shrink clone internally backs up the source to a temporary image, shrinks it, and restores it. No disk (other than the source and target) has enough free space ({0} or more) for the temporary image. Free up space on another disk and try again.</value></data>
   <data name="ShrinkAutoReading" xml:space="preserve"><value>Reading the image's partition layout…</value></data>

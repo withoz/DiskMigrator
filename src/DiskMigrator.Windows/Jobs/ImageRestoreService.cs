@@ -47,7 +47,8 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
     /// <param name="universalRestore">true면 복원 후 대상 Windows를 하드웨어 독립화합니다.</param>
     public async Task<ImageRestoreReport> RestoreAsync(
         string imagePath, DiskInfo target, bool universalRestore,
-        CloneOptions options, IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
+        CloneOptions options, IProgress<CloneProgress>? progress = null,
+        PauseController? pause = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imagePath);
         ArgumentNullException.ThrowIfNull(target);
@@ -128,7 +129,7 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
             };
 
             var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-            result = await engine.RunAsync(plan, options, progress, null, ct);
+            result = await engine.RunAsync(plan, options, progress, pause, ct);
             targetDevice.Flush();
 
             // 대상이 이미지보다 크면 GPT 백업 헤더가 디스크 중간에 있으므로 끝으로 옮깁니다.
@@ -194,7 +195,8 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
     public async Task<ImageRestoreReport> RestoreWithShrinkAsync(
         string imagePath, DiskInfo target, int shrinkPartitionNumber, long newPartitionBytes,
         bool universalRestore, CloneOptions options,
-        IProgress<CloneProgress>? progress = null, CancellationToken ct = default)
+        IProgress<CloneProgress>? progress = null,
+        PauseController? pause = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imagePath);
         ArgumentNullException.ThrowIfNull(target);
@@ -270,7 +272,7 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                 };
 
                 var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-                result = await engine.RunAsync(clonePlan, options, progress, null, ct);
+                result = await engine.RunAsync(clonePlan, options, progress, pause, ct);
                 targetDevice.Flush();
 
                 // ⑤ 대상 GPT를 압축 배치로 재작성(백업 헤더를 줄어든 끝으로) + 옮긴 파티션 VBR 시작 갱신.

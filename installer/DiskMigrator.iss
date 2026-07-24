@@ -7,7 +7,7 @@
 ; exe 한 개를 Program Files에 넣고, 시작 메뉴 바로가기와 제거 프로그램을 만듭니다.
 
 #define AppName "DiskMigrator"
-#define AppVersion "0.9.0"
+#define AppVersion "1.0.0"
 #define AppPublisher "DiskMigrator"
 #define AppExeName "DiskMigrator.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"
