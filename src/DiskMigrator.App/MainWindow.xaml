@@ -249,6 +249,26 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- 시작 화면 상단의 모드 전환 탭(클론/백업/복원). 활성 탭만 강조색 배경. -->
+        <Style x:Key="ModeTab" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="20,8" />
+            <Setter Property="MinWidth" Value="120" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
@@ -351,7 +371,54 @@
              목록에 최소 높이를 보장하고 넘치는 만큼만 스크롤하는 편이 안전합니다. -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Selecting}">
-        <Grid Margin="40,14,40,16">
+        <StackPanel Margin="40,14,40,16">
+
+            <!-- ===== 모드 선택: 클론 / 이미지 백업 / 이미지 복원 ===== -->
+            <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                    BorderThickness="1" CornerRadius="8" Padding="3"
+                    HorizontalAlignment="Left" Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal">
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCloneMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ===== 클론 모드 ===== -->
+            <Grid Visibility="{Binding IsCloneMode, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -751,7 +818,60 @@
 
                 </StackPanel>
             </Border>
-        </Grid>
+            </Grid>
+            <!-- ===== 클론 모드 끝 ===== -->
+
+            <!-- ===== 이미지 백업 모드 (디스크 → .vhdx) ===== -->
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+                        Visibility="{Binding IsBackupMode, Converter={StaticResource BoolToVisibility}}">
+
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                    <TextBlock Text="{loc:Loc BackupSourceLabel}" Style="{StaticResource SubHeading}"
+                               FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                    <Button Command="{Binding RefreshDisksCommand}" Padding="8,3" MinWidth="0" Margin="12,0,0,0"
+                            VerticalAlignment="Center" BorderBrush="{StaticResource Success}">
+                        <TextBlock Text="{loc:Loc Refresh}" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
+                    </Button>
+                </StackPanel>
+
+                <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedSource}"
+                         Style="{StaticResource DiskListStyle}" Height="240" />
+
+                <ContentControl Content="{Binding SourceLayout}" ContentTemplate="{StaticResource DiskLayoutTemplate}"
+                                Visibility="{Binding SourceLayout, Converter={StaticResource NullToVisibility}}" />
+
+                <TextBlock Text="{loc:Loc BackupPathLabel}" Style="{StaticResource SectionLabel}" Margin="0,16,0,7" />
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="{loc:Loc Browse}" Command="{Binding BrowseImageSaveCommand}"
+                            Padding="14,7" Margin="8,0,0,0" />
+                    <TextBox Text="{Binding ImagePath}" IsReadOnly="True" VerticalContentAlignment="Center"
+                             Padding="9,7" FontFamily="Consolas, D2Coding" />
+                </DockPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <CheckBox IsChecked="{Binding UseSnapshot}" IsEnabled="{Binding IsSnapshotAvailable}"
+                              Content="{loc:Loc VssTitle}" Margin="0,0,18,0" />
+                    <CheckBox IsChecked="{Binding SkipUnusedBlocks}" IsEnabled="{Binding UseSnapshot}"
+                              Content="{loc:Loc SmartTitle}" Margin="0,0,18,0" />
+                    <CheckBox IsChecked="{Binding VerifyAfterClone}" Content="{loc:Loc VerifyTitle}" />
+                </StackPanel>
+
+                <TextBlock Text="{loc:Loc BackupHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,10,0,0" />
+
+                <Button Content="{loc:Loc BackupStartBtn}" Command="{Binding BackupCommand}"
+                        Style="{StaticResource AccentButton}" HorizontalAlignment="Left"
+                        MinWidth="140" Padding="20,10" Margin="0,16,0,0" />
+            </StackPanel>
+
+            <!-- ===== 이미지 복원 모드 (다음 서브스텝) ===== -->
+            <Border Visibility="{Binding IsRestoreMode, Converter={StaticResource BoolToVisibility}}"
+                    Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                    BorderThickness="1" CornerRadius="10" Padding="24" Margin="0,10,0,0"
+                    MaxWidth="640" HorizontalAlignment="Left">
+                <TextBlock Text="{loc:Loc RestoreComingSoon}" Style="{StaticResource Body}" TextWrapping="Wrap" />
+            </Border>
+
+        </StackPanel>
         </ScrollViewer>
 
         <!-- ===== 2단계: 진행 중 ===== -->
@@ -847,9 +967,9 @@
                                    LineHeight="22" />
                     </Border>
 
-                    <!-- 부팅 구성 검사 (성공 시) -->
+                    <!-- 부팅 구성 검사 (클론 성공 시만 — 백업/복원 모드에선 숨김) -->
                     <StackPanel Margin="0,20,0,0"
-                                Visibility="{Binding ResultIsSuccess, Converter={StaticResource BoolToVisibility}}">
+                                Visibility="{Binding ShowCloneResultActions, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Orientation="Horizontal">
                             <Button Content="{loc:Loc BootCheckBtn}" Command="{Binding BootCheckCommand}"
                                     MinWidth="130" Padding="16,8" />

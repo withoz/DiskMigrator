@@ -27,6 +27,17 @@ public enum AppStage
     Finished,
 }
 
+/// <summary>작업 종류. 시작 화면 위쪽에서 고릅니다.</summary>
+public enum AppMode
+{
+    /// <summary>디스크 → 디스크.</summary>
+    Clone,
+    /// <summary>디스크 → 이미지 파일(.vhdx).</summary>
+    Backup,
+    /// <summary>이미지 파일(.vhdx) → 디스크.</summary>
+    Restore,
+}
+
 [SupportedOSPlatform("windows")]
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -60,7 +71,51 @@ public sealed partial class MainViewModel : ObservableObject
     // CanStart에 영향을 주는 모든 속성이 StartCommand에 직접 알려야 합니다.
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
     private AppStage _stage = AppStage.Selecting;
+
+    /// <summary>현재 작업 종류(클론/백업/복원). 시작 화면 상단에서 전환합니다.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
+    [NotifyPropertyChangedFor(nameof(IsCloneMode))]
+    [NotifyPropertyChangedFor(nameof(IsBackupMode))]
+    [NotifyPropertyChangedFor(nameof(IsRestoreMode))]
+    [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
+    private AppMode _mode = AppMode.Clone;
+
+    public bool IsCloneMode => Mode == AppMode.Clone;
+    public bool IsBackupMode => Mode == AppMode.Backup;
+    public bool IsRestoreMode => Mode == AppMode.Restore;
+
+    /// <summary>완료 화면의 클론 전용 후속 작업(부팅 검사·UEFI 변환 등)을 보일지 — 클론 모드 성공 시만.</summary>
+    public bool ShowCloneResultActions => ResultIsSuccess && IsCloneMode;
+
+    /// <summary>백업 저장 경로(.vhdx).</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
+    private string _imagePath = "";
+
+    /// <summary>시작 화면 상단의 모드 전환 버튼에서 부릅니다.</summary>
+    [RelayCommand]
+    private void SetMode(string mode)
+    {
+        if (Enum.TryParse<AppMode>(mode, out var m)) Mode = m;
+    }
+
+    /// <summary>백업 저장 위치를 고릅니다(.vhdx).</summary>
+    [RelayCommand]
+    private void BrowseImageSave()
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = Strings.Get("BackupChoosePath"),
+            Filter = "VHDX 이미지 (*.vhdx)|*.vhdx",
+            DefaultExt = ".vhdx",
+            FileName = "backup.vhdx",
+            OverwritePrompt = true,
+        };
+        if (dlg.ShowDialog() == true) ImagePath = dlg.FileName;
+    }
 
     [ObservableProperty] private bool _isLoading;
 
@@ -376,6 +431,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RecoveryHint))]
     [NotifyPropertyChangedFor(nameof(HasRecoveryHint))]
+    [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
     private bool _resultIsSuccess;
     [ObservableProperty] private string _resultDetails = "";
     [ObservableProperty] private string? _logFilePath;
@@ -1608,6 +1664,108 @@ public sealed partial class MainViewModel : ObservableObject
         ResultTitle = title;
         ResultMessage = message;
         ResultDetails = details;
+    }
+
+    // --- 이미지 백업 (디스크 → .vhdx) --------------------------------------
+
+    public bool CanBackup =>
+        Stage == AppStage.Selecting && IsElevated &&
+        SelectedSource is not null && !string.IsNullOrWhiteSpace(ImagePath);
+
+    [RelayCommand(CanExecute = nameof(CanBackup))]
+    private async Task BackupAsync()
+    {
+        if (SelectedSource is null) return;
+
+        var source = SelectedSource.Disk;
+        string imagePath = ImagePath;
+
+        _cts = new CancellationTokenSource();
+        _pause = new PauseController();
+
+        Stage = AppStage.Running;
+        IsPaused = false;
+        ResetBootCheck();
+        ResetPostCloneActions();
+        BadSectorCount = 0;
+        ProgressPercent = 0;
+        ProgressPhase = Strings.Get("ProgPreparing");
+        ProgressRegion = UseSnapshot ? Strings.Get("ProgSnapshotting") : "";
+        ProgressBytes = ProgressSpeed = ProgressEta = ProgressElapsed = "";
+
+        var progress = new Progress<CloneProgress>(OnProgress);
+
+        try
+        {
+            // SaveFileDialog에서 덮어쓰기 확인을 받았으므로, 기존 파일이 있으면 지우고 새로 만듭니다.
+            if (File.Exists(imagePath)) File.Delete(imagePath);
+
+            var options = new CloneOptions
+            {
+                BadSectorPolicy = ZeroFillBadSectors
+                    ? BadSectorPolicy.ZeroFillAndContinue
+                    : BadSectorPolicy.Abort,
+                VerifyAfterClone = VerifyAfterClone,
+            };
+
+            var svc = new ImageBackupService(_diskService, _snapshotProvider, _loggerFactory);
+            var result = await svc.BackupAsync(
+                source, imagePath, UseSnapshot, SkipUnusedBlocks, options, progress, _cts.Token);
+
+            ShowBackupResult(result, imagePath);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("BackupCancelledMsg"), "");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "이미지 백업에 실패했습니다.");
+            ShowFailure(Strings.Get("ResTitleFailed"), ex.Message, Strings.Get("FailSeeLog"));
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+            _pause?.Dispose();
+            _pause = null;
+            Stage = AppStage.Finished;
+        }
+    }
+
+    private void ShowBackupResult(CloneResult result, string imagePath)
+    {
+        bool ok = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
+
+        ResultIsSuccess = ok;
+        ResultTitle = ok ? Strings.Get("BackupDoneTitle") : Strings.Get("ResTitleFailed");
+        ResultMessage = ok
+            ? Strings.Format("BackupDoneMsgFmt", imagePath)
+            : (result.ErrorMessage ?? Strings.Get("FailSeeLog"));
+
+        var details = new List<string>
+        {
+            Strings.Format("ResCopiedFmt", SizeFormatter.Format(result.BytesCopied)),
+            Strings.Format("ResDurationFmt", SizeFormatter.FormatDuration(result.Duration)),
+            Strings.Format("ResSpeedFmt", SizeFormatter.FormatSpeed(result.AverageSpeedBytesPerSecond)),
+        };
+
+        try
+        {
+            if (File.Exists(imagePath))
+                details.Add(Strings.Format("BackupImageSizeFmt",
+                    SizeFormatter.Format(new FileInfo(imagePath).Length)));
+        }
+        catch { /* 이미지 크기 조회 실패는 무시 */ }
+
+        details.Add(result.VerificationPassed switch
+        {
+            true => Strings.Get("ResVerifyPass"),
+            false => Strings.Get("ResVerifyFail"),
+            null => Strings.Get("ResVerifyNone"),
+        });
+
+        ResultDetails = string.Join("\n", details);
     }
 
     // --- 업데이트 확인 -----------------------------------------------------
