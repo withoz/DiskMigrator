@@ -54,6 +54,15 @@ if (args.Length >= 5 && args[0] == "--shrink" &&
     using var lfs = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
     return await DiskMigrator.VhdTest.ImageTool.ShrinkAsync(args[1], args[2], shrinkPart, shrinkGb, lfs);
 }
+//   --restore-shrink <이미지.vhdx> <대상디스크#> <파티션#> <새GB> : 축소해서 더 작은 대상에 압축 복원(가상 디스크만)
+if (args.Length >= 5 && args[0] == "--restore-shrink" &&
+    int.TryParse(args[2], out int rsTgt) && int.TryParse(args[3], out int rsPart) && double.TryParse(args[4], out double rsGb))
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    using var lfrs = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    return await DiskMigrator.VhdTest.ImageTool.RestoreShrinkAsync(
+        args[1], rsTgt, rsPart, rsGb, args.Contains("--universal-restore"), !args.Contains("--no-verify"), lfrs);
+}
 
 // 가상 디스크(VHD)를 대상으로 클론 전체 경로를 실제로 실행해 보는 통합 테스트 도구입니다.
 // 쓰기 경로 · 볼륨 잠금 · VSS 스냅샷 · GPT 보정은 단위 테스트로는 확인할 수 없습니다.

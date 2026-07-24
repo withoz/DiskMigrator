@@ -84,6 +84,52 @@ internal static class ImageTool
     }
 
     /// <summary>
+    /// 이미지를 축소해 더 작은(또는 같은) 가상 디스크 대상에 압축 복원합니다(4단계 실기 검증).
+    /// 안전을 위해 대상은 가상 디스크만 허용합니다.
+    /// </summary>
+    public static async Task<int> RestoreShrinkAsync(
+        string imagePath, int targetDiskNumber, int partitionNumber, double newSizeGb,
+        bool universalRestore, bool verify, ILoggerFactory lf)
+    {
+        var diskService = new WindowsDiskService(lf.CreateLogger<WindowsDiskService>());
+        if (!diskService.IsElevated) { Console.Error.WriteLine("오류: 관리자 권한이 필요합니다."); return 3; }
+
+        if (!File.Exists(imagePath)) { Console.Error.WriteLine($"이미지 파일을 찾지 못했습니다: {imagePath}"); return 2; }
+
+        var disks = await diskService.EnumerateDisksAsync();
+        var target = disks.FirstOrDefault(d => d.DeviceNumber == targetDiskNumber);
+        if (target is null) { Console.Error.WriteLine($"대상 디스크 {targetDiskNumber}을(를) 찾지 못했습니다."); return 2; }
+
+        if (target.BusType is not (DiskBusType.FileBackedVirtual or DiskBusType.Virtual))
+        {
+            Console.Error.WriteLine(
+                $"거부: 대상 디스크 {targetDiskNumber}의 버스가 {target.BusType}입니다. " +
+                "이 도구는 가상 디스크(VHD/VHDX)에만 복원합니다.");
+            return 4;
+        }
+
+        long newBytes = (long)(newSizeGb * 1024 * 1024 * 1024);
+        Console.WriteLine($"축소 복원: {imagePath} → [{target.DeviceNumber}] {target.Model} " +
+                          $"({SizeFormatter.Format(target.SizeBytes)}), 파티션 {partitionNumber} → " +
+                          $"약 {SizeFormatter.Format(newBytes)}  (UR={universalRestore})");
+
+        var options = new CloneOptions { BufferSize = 4 * 1024 * 1024, VerifyAfterClone = verify };
+        var svc = new ImageRestoreService(diskService, lf);
+        var report = await svc.RestoreWithShrinkAsync(
+            imagePath, target, partitionNumber, newBytes, universalRestore, options, MakeProgress());
+
+        int code = Report(report.Result, imagePath);
+        if (report.Shrink is { } s)
+            Console.WriteLine($"축소: {s.Message} (요청 {SizeFormatter.Format(s.RequestedBytes)}, " +
+                              $"실제 {SizeFormatter.Format(s.AchievedPartitionBytes)})");
+        if (report.GptRepair is { } g)
+            Console.WriteLine($"GPT 재작성: {(g.WasRepaired ? "적용됨" : "실패")} — {g.Description}");
+        if (report.UniversalRestore is { } u)
+            Console.WriteLine($"Universal Restore: {u.Message}");
+        return code;
+    }
+
+    /// <summary>
     /// 부모 이미지의 차등 자식을 만들어 그 안의 파티션을 축소합니다(축소 리사이즈 3단계 실기 검증).
     /// 부모 이미지가 그대로 보존되는지도 함께 확인합니다.
     /// </summary>
