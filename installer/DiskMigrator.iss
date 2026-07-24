@@ -7,7 +7,7 @@
 ; exe 한 개를 Program Files에 넣고, 시작 메뉴 바로가기와 제거 프로그램을 만듭니다.
 
 #define AppName "DiskMigrator"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define AppPublisher "DiskMigrator"
 #define AppExeName "DiskMigrator.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"
@@ -47,9 +47,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\DiskMigrator.App.exe"; DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
+; 사용설명서(단일 HTML) — 시작 메뉴에서 바로 열 수 있게 함께 설치합니다.
+Source: "..\docs\manual.html"; DestDir: "{app}"; DestName: "manual.html"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppName} 사용설명서"; Filename: "{app}\manual.html"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 

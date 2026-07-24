@@ -104,7 +104,7 @@
   <data name="RestoreTargetLabel" xml:space="preserve"><value>복원 대상 (덮어씀)</value></data>
   <data name="RestoreStartBtn" xml:space="preserve"><value>복원 시작</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>복원할 이미지 선택</value></data>
-  <data name="RestoreHint" xml:space="preserve"><value>선택한 .vhdx 이미지를 대상 디스크에 통째로 되돌립니다. 대상이 이미지보다 크면 남는 공간을 쓸 수 있게 GPT를 보정하고, '새 하드웨어 대비'를 켜면 다른 PC에서도 부팅되게 만듭니다.</value></data>
+  <data name="RestoreHint" xml:space="preserve"><value>선택한 .vhdx 이미지를 대상 디스크에 통째로 되돌립니다. 대상이 이미지보다 크면 남는 공간을 쓸 수 있게 맞춰 주고, 작으면 자동으로 줄여서 맞춥니다. '새 하드웨어 대비'를 켜면 다른 PC에서도 부팅되게 만듭니다.</value></data>
   <data name="ResShrinkFmt" xml:space="preserve"><value>축소: {0}</value></data>
   <data name="FailShrinkTempTitle" xml:space="preserve"><value>임시 공간 부족</value></data>
   <data name="ShrinkTempNoneFmt" xml:space="preserve"><value>축소 클론은 내부적으로 원본을 임시 이미지로 백업한 뒤 줄여서 복원합니다. 임시 이미지를 둘 여유 공간({0} 이상)이 있는 디스크(원본·대상 제외)가 없습니다. 다른 디스크에 공간을 확보한 뒤 다시 시도하십시오.</value></data>
