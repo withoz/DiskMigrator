@@ -23,6 +23,7 @@ public static class SafetyGuard
     public const string CodeTargetReadOnly = "TARGET_READ_ONLY";
     public const string CodeTargetTooSmall = "TARGET_TOO_SMALL";
     public const string CodeTargetSmallerLayoutFits = "TARGET_SMALLER_LAYOUT_FITS";
+    public const string CodeTargetSmallerShrink = "TARGET_SMALLER_SHRINK";
     public const string CodeSectorSizeMismatch = "SECTOR_SIZE_MISMATCH";
     public const string CodeTargetHasData = "TARGET_HAS_DATA";
     public const string CodeTargetLarger = "TARGET_LARGER";
@@ -112,15 +113,34 @@ public static class SafetyGuard
             }
             else
             {
-                var shortfall = source.SizeBytes - target.SizeBytes;
-                string detail = source.PartitionStyle == PartitionStyle.Gpt && source.Partitions.Count > 0
-                    ? Strings.Format("SafeTooSmallDetailShrinkFmt",
-                        FormatSize(ResizePlanner.MinimumTargetSize(source.Partitions)))
-                    : Strings.Get("SafeTooSmallDetailSectors");
+                // 파티션이 제자리로는 안 들어가도, 가장 큰 NTFS 파티션을 줄이면 들어가는 경우가
+                // 있습니다(예: 1TB 시스템 → 500GB SSD, 실사용 300GB). 이때는 차단하는 대신
+                // 자동 축소 클론(내부적으로 백업→축소→복원, 원본 무수정)을 확인 후 진행합니다.
+                // GPT 원본만 — 축소 복원의 재배치·테이블 재작성 경로가 GPT를 전제합니다.
+                var shrink = source.PartitionStyle == PartitionStyle.Gpt
+                    ? ShrinkClonePlanner.Evaluate(source.Partitions, target.SizeBytes, out _)
+                    : null;
 
-                issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetTooSmall,
-                    Strings.Format("SafeTargetTooSmallFmt",
-                        FormatSize(shortfall), FormatSize(source.SizeBytes), FormatSize(target.SizeBytes), detail)));
+                if (shrink is not null)
+                {
+                    issues.Add(new SafetyIssue(SafetySeverity.RequiresConfirmation, CodeTargetSmallerShrink,
+                        Strings.Format("SafeTargetSmallerShrinkFmt",
+                            shrink.PartitionNumber,
+                            FormatSize(shrink.CurrentBytes), FormatSize(shrink.NewBytes),
+                            shrink.EstimatedUsedBytes >= 0 ? FormatSize(shrink.EstimatedUsedBytes) : "?")));
+                }
+                else
+                {
+                    var shortfall = source.SizeBytes - target.SizeBytes;
+                    string detail = source.PartitionStyle == PartitionStyle.Gpt && source.Partitions.Count > 0
+                        ? Strings.Format("SafeTooSmallDetailShrinkFmt",
+                            FormatSize(ResizePlanner.MinimumTargetSize(source.Partitions)))
+                        : Strings.Get("SafeTooSmallDetailSectors");
+
+                    issues.Add(new SafetyIssue(SafetySeverity.Blocker, CodeTargetTooSmall,
+                        Strings.Format("SafeTargetTooSmallFmt",
+                            FormatSize(shortfall), FormatSize(source.SizeBytes), FormatSize(target.SizeBytes), detail)));
+                }
             }
         }
 

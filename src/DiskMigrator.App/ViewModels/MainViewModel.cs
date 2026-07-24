@@ -1448,6 +1448,37 @@ public sealed partial class MainViewModel : ObservableObject
         var growRequest = plan.Grow;
         _grownPartitionNumber = growRequest?.PartitionNumber;
 
+        // 대상이 원본보다 작고 제자리(맞춤 클론)로도 안 들어가면 축소 클론으로 라우팅합니다 —
+        // 내부적으로 백업→축소→복원(원본 무수정). SafetyGuard가 같은 판정으로 확인을 받았지만,
+        // 대상에 쓰는 작업이므로 여기서 한 번 더 계산해 어긋나면 시작하지 않습니다.
+        ShrinkCloneDecision? shrinkClone = null;
+        string? shrinkTempImage = null;
+        if (target.SizeBytes < source.SizeBytes &&
+            !(source.PartitionStyle == PartitionStyle.Gpt && source.Partitions.Count > 0 &&
+              ResizePlanner.LayoutFitsIn(source.Partitions, target.SizeBytes)))
+        {
+            shrinkClone = ShrinkClonePlanner.Evaluate(source.Partitions, target.SizeBytes, out string? shrinkBlocked);
+            if (shrinkClone is null)
+            {
+                Stage = AppStage.Finished;
+                ShowFailure(Strings.Get("FailSafetyTitle"),
+                    shrinkBlocked ?? Strings.Get("BlockSafetyFailed"), Strings.Get("FailNothingWritten"));
+                return;
+            }
+
+            // 임시 백업 이미지를 둘 곳 — 원본·대상이 아닌 디스크 중 여유가 가장 큰 볼륨.
+            shrinkTempImage = FindShrinkTempImagePath(source, target);
+            if (shrinkTempImage is null)
+            {
+                long needed = EstimateUsedBytes(source) + (10L << 30);
+                Stage = AppStage.Finished;
+                ShowFailure(Strings.Get("FailShrinkTempTitle"),
+                    Strings.Format("ShrinkTempNoneFmt", SizeFormatter.Format(needed)),
+                    Strings.Get("FailNothingWritten"));
+                return;
+            }
+        }
+
         // 넓힌 파티션보다 뒤에 있는 것들은 오른쪽으로 밀립니다. 그 안에 복구 파티션이 있으면
         // 위치가 달라져 WinRE가 끊어지므로, 끝난 뒤 알려 주려고 지금 기억해 둡니다.
         _recoveryPartitionMoved =
@@ -1484,13 +1515,36 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var orchestrator = new CloneOrchestrator(_diskService, _snapshotProvider, _loggerFactory);
+            if (shrinkClone is not null && shrinkTempImage is not null)
+            {
+                // 축소 클론 — 쓰기 직전 최종 관문(복원 경로와 동일)을 밟은 뒤 실행합니다.
+                var fresh = await ResolveCurrentTargetAsync();
+                SafetyGuard.AssertTargetUnchanged(target, fresh);
 
-            var report = await orchestrator.RunAsync(
-                source, target, UseSnapshot, options, UniversalRestore,
-                progress, _pause, _cts.Token);
+                var shrinkSvc = new ShrinkCloneService(_diskService, _snapshotProvider, _loggerFactory);
+                var shrinkReport = await shrinkSvc.RunAsync(
+                    source, target, shrinkClone, shrinkTempImage,
+                    UseSnapshot, UniversalRestore, options, progress, _cts.Token);
 
-            ShowResult(report);
+                ShowResult(new CloneJobReport
+                {
+                    Result = shrinkReport.Result,
+                    Source = source,
+                    Target = target,
+                    GptRepair = shrinkReport.GptRepair,
+                    UniversalRestore = shrinkReport.UniversalRestore,
+                });
+            }
+            else
+            {
+                var orchestrator = new CloneOrchestrator(_diskService, _snapshotProvider, _loggerFactory);
+
+                var report = await orchestrator.RunAsync(
+                    source, target, UseSnapshot, options, UniversalRestore,
+                    progress, _pause, _cts.Token);
+
+                ShowResult(report);
+            }
         }
         catch (SafetyViolationException ex)
         {
@@ -1945,6 +1999,32 @@ public sealed partial class MainViewModel : ObservableObject
             if (path == ImagePath) _imageInfoLoaded = true;
             RefreshShrinkAuto();
         }
+    }
+
+    /// <summary>원본의 실사용 총량 추정(바이트). 스마트 백업 임시 이미지의 크기 예측에 씁니다.</summary>
+    private static long EstimateUsedBytes(DiskInfo source) =>
+        source.Partitions.Sum(p =>
+            p.FreeSpaceBytes is { } free and >= 0 ? Math.Max(0, p.LengthBytes - free) : p.LengthBytes);
+
+    /// <summary>
+    /// 축소 클론의 임시 백업 이미지를 둘 경로를 고릅니다 — 원본·대상 디스크가 아닌 볼륨 중
+    /// 여유 공간이 (원본 실사용 + 10GB) 이상인 곳에서 가장 여유가 큰 곳. 없으면 null.
+    /// </summary>
+    private string? FindShrinkTempImagePath(DiskInfo source, DiskInfo target)
+    {
+        long needed = EstimateUsedBytes(source) + (10L << 30);
+
+        var best = Disks
+            .Select(d => d.Disk)
+            .Where(d => d.DeviceNumber != source.DeviceNumber && d.DeviceNumber != target.DeviceNumber)
+            .SelectMany(d => d.Partitions)
+            .Where(p => !string.IsNullOrEmpty(p.DriveLetter) && p.FreeSpaceBytes is { } f && f >= needed)
+            .OrderByDescending(p => p.FreeSpaceBytes)
+            .FirstOrDefault();
+
+        if (best is null) return null;
+        return Path.Combine($"{best.DriveLetter}:\\",
+            $"DiskMigrator-shrink-clone-{DateTime.Now:yyyyMMdd-HHmmss}.vhdx");
     }
 
     /// <summary>MSR(Microsoft 예약) 파티션 GPT 타입 GUID.</summary>

@@ -54,6 +54,10 @@
   <data name="SafeTargetHasPageFileFmt" xml:space="preserve"><value>대상 [{0}] {1} 에 페이지 파일이 있어 사용 중입니다.</value></data>
   <data name="SafeTargetReadOnly" xml:space="preserve"><value>대상 디스크가 읽기 전용 상태입니다. 쓰기 방지를 해제해야 합니다.</value></data>
   <data name="SafeTargetSmallerLayoutFitsFmt" xml:space="preserve"><value>대상이 원본보다 작지만 원본의 파티션은 모두 들어갑니다. (원본 {0} / 대상 {1}) 마지막 파티션 뒤의 빈 공간 {2}는 복제되지 않습니다. 파티션 위치와 내용은 그대로이며 원본에는 쓰지 않습니다.</value></data>
+  <data name="SafeTargetSmallerShrinkFmt" xml:space="preserve"><value>대상이 원본보다 작습니다 — 파티션 {0}을(를) {1} → {2}(으)로 자동 축소해 복제합니다(실사용 {3}). 내부적으로 백업→축소→복원 순서로 진행되며 원본은 수정되지 않습니다. 임시 이미지를 둘 여유 공간이 있는 다른 디스크가 필요합니다.</value></data>
+  <data name="ShrinkCloneNoNtfs" xml:space="preserve"><value>원본에 줄일 수 있는 NTFS 파티션이 없어 이 대상에는 복제할 수 없습니다.</value></data>
+  <data name="ShrinkCloneTooSmallFmt" xml:space="preserve"><value>대상({0})이 너무 작습니다 — 파티션을 줄여도 원본이 들어가지 않습니다.</value></data>
+  <data name="ShrinkCloneDataTooBigFmt" xml:space="preserve"><value>원본의 실사용 데이터({0})가 축소 목표({1})보다 많아 이 대상에는 들어가지 않습니다. 원본에서 파일을 지우거나 더 큰 대상을 쓰십시오.</value></data>
   <data name="SafeTooSmallDetailShrinkFmt" xml:space="preserve"><value>원본 파티션이 {0}까지 차지하므로 대상에 들어가지 않습니다. 파티션을 줄이려면 원본에서 먼저 볼륨을 축소하십시오.</value></data>
   <data name="SafeTooSmallDetailSectors" xml:space="preserve"><value>전체 섹터 복제는 대상 용량이 원본 이상일 때만 가능합니다.</value></data>
   <data name="SafeTargetTooSmallFmt" xml:space="preserve"><value>대상이 원본보다 {0} 작습니다. (원본 {1} / 대상 {2}) {3}</value></data>

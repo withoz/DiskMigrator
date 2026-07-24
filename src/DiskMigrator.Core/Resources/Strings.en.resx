@@ -54,6 +54,10 @@
   <data name="SafeTargetHasPageFileFmt" xml:space="preserve"><value>Target [{0}] {1} has a page file that is currently in use.</value></data>
   <data name="SafeTargetReadOnly" xml:space="preserve"><value>The target disk is read-only. You’ll need to clear its write protection first.</value></data>
   <data name="SafeTargetSmallerLayoutFitsFmt" xml:space="preserve"><value>The target is smaller than the source, but all of the source’s partitions still fit. (Source {0} / Target {1}) The empty space after the last partition, {2}, won’t be cloned. Partition positions and contents stay the same, and nothing is written to the source.</value></data>
+  <data name="SafeTargetSmallerShrinkFmt" xml:space="preserve"><value>The target is smaller than the source — partition {0} will be shrunk automatically from {1} to {2} for the clone (data in use: {3}). Internally this runs backup → shrink → restore, and the source is never modified. Another disk with enough free space for a temporary image is required.</value></data>
+  <data name="ShrinkCloneNoNtfs" xml:space="preserve"><value>The source has no NTFS partition that can be shrunk, so it cannot be cloned to this target.</value></data>
+  <data name="ShrinkCloneTooSmallFmt" xml:space="preserve"><value>The target ({0}) is too small — the source will not fit even after shrinking.</value></data>
+  <data name="ShrinkCloneDataTooBigFmt" xml:space="preserve"><value>The source’s data in use ({0}) exceeds the shrink target ({1}), so it will not fit on this target. Delete files on the source or use a larger target.</value></data>
   <data name="SafeTooSmallDetailShrinkFmt" xml:space="preserve"><value>The source’s partitions extend to {0}, so they don’t fit on the target. To make them smaller, shrink the volumes on the source first.</value></data>
   <data name="SafeTooSmallDetailSectors" xml:space="preserve"><value>A full sector-by-sector clone is only possible when the target is at least as large as the source.</value></data>
   <data name="SafeTargetTooSmallFmt" xml:space="preserve"><value>The target is {0} smaller than the source. (Source {1} / Target {2}) {3}</value></data>
