@@ -41,6 +41,33 @@ if (args.Length >= 1 && args[0] == "--pe-check")
     return ing.AllFound ? 0 : 1;
 }
 
+// 부팅 미디어 빌드 — 작업 폴더 안에만 씁니다(디스크·USB 안 건드림). 관리자 권한 필요(DISM 마운트).
+//   --pe-build <작업폴더> <주입할앱.exe>
+if (args.Length >= 3 && args[0] == "--pe-build")
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    using var lfb2 = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(new ConsoleLogProvider()));
+    var dsvc2 = new DiskMigrator.Windows.Devices.WindowsDiskService(lfb2.CreateLogger<DiskMigrator.Windows.Devices.WindowsDiskService>());
+    if (!dsvc2.IsElevated) { Console.Error.WriteLine("오류: 관리자 권한이 필요합니다 (DISM 마운트)."); return 3; }
+
+    var ing2 = await new DiskMigrator.Windows.Pe.WinPeIngredients(dsvc2, lfb2.CreateLogger("WinPe")).LocateAsync();
+    if (!ing2.AllFound)
+    {
+        Console.Error.WriteLine("재료 부족 — --pe-check로 확인하세요.");
+        foreach (var n in ing2.Notes) Console.Error.WriteLine($"  · {n}");
+        return 1;
+    }
+
+    var builder = new DiskMigrator.Windows.Pe.WinPeMediaBuilder(lfb2.CreateLogger("WinPeBuild"));
+    builder.Progress += step => Console.WriteLine($"  → {step}");
+    var buildResult = await builder.BuildAsync(ing2, args[2], args[1]);
+    Console.WriteLine();
+    Console.WriteLine(buildResult.Success
+        ? $"*** 부팅 미디어 완성 *** {buildResult.MediaRoot}\n{buildResult.Message}"
+        : $"*** 실패 *** {buildResult.Message}");
+    return buildResult.Success ? 0 : 1;
+}
+
 // 하이브 편집(Universal Restore) 진단 — 인자를 미리 처리 (디스크 열거 불필요).
 if (args.Length >= 2 && args[0] == "--hive-read")
     return DiskMigrator.VhdTest.HiveTool.Read(args[1]);
