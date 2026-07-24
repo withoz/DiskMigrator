@@ -8,6 +8,17 @@ using DiskMigrator.Windows.Jobs;
 using DiskMigrator.Windows.Snapshots;
 using Microsoft.Extensions.Logging;
 
+// VHDX BAT 진단 — 스마트 복원이 읽는 할당 영역을 확인(읽기 전용, 디스크 열거 불필요).
+if (args.Length >= 2 && args[0] == "--bat-info")
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    var ranges = DiskMigrator.Windows.Devices.VhdxAllocatedRanges.TryRead(args[1]);
+    if (ranges is null) { Console.WriteLine("BAT를 읽지 못했습니다 (VHDX 아님/형식 오류) — 복원 시 전체 복원 폴백."); return 1; }
+    long bytes = 0; foreach (var r in ranges) bytes += r.Length;
+    Console.WriteLine($"할당 구간 {ranges.Count}개, 총 {bytes:N0} 바이트 ({System.Math.Round(bytes / 1073741824.0, 2)} GB) — 스마트 복원은 이만큼만 씁니다.");
+    return 0;
+}
+
 // 하이브 편집(Universal Restore) 진단 — 인자를 미리 처리 (디스크 열거 불필요).
 if (args.Length >= 2 && args[0] == "--hive-read")
     return DiskMigrator.VhdTest.HiveTool.Read(args[1]);

@@ -79,20 +79,47 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                     "이미지 전체가 들어가는 크기 이상의 디스크에 복원하십시오.");
             }
 
-            long length = imageLength;
+            // 스마트 복원: VHDX의 BAT를 읽어 할당된 블록(백업이 실제로 기록한 사용 영역 + 파티션
+            // 테이블)만 복원하고 빈 공간은 건너뜁니다 — 백업만큼 빨라집니다. BAT를 못 읽으면
+            // 전체 복원으로 안전하게 되돌립니다.
+            var allocated = VhdxAllocatedRanges.TryRead(imagePath);
+            List<CopyRegion> regions;
+            if (allocated is not null)
+            {
+                regions = allocated
+                    .Where(r => r.Offset + r.Length <= imageLength)
+                    .Select(r => new CopyRegion
+                    {
+                        Source = source,
+                        SourceOffset = r.Offset,
+                        TargetOffset = r.Offset,
+                        Length = r.Length,
+                        Description = "이미지(할당 블록)",
+                    })
+                    .ToList();
+
+                logger.LogInformation(
+                    "스마트 복원: 할당 {Count}구간 / {Bytes:N0}바이트만 복원 (이미지 {Full:N0}바이트 중).",
+                    regions.Count, regions.Sum(r => r.Length), imageLength);
+            }
+            else
+            {
+                logger.LogInformation("VHDX BAT를 읽지 못해 전체 복원으로 진행합니다.");
+                regions =
+                [
+                    new CopyRegion
+                    {
+                        Source = source, SourceOffset = 0, TargetOffset = 0,
+                        Length = imageLength, Description = "전체 이미지",
+                    },
+                ];
+            }
 
             var plan = new ClonePlan
             {
                 Name = $"이미지 복원 {Path.GetFileName(imagePath)} → [{target.DeviceNumber}] {target.Model}",
                 Target = targetDevice,
-                Regions =
-                [
-                    new CopyRegion
-                    {
-                        Source = source, SourceOffset = 0, TargetOffset = 0,
-                        Length = length, Description = "전체 이미지",
-                    },
-                ],
+                Regions = regions,
             };
 
             var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
