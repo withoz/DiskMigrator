@@ -72,6 +72,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
     private AppStage _stage = AppStage.Selecting;
 
     /// <summary>현재 작업 종류(클론/백업/복원). 시작 화면 상단에서 전환합니다.</summary>
@@ -90,9 +91,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>완료 화면의 클론 전용 후속 작업(부팅 검사·UEFI 변환 등)을 보일지 — 클론 모드 성공 시만.</summary>
     public bool ShowCloneResultActions => ResultIsSuccess && IsCloneMode;
 
-    /// <summary>백업 저장 경로(.vhdx).</summary>
+    /// <summary>백업 저장 경로 또는 복원 원본 경로(.vhdx).</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
     private string _imagePath = "";
 
     /// <summary>시작 화면 상단의 모드 전환 버튼에서 부릅니다.</summary>
@@ -134,6 +136,8 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
+    [NotifyPropertyChangedFor(nameof(RestoreConfirmPrompt))]
     private DiskItemViewModel? _selectedTarget;
 
     public bool HasSelection => SelectedSource is not null && SelectedTarget is not null;
@@ -348,6 +352,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanStart))]
     [NotifyPropertyChangedFor(nameof(BlockedReason))]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
     private string _confirmationText = "";
 
     public string ConfirmationPrompt =>
@@ -1764,6 +1769,146 @@ public sealed partial class MainViewModel : ObservableObject
             false => Strings.Get("ResVerifyFail"),
             null => Strings.Get("ResVerifyNone"),
         });
+
+        ResultDetails = string.Join("\n", details);
+    }
+
+    // --- 이미지 복원 (.vhdx → 디스크) --------------------------------------
+
+    /// <summary>복원 대상은 파괴되므로, 대상 모델명을 직접 입력하라는 안내.</summary>
+    public string RestoreConfirmPrompt =>
+        SelectedTarget is null ? "" : Strings.Format("ConfirmPromptFmt", SelectedTarget.Model);
+
+    /// <summary>복원할 이미지(.vhdx)를 고릅니다.</summary>
+    [RelayCommand]
+    private void BrowseImageOpen()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = Strings.Get("RestoreChoosePath"),
+            Filter = "VHDX 이미지 (*.vhdx)|*.vhdx",
+            CheckFileExists = true,
+        };
+        if (dlg.ShowDialog() == true) ImagePath = dlg.FileName;
+    }
+
+    /// <summary>
+    /// 복원 시작 가능 여부. 대상은 파괴되므로 시스템/부팅/페이지파일 디스크는 막고,
+    /// 대상 모델명을 정확히 입력해야 합니다.
+    /// </summary>
+    public bool CanRestore
+    {
+        get
+        {
+            if (Stage != AppStage.Selecting || !IsElevated) return false;
+            if (SelectedTarget is null || string.IsNullOrWhiteSpace(ImagePath) || !File.Exists(ImagePath))
+                return false;
+
+            var t = SelectedTarget.Disk;
+            if (t.IsSystemDisk || t.IsBootDisk || t.HasPageFile || t.IsReadOnly) return false;
+
+            return SafetyGuard.IsConfirmationValid(t, ConfirmationText);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRestore))]
+    private async Task RestoreImageAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        string imagePath = ImagePath;
+
+        _cts = new CancellationTokenSource();
+        _pause = new PauseController();
+
+        Stage = AppStage.Running;
+        IsPaused = false;
+        ResetBootCheck();
+        ResetPostCloneActions();
+        BadSectorCount = 0;
+        ProgressPercent = 0;
+        ProgressPhase = Strings.Get("ProgPreparing");
+        ProgressRegion = Strings.Get("ProgLockingTarget");
+        ProgressBytes = ProgressSpeed = ProgressEta = ProgressElapsed = "";
+
+        var progress = new Progress<CloneProgress>(OnProgress);
+
+        try
+        {
+            // 쓰기 직전 최종 관문: 확인한 그 대상이 지금도 같은 물리 디스크인지 재확인.
+            var target = await ResolveCurrentTargetAsync();
+            if (target is null)
+            {
+                ShowFailure(Strings.Get("FailSafetyTitle"),
+                    Strings.Get("TargetNotFoundAgain"), Strings.Get("FailNothingWritten"));
+                return;
+            }
+            SafetyGuard.AssertTargetUnchanged(SelectedTarget.Disk, target);
+
+            var options = new CloneOptions
+            {
+                BadSectorPolicy = ZeroFillBadSectors
+                    ? BadSectorPolicy.ZeroFillAndContinue
+                    : BadSectorPolicy.Abort,
+                VerifyAfterClone = VerifyAfterClone,
+            };
+
+            var svc = new ImageRestoreService(_diskService, _loggerFactory);
+            var report = await svc.RestoreAsync(imagePath, target, UniversalRestore, options, progress, _cts.Token);
+
+            ShowRestoreResult(report, target);
+        }
+        catch (SafetyViolationException ex)
+        {
+            _logger.LogError(ex, "복원 안전 검사에 걸려 작업이 중단되었습니다.");
+            ShowFailure(Strings.Get("FailSafetyTitle"), ex.Message, Strings.Get("FailNothingWritten"));
+        }
+        catch (OperationCanceledException)
+        {
+            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("RestoreCancelledMsg"), "");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "이미지 복원에 실패했습니다.");
+            ShowFailure(Strings.Get("ResTitleFailed"), ex.Message, Strings.Get("FailSeeLog"));
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+            _pause?.Dispose();
+            _pause = null;
+            Stage = AppStage.Finished;
+        }
+    }
+
+    private void ShowRestoreResult(ImageRestoreReport report, DiskInfo target)
+    {
+        var result = report.Result;
+        bool ok = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
+
+        ResultIsSuccess = ok;
+        ResultTitle = ok ? Strings.Get("RestoreDoneTitle") : Strings.Get("ResTitleFailed");
+        ResultMessage = ok
+            ? Strings.Format("RestoreDoneMsgFmt", target.DeviceNumber, target.Model)
+            : (result.ErrorMessage ?? Strings.Get("FailSeeLog"));
+
+        var details = new List<string>
+        {
+            Strings.Format("ResCopiedFmt", SizeFormatter.Format(result.BytesCopied)),
+            Strings.Format("ResDurationFmt", SizeFormatter.FormatDuration(result.Duration)),
+            Strings.Format("ResSpeedFmt", SizeFormatter.FormatSpeed(result.AverageSpeedBytesPerSecond)),
+        };
+
+        details.Add(result.VerificationPassed switch
+        {
+            true => Strings.Get("ResVerifyPass"),
+            false => Strings.Get("ResVerifyFail"),
+            null => Strings.Get("ResVerifyNone"),
+        });
+
+        if (report.GptRepair is { } g) details.Add(Strings.Format("ResPartTableFmt", g.Description));
+        if (report.UniversalRestore is { } u) details.Add(Strings.Format("ResNewHwFmt", u.Message));
 
         ResultDetails = string.Join("\n", details);
     }

@@ -98,6 +98,15 @@
   <data name="BackupImageSizeFmt" xml:space="preserve"><value>Image file size: {0}</value></data>
   <data name="BackupCancelledMsg" xml:space="preserve"><value>Backup cancelled. The image file being created may be incomplete.</value></data>
   <data name="RestoreComingSoon" xml:space="preserve"><value>The restore screen is coming in a future update. For now you can restore with the command-line tool (--restore).</value></data>
+  <data name="RestoreImageLabel" xml:space="preserve"><value>Image to restore (.vhdx)</value></data>
+  <data name="RestoreTargetLabel" xml:space="preserve"><value>Restore target (overwrite)</value></data>
+  <data name="RestoreStartBtn" xml:space="preserve"><value>Start restore</value></data>
+  <data name="RestoreChoosePath" xml:space="preserve"><value>Choose image to restore</value></data>
+  <data name="RestoreHint" xml:space="preserve"><value>Writes the selected .vhdx image onto the target disk in full. If the target is larger than the image, the GPT is fixed up so the extra space is usable, and 'Prepare for new hardware' makes it boot on a different PC.</value></data>
+  <data name="RestoreWarn" xml:space="preserve"><value>This overwrites all data on the target disk and cannot be undone. Double-check the target disk.</value></data>
+  <data name="RestoreDoneTitle" xml:space="preserve"><value>Restore complete</value></data>
+  <data name="RestoreDoneMsgFmt" xml:space="preserve"><value>Restored the image to disk [{0}] {1}.</value></data>
+  <data name="RestoreCancelledMsg" xml:space="preserve"><value>Restore cancelled. The target disk is incomplete — do not use it.</value></data>
   <data name="Step3Title" xml:space="preserve"><value>Review and start</value></data>
   <data name="StartClone" xml:space="preserve"><value>Start clone</value></data>
   <data name="IrreversibleWarn" xml:space="preserve"><value>This can’t be undone. Double-check the target disk.</value></data>
