@@ -895,27 +895,13 @@
                     </StackPanel>
                 </CheckBox>
 
-                <!-- 축소 복원: 더 작은 대상에 맞춰 선택한 NTFS 파티션을 줄여 복원 -->
-                <CheckBox IsChecked="{Binding ShrinkRestore}" VerticalContentAlignment="Top" Margin="0,14,0,0"
-                          Visibility="{Binding IsShrinkAvailable, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc ShrinkTitle}" Style="{StaticResource Body}" />
-                        <TextBlock Text="{loc:Loc ShrinkDesc}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,1,0,0" />
-                    </StackPanel>
-                </CheckBox>
-                <StackPanel Margin="26,8,0,0"
-                            Visibility="{Binding ShowShrinkOptions, Converter={StaticResource BoolToVisibility}}">
-                    <ComboBox ItemsSource="{Binding ShrinkPartitions}" SelectedItem="{Binding SelectedShrinkPartition}"
-                              DisplayMemberPath="DisplayLabel" Padding="8,5" />
-                    <DockPanel Margin="0,8,0,0" LastChildFill="False">
-                        <TextBlock Text="{loc:Loc ShrinkTargetGbLabel}" VerticalAlignment="Center" Style="{StaticResource Body}" />
-                        <TextBox Text="{Binding ShrinkTargetGb, UpdateSourceTrigger=PropertyChanged}" Width="90"
-                                 Margin="8,0,0,0" Padding="8,5" VerticalContentAlignment="Center"
-                                 FontFamily="Consolas, D2Coding" />
-                    </DockPanel>
-                    <TextBlock Text="{Binding ShrinkTargetHint}" Style="{StaticResource Micro}"
-                               TextWrapping="Wrap" Margin="0,6,0,0" />
-                </StackPanel>
+                <!-- 자동 축소 안내: 대상이 이미지보다 작으면 어느 파티션을 얼마로 줄일지 앱이
+                     자동 계산해 알려만 줍니다(사용자 입력 없음 — 맞춤 클론과 같은 철학). -->
+                <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,12,0,0"
+                        Visibility="{Binding HasShrinkAutoText, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding ShrinkAutoText}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                </Border>
 
                 <TextBlock Text="{loc:Loc RestoreHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,10,0,0" />
 
