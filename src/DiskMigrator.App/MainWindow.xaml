@@ -856,7 +856,7 @@
             <!-- ===== 클론 모드 끝 ===== -->
 
             <!-- ===== 이미지 백업 모드 (디스크 → .vhdx) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
                         Visibility="{Binding IsBackupMode, Converter={StaticResource BoolToVisibility}}">
 
                 <!-- 왜 백업해 두어야 하는지 — 기능 설명보다 먼저 말해 줍니다. -->
@@ -907,7 +907,7 @@
             </StackPanel>
 
             <!-- ===== 이미지 복원 모드 (.vhdx → 디스크) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
                         Visibility="{Binding IsRestoreMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc RestoreImageLabel}" Style="{StaticResource SectionLabel}" Margin="0,4,0,7" />
@@ -967,7 +967,7 @@
             </StackPanel>
 
             <!-- ===== 부팅 복구 모드 (독립 도구 — 복제 없이 검사·복구) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
                         Visibility="{Binding IsFixBootMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc FixBootHint}" Style="{StaticResource Caption}"
@@ -1070,7 +1070,7 @@
             </StackPanel>
 
             <!-- ===== 부팅 USB 모드 (WinPE 응급 USB 만들기) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
                         Visibility="{Binding IsBootUsbMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc BootUsbHint}" Style="{StaticResource Caption}"
