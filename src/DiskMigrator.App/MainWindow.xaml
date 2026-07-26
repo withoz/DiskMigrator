@@ -249,17 +249,18 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- 시작 화면 상단의 모드 전환 탭(클론/백업/복원). 활성 탭만 강조색 배경. -->
+        <!-- 시작 화면 상단의 모드 전환 탭. 각 탭이 독립된 테두리 카드이며, 활성 탭만 강조색 배경. -->
         <Style x:Key="ModeTab" TargetType="Button">
             <Setter Property="Foreground" Value="{StaticResource Muted}" />
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{StaticResource Surface}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Padding" Value="20,8" />
-            <Setter Property="MinWidth" Value="120" />
+            <Setter Property="Padding" Value="12,9" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="6"
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                               TextElement.Foreground="{TemplateBinding Foreground}" />
@@ -267,6 +268,11 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
     </Window.Resources>
@@ -375,73 +381,85 @@
                       Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Selecting}">
         <StackPanel Margin="40,14,40,16">
 
-            <!-- ===== 모드 선택: 클론 / 이미지 백업 / 이미지 복원 ===== -->
-            <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
-                    BorderThickness="1" CornerRadius="8" Padding="3"
-                    HorizontalAlignment="Left" Margin="0,0,0,6">
-                <StackPanel Orientation="Horizontal">
-                    <Button Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCloneMode}" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </StackPanel>
-            </Border>
+            <!-- ===== 모드 선택: 각 탭이 독립된 카드 테두리를 갖고, 아래 내용 영역과 같은 폭으로 균등 정렬 ===== -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCloneMode}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
 
             <!-- ===== 클론 모드 ===== -->
             <Grid Visibility="{Binding IsCloneMode, Converter={StaticResource BoolToVisibility}}">
