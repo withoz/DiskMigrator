@@ -299,7 +299,9 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                         {
                             int fixedVbrs = VbrFixer.FixMovedPartitions(
                                 targetDevice, plan.Remaps, _loggerFactory.CreateLogger("VbrFixer"));
-                            if (fixedVbrs > 0) desc += $" 옮겨진 볼륨 {fixedVbrs}개의 시작 위치도 갱신했습니다.";
+                            if (fixedVbrs > 0) desc += L.T(
+                                $" 옮겨진 볼륨 {fixedVbrs}개의 시작 위치도 갱신했습니다.",
+                                $" Also updated the start position of {fixedVbrs} moved volume(s).");
                         }
                         catch (Exception ex)
                         {

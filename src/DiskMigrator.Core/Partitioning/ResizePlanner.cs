@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 
 namespace DiskMigrator.Core.Partitioning;
@@ -89,7 +90,7 @@ public static class ResizePlanner
         ArgumentNullException.ThrowIfNull(source);
 
         if (source.Count == 0)
-            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+            throw new ArgumentException(L.T("원본에 파티션이 없습니다.", "The source has no partitions."), nameof(source));
 
         return AlignUp(source.Max(p => p.EndOffset) + EndReserve, Alignment);
     }
@@ -119,17 +120,20 @@ public static class ResizePlanner
         ArgumentNullException.ThrowIfNull(source);
 
         if (source.Count == 0)
-            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+            throw new ArgumentException(L.T("원본에 파티션이 없습니다.", "The source has no partitions."), nameof(source));
 
         var ordered = source.OrderBy(p => p.StartingOffset).ToList();
         long maxEnd = AlignDown(targetSizeBytes, Alignment) - EndReserve;
 
         if (ordered[^1].EndOffset > maxEnd)
         {
-            throw new InvalidOperationException(
+            throw new InvalidOperationException(L.T(
                 $"원본 파티션이 대상에 들어가지 않습니다. 파티션이 {SizeGb(ordered[^1].EndOffset)}까지 " +
                 $"차지하므로 대상이 최소 {SizeGb(MinimumTargetSize(ordered))}는 되어야 합니다 " +
-                $"(대상 {SizeGb(targetSizeBytes)}).");
+                $"(대상 {SizeGb(targetSizeBytes)}).",
+                $"The source partitions do not fit on the target. They extend to {SizeGb(ordered[^1].EndOffset)}, " +
+                $"so the target must be at least {SizeGb(MinimumTargetSize(ordered))} " +
+                $"(target is {SizeGb(targetSizeBytes)})."));
         }
 
         var result = ordered
@@ -157,27 +161,30 @@ public static class ResizePlanner
         ArgumentNullException.ThrowIfNull(request);
 
         if (source.Count == 0)
-            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+            throw new ArgumentException(L.T("원본에 파티션이 없습니다.", "The source has no partitions."), nameof(source));
 
         var ordered = source.OrderBy(p => p.StartingOffset).ToList();
         int growIndex = ordered.FindIndex(p => p.Number == request.PartitionNumber);
         if (growIndex < 0)
-            throw new ArgumentException(
-                $"파티션 {request.PartitionNumber}을(를) 원본에서 찾지 못했습니다.", nameof(request));
+            throw new ArgumentException(L.T(
+                $"파티션 {request.PartitionNumber}을(를) 원본에서 찾지 못했습니다.",
+                $"Partition {request.PartitionNumber} was not found on the source."), nameof(request));
 
         // 대상에서 파티션이 끝까지 쓸 수 있는 마지막 경계(백업 GPT 예약 + 1MB 정렬).
         long maxEnd = AlignDown(targetSizeBytes, Alignment) - EndReserve;
 
         long sourceLastEnd = ordered[^1].EndOffset;
         if (sourceLastEnd > maxEnd)
-            throw new InvalidOperationException(
-                "대상이 원본 레이아웃을 담기에 부족합니다. 확대는 대상이 원본보다 클 때만 가능합니다.");
+            throw new InvalidOperationException(L.T(
+                "대상이 원본 레이아웃을 담기에 부족합니다. 확대는 대상이 원본보다 클 때만 가능합니다.",
+                "The target is too small to hold the source layout. Growing requires a target larger than the source."));
 
         // 뒤로 밀 수 있는 최대 여유 = 마지막 파티션 끝을 maxEnd까지 밀 수 있는 양(1MB 정렬).
         long maxDelta = AlignDown(maxEnd - sourceLastEnd, Alignment);
         if (maxDelta <= 0)
-            throw new InvalidOperationException(
-                "대상에 확대할 여유 공간이 없습니다(원본과 크기가 거의 같습니다).");
+            throw new InvalidOperationException(L.T(
+                "대상에 확대할 여유 공간이 없습니다(원본과 크기가 거의 같습니다).",
+                "The target has no room to grow into (it is nearly the same size as the source)."));
 
         var grown = ordered[growIndex];
         long oldLen = grown.LengthBytes;
@@ -187,9 +194,11 @@ public static class ResizePlanner
         {
             long newLen = AlignUp(wanted, Alignment);
             if (newLen < oldLen)
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     $"새 크기({SizeGb(newLen)})가 현재 크기({SizeGb(oldLen)})보다 작습니다. " +
-                    "이 버전은 확대만 지원합니다.");
+                    "이 버전은 확대만 지원합니다.",
+                    $"The new size ({SizeGb(newLen)}) is smaller than the current size ({SizeGb(oldLen)}). " +
+                    "This path only supports growing."));
             delta = newLen - oldLen;
             if (delta > maxDelta)
             {
@@ -201,9 +210,11 @@ public static class ResizePlanner
                 if (delta - maxDelta <= RoundingTolerance)
                     delta = maxDelta;
                 else
-                    throw new InvalidOperationException(
+                    throw new InvalidOperationException(L.T(
                         $"요청한 크기가 대상 용량을 넘습니다. 이 파티션은 최대 {SizeGb(oldLen + maxDelta)}까지 " +
-                        $"확대할 수 있습니다(요청 {SizeGb(newLen)}).");
+                        $"확대할 수 있습니다(요청 {SizeGb(newLen)}).",
+                        $"The requested size exceeds the target capacity. This partition can grow to at most " +
+                        $"{SizeGb(oldLen + maxDelta)} (requested {SizeGb(newLen)})."));
             }
         }
         else
@@ -266,31 +277,37 @@ public static class ResizePlanner
         ArgumentNullException.ThrowIfNull(request);
 
         if (source.Count == 0)
-            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(source));
+            throw new ArgumentException(L.T("원본에 파티션이 없습니다.", "The source has no partitions."), nameof(source));
 
         var ordered = source.OrderBy(p => p.StartingOffset).ToList();
         int shrinkIndex = ordered.FindIndex(p => p.Number == request.PartitionNumber);
         if (shrinkIndex < 0)
-            throw new ArgumentException(
-                $"파티션 {request.PartitionNumber}을(를) 원본에서 찾지 못했습니다.", nameof(request));
+            throw new ArgumentException(L.T(
+                $"파티션 {request.PartitionNumber}을(를) 원본에서 찾지 못했습니다.",
+                $"Partition {request.PartitionNumber} was not found on the source."), nameof(request));
 
         var shrink = ordered[shrinkIndex];
         long oldLen = shrink.LengthBytes;
 
         if (request.NewLengthBytes <= 0)
-            throw new InvalidOperationException("새 크기는 0보다 커야 합니다.");
+            throw new InvalidOperationException(L.T("새 크기는 0보다 커야 합니다.",
+                                                    "The new size must be greater than 0."));
 
         if (request.NewLengthBytes >= oldLen)
-            throw new InvalidOperationException(
+            throw new InvalidOperationException(L.T(
                 $"새 크기({SizeGb(request.NewLengthBytes)})가 현재 크기({SizeGb(oldLen)}) 이상입니다. " +
-                "축소는 현재보다 작은 크기로만 가능합니다(확대는 Plan을 쓰십시오).");
+                "축소는 현재보다 작은 크기로만 가능합니다(확대는 Plan을 쓰십시오).",
+                $"The new size ({SizeGb(request.NewLengthBytes)}) is not smaller than the current size ({SizeGb(oldLen)}). " +
+                "Shrinking requires a size smaller than the current one (use Plan for growing)."));
 
         // 축소량을 1MB 배수로 내림 → 결과 크기가 요청 이상이 되어 축소한 파일시스템이 반드시 들어갑니다.
         long delta = AlignDown(oldLen - request.NewLengthBytes, Alignment);
         if (delta <= 0)
-            throw new InvalidOperationException(
+            throw new InvalidOperationException(L.T(
                 $"요청한 축소량이 너무 작습니다(1MB 미만). 현재 {SizeGb(oldLen)}에서 최소 1MB 이상 " +
-                "줄일 크기를 지정하십시오.");
+                "줄일 크기를 지정하십시오.",
+                $"The requested shrink amount is too small (under 1 MB). Specify a size at least 1 MB " +
+                $"below the current {SizeGb(oldLen)}."));
 
         long newLen = oldLen - delta;   // 요청 이상, 1MB 정렬된 delta만큼만 줄임
 
@@ -320,9 +337,11 @@ public static class ResizePlanner
         // 축소했는데도 대상에 안 들어가면(덜 줄임), 더 줄이라고 명확히 알려 줍니다.
         long lastEnd = result[^1].EndOffset;
         if (lastEnd > maxEnd)
-            throw new InvalidOperationException(
+            throw new InvalidOperationException(L.T(
                 $"축소 후에도 파티션이 대상에 들어가지 않습니다(끝 {SizeGb(lastEnd)} > 한계 {SizeGb(maxEnd)}, " +
-                $"대상 {SizeGb(targetSizeBytes)}). 파티션 {request.PartitionNumber}을(를) 더 작게 지정하십시오.");
+                $"대상 {SizeGb(targetSizeBytes)}). 파티션 {request.PartitionNumber}을(를) 더 작게 지정하십시오.",
+                $"Even after shrinking, the partitions do not fit on the target (end {SizeGb(lastEnd)} > limit {SizeGb(maxEnd)}, " +
+                $"target {SizeGb(targetSizeBytes)}). Make partition {request.PartitionNumber} smaller."));
 
         Validate(result, targetSizeBytes, maxEnd);
         return new ResizeLayout { Partitions = result };

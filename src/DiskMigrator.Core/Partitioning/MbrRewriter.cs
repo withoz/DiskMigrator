@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -180,8 +181,9 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
             "부트 코드·디스크 서명·부팅 표시는 그대로 두었습니다.",
             movedCount, maxNewEndLba, lastLba);
 
-        return new MbrRewriteResult(true,
-            $"MBR 파티션 테이블을 새 배치로 다시 썼습니다(파티션 {movedCount}개, 디스크 서명 보존).");
+        return new MbrRewriteResult(true, L.T(
+            $"MBR 파티션 테이블을 새 배치로 다시 썼습니다(파티션 {movedCount}개, 디스크 서명 보존).",
+            $"Rewrote the MBR partition table for the new layout ({movedCount} partition(s), disk signature preserved)."));
     }
 
     /// <summary>아직 쓰이지 않은 remap 중 OldStartLba가 일치하는 것을 찾습니다.</summary>

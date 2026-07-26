@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Linq;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 
 namespace DiskMigrator.Core.Partitioning;
 
@@ -58,8 +59,9 @@ public static class FreeSpacePlanner
         // 안 하면서 사용자는 넓혀졌다고 믿게 됩니다.
         if (growPartitionNumber is not { } number)
         {
-            return new FreeSpacePlan(mode, null,
-                "'파티션 조정'을 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.");
+            return new FreeSpacePlan(mode, null, L.T(
+                "'파티션 조정'을 선택했다면 어떤 파티션을 넓힐지도 골라야 합니다.",
+                "If 'Adjust partition' is selected, you must also choose which partition to grow."));
         }
 
         if (fillRemaining) return Feasible(mode, new PartitionGrowRequest(number, null), source, targetSizeBytes);
@@ -68,9 +70,11 @@ public static class FreeSpacePlanner
         // 안 됩니다. 사용자가 지정한 것과 전혀 다른 크기로 파티션이 커져 버립니다.
         if (!TryParseSizeGb(sizeText, out double gb) || gb <= 0)
         {
-            return new FreeSpacePlan(mode, null,
+            return new FreeSpacePlan(mode, null, L.T(
                 $"'새 총 크기(GB)'에 0보다 큰 숫자를 입력하십시오(입력값: \"{sizeText}\"). " +
-                "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.");
+                "남는 공간을 모두 쓰려면 '남는 공간 전부'를 고르십시오.",
+                $"Enter a number greater than 0 for 'New total size (GB)' (input: \"{sizeText}\"). " +
+                "To use all remaining space, choose 'All remaining space'."));
         }
 
         long requested = (long)(gb * BytesPerGb);

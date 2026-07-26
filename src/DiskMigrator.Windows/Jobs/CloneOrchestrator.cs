@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
 using Microsoft.Extensions.Logging;
@@ -75,8 +76,9 @@ public sealed class CloneOrchestrator(
         // 없는 채로 진행하면 아무 일도 안 하면서 사용자는 넓혀졌다고 믿게 됩니다.
         if (options.FreeSpace == FreeSpaceMode.GrowPartition && options.GrowRequest is null)
         {
-            throw new InvalidOperationException(
-                "넓힐 파티션을 고르지 않았습니다. 파티션을 고르거나 다른 방식을 선택하십시오.");
+            throw new InvalidOperationException(L.T(
+                "넓힐 파티션을 고르지 않았습니다. 파티션을 고르거나 다른 방식을 선택하십시오.",
+                "No partition was chosen to grow. Pick a partition or choose another option."));
         }
 
         ResizeLayout? resizeLayout = null;
@@ -88,9 +90,11 @@ public sealed class CloneOrchestrator(
             // 시작하기 전에 여기서 막습니다.
             if (source.PartitionStyle is not (PartitionStyle.Gpt or PartitionStyle.Mbr))
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     $"파티션 리사이즈(확대)는 GPT 또는 MBR 디스크만 지원합니다. 이 원본은 " +
-                    $"{source.PartitionStyle} 형식이라 리사이즈 옵션을 끄고 클론해야 합니다.");
+                    $"{source.PartitionStyle} 형식이라 리사이즈 옵션을 끄고 클론해야 합니다.",
+                    $"Partition resizing (grow) supports only GPT or MBR disks. This source is " +
+                    $"{source.PartitionStyle}, so clone with the resize option turned off."));
             }
 
             // 확장 파티션(논리 드라이브)은 EBR 체인을 함께 다시 써야 해서 지원하지 않습니다.
@@ -98,10 +102,13 @@ public sealed class CloneOrchestrator(
             // 파티션은 옮겨졌는데 테이블은 못 고친 못 쓰는 디스크가 남습니다. 여기서 막습니다.
             if (source.HasExtendedPartition)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     "원본에 확장 파티션(논리 드라이브)이 있어 리사이즈할 수 없습니다. " +
                     "논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다. " +
-                    "'마지막 파티션에 합치기'나 '그대로 둡니다'를 쓰십시오.");
+                    "'마지막 파티션에 합치기'나 '그대로 둡니다'를 쓰십시오.",
+                    "The source has an extended partition (logical drives), so it cannot be resized. " +
+                    "Logical drives are chained via EBRs, so moving them requires rewriting the whole chain. " +
+                    "Use 'Merge into last partition' or 'Leave as is'."));
             }
 
             // MBR의 시작·크기 필드는 32비트 섹터 수라 약 2 TB까지만 가리킬 수 있습니다. 대상이
@@ -109,10 +116,12 @@ public sealed class CloneOrchestrator(
             if (source.PartitionStyle == PartitionStyle.Mbr &&
                 target.SizeBytes / target.LogicalSectorSize - 1 > uint.MaxValue)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     "MBR 디스크는 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 " +
                     "리사이즈를 적용할 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 " +
-                    "GPT로 바꾼 뒤 클론하십시오.");
+                    "GPT로 바꾼 뒤 클론하십시오.",
+                    "MBR disks can only address partitions up to about 2 TB, so resizing cannot be applied " +
+                    "to a larger target. Use 'Merge into last partition', or convert the source to GPT first."));
             }
 
             // GPT 엔트리의 위치는 LBA(섹터 번호)로 저장됩니다. 리사이즈는 원본 GPT를 대상에 그대로
@@ -121,10 +130,13 @@ public sealed class CloneOrchestrator(
             // 데이터는 새 위치에 있는데 GPT 재작성은 실패해 배치가 깨지므로, 미리 막습니다.
             if (source.LogicalSectorSize != target.LogicalSectorSize)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     "파티션 리사이즈(확대)는 원본과 대상의 논리 섹터 크기가 같아야 합니다. " +
                     $"원본 {source.LogicalSectorSize}바이트, 대상 {target.LogicalSectorSize}바이트라 " +
-                    "리사이즈 옵션을 끄고 클론해야 합니다.");
+                    "리사이즈 옵션을 끄고 클론해야 합니다.",
+                    "Partition resizing (grow) requires the source and target to have the same logical sector size. " +
+                    $"Source is {source.LogicalSectorSize} bytes, target is {target.LogicalSectorSize} bytes — " +
+                    "clone with the resize option turned off."));
             }
 
             resizeLayout = ResizePlanner.Plan(source.Partitions, target.SizeBytes, growRequest);
@@ -138,9 +150,11 @@ public sealed class CloneOrchestrator(
             // 헤더는 복사하지 않은 채 클론 후 줄어든 대상 끝에 다시 씁니다. 원본에는 쓰지 않습니다.
             if (source.PartitionStyle != PartitionStyle.Gpt)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     $"대상이 원본보다 작은 클론은 GPT 원본만 지원합니다. 이 원본은 {source.PartitionStyle} " +
-                    "형식이라 대상이 원본 이상 크기여야 합니다.");
+                    "형식이라 대상이 원본 이상 크기여야 합니다.",
+                    $"Cloning to a smaller target supports only GPT sources. This source is {source.PartitionStyle}, " +
+                    "so the target must be at least the source's size."));
             }
 
             resizeLayout = ResizePlanner.PlanFit(source.Partitions, target.SizeBytes);
@@ -330,7 +344,9 @@ public sealed class CloneOrchestrator(
                 int fixedVbrs = VbrFixer.FixMovedPartitions(
                     session.TargetDevice, remaps, _loggerFactory.CreateLogger("VbrFixer"));
 
-                if (fixedVbrs > 0) description += $" 옮겨진 볼륨 {fixedVbrs}개의 시작 위치도 갱신했습니다.";
+                if (fixedVbrs > 0) description += L.T(
+                    $" 옮겨진 볼륨 {fixedVbrs}개의 시작 위치도 갱신했습니다.",
+                    $" Also updated the start position of {fixedVbrs} moved volume(s).");
             }
             catch (Exception ex)
             {
@@ -342,10 +358,13 @@ public sealed class CloneOrchestrator(
         catch (Exception ex)
         {
             logger.LogError(ex, "리사이즈 {Table} 재작성에 실패했습니다 — 파티션 배치가 깨졌습니다.", tableName);
-            return new GptRepairResult(false,
+            return new GptRepairResult(false, L.T(
                 $"데이터는 복제됐지만 파티션 배치를 반영한 {tableName} 재작성에 실패했습니다({ex.Message}). " +
                 "파티션 테이블이 옛 위치를 가리켜 이 디스크는 부팅·사용할 수 없습니다. " +
-                "리사이즈를 끄고 다시 클론하십시오.");
+                "리사이즈를 끄고 다시 클론하십시오.",
+                $"The data was cloned, but rewriting the {tableName} for the new layout failed ({ex.Message}). " +
+                "The partition table points at the old locations, so this disk cannot boot or be used. " +
+                "Clone again with resizing turned off."));
         }
     }
 
@@ -365,9 +384,11 @@ public sealed class CloneOrchestrator(
             // 문제이므로 전체를 실패로 만들지 않고, 사용자에게 알리기만 합니다.
             logger.LogWarning(ex, "GPT 백업 헤더 보정에 실패했습니다.");
 
-            return new GptRepairResult(false,
+            return new GptRepairResult(false, L.T(
                 $"데이터 복제는 정상적으로 끝났지만 GPT 백업 헤더 보정에 실패했습니다: {ex.Message} " +
-                "Windows 디스크 관리에서 디스크를 열면 자동으로 복구를 제안할 수 있습니다.");
+                "Windows 디스크 관리에서 디스크를 열면 자동으로 복구를 제안할 수 있습니다.",
+                $"The clone completed fine, but fixing the GPT backup header failed: {ex.Message} " +
+                "Windows Disk Management may offer an automatic repair when you open the disk."));
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -177,8 +178,9 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
             "GPT 재작성 완료: 파티션 {Moved}개 재배치, 마지막 사용 가능 LBA {LastUsable}, 백업 헤더 LBA {Backup}.",
             movedCount, newLastUsableLba, lastLba);
 
-        return new GptRewriteResult(true,
-            $"GPT를 새 배치로 다시 썼습니다(파티션 {movedCount}개, 고유 GUID 보존).");
+        return new GptRewriteResult(true, L.T(
+            $"GPT를 새 배치로 다시 썼습니다(파티션 {movedCount}개, 고유 GUID 보존).",
+            $"Rewrote the GPT for the new layout ({movedCount} partition(s), unique GUIDs preserved)."));
     }
 
     /// <summary>아직 쓰이지 않은 remap 중 OldStartLba가 일치하는 것을 찾습니다.</summary>

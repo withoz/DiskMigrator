@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -70,13 +71,15 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
         // 주 GPT 헤더는 항상 LBA 1에 있습니다.
         if (target.Read(sectorSize, header) < sectorSize)
         {
-            return new GptRepairResult(false, "주 GPT 헤더를 읽지 못했습니다.");
+            return new GptRepairResult(false, L.T("주 GPT 헤더를 읽지 못했습니다.",
+                                                  "Failed to read the primary GPT header."));
         }
 
         if (!header[..8].SequenceEqual(GptSignature))
         {
             // MBR 디스크이거나 파티션 테이블이 없는 디스크입니다 — 정상적인 경우입니다.
-            return new GptRepairResult(false, "GPT 디스크가 아니므로 보정할 것이 없습니다.");
+            return new GptRepairResult(false, L.T("GPT 디스크가 아니므로 보정할 것이 없습니다.",
+                                                  "Not a GPT disk — nothing to fix."));
         }
 
         long currentAlternateLba = ReadInt64(header, GptHeaderOffsets.AlternateLba);
@@ -84,7 +87,8 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
         if (currentAlternateLba == lastLba)
         {
             _logger.LogInformation("GPT 백업 헤더가 이미 올바른 위치({Lba})에 있습니다.", lastLba);
-            return new GptRepairResult(false, "GPT 백업 헤더 위치가 이미 정확합니다.");
+            return new GptRepairResult(false, L.T("GPT 백업 헤더 위치가 이미 정확합니다.",
+                                                  "The GPT backup header is already in the correct place."));
         }
 
         _logger.LogInformation(
@@ -163,9 +167,11 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
             "GPT 보정 완료: 백업 헤더 LBA {Lba}, 마지막 사용 가능 LBA {LastUsable}.",
             lastLba, newLastUsableLba);
 
-        return new GptRepairResult(true,
+        return new GptRepairResult(true, L.T(
             $"GPT 백업 헤더를 디스크 끝(LBA {lastLba})으로 옮기고 검사합을 다시 계산했습니다. " +
-            "디스크 관리에서 마지막 파티션을 남은 공간까지 확장할 수 있습니다.");
+            "디스크 관리에서 마지막 파티션을 남은 공간까지 확장할 수 있습니다.",
+            $"Moved the GPT backup header to the end of the disk (LBA {lastLba}) and recomputed checksums. " +
+            "You can extend the last partition into the remaining space in Disk Management."));
     }
 
     /// <summary>
