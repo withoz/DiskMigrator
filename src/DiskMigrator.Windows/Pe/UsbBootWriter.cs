@@ -66,11 +66,13 @@ public sealed class UsbBootWriter(ILogger? logger = null)
             long usableMb = Math.Min(target.SizeBytes / (1024 * 1024), 32_000);
             string sizeClause = target.SizeBytes / (1024 * 1024) > 32_000 ? $" size={usableMb}" : "";
 
+            // FAT32 볼륨 레이블은 최대 11자입니다 — 넘으면 VDS가 "레이블이 잘못되었습니다"로
+            // 포맷을 거부합니다(실기에서 12자 레이블로 실제 실패).
             RunDiskpart(
                 $"select disk {target.DeviceNumber}\r\n" +
                 "clean\r\n" +
                 $"create partition primary{sizeClause}\r\n" +
-                "format fs=fat32 quick label=DISKMIGRATOR\r\n" +
+                "format fs=fat32 quick label=DMBOOT\r\n" +
                 $"assign letter={letter}\r\n", ct);
 
             string root = $"{letter}:\\";
