@@ -33,8 +33,8 @@ public sealed class UsbBootWriter(ILogger? logger = null)
 {
     private readonly ILogger _logger = logger ?? NullLogger.Instance;
 
-    /// <summary>진행 단계 알림(사람이 읽을 문구).</summary>
-    public event Action<string>? Progress;
+    /// <summary>진행 알림: (사람이 읽을 문구, 이 기록기 안에서의 진행률 0~1).</summary>
+    public event Action<string, double>? Progress;
 
     /// <param name="target">지워질 USB 디스크.</param>
     /// <param name="mediaRoot">복사할 미디어 루트(안에 EFI\, boot\, sources\가 있어야 함).</param>
@@ -67,7 +67,7 @@ public sealed class UsbBootWriter(ILogger? logger = null)
         try
         {
             // --- 1) FAT32로 새로 포맷 (기존 내용 삭제) --------------------------
-            Report(L.T("USB 포맷 (FAT32)", "Formatting USB (FAT32)"));
+            Report(L.T("USB 포맷 (FAT32)", "Formatting USB (FAT32)"), 0.02);
             char letter = PickFreeLetter();
 
             // Windows FAT32 포맷 한계(32GB) 때문에 큰 USB에는 32GB 파티션만 만듭니다.
@@ -90,11 +90,11 @@ public sealed class UsbBootWriter(ILogger? logger = null)
                     "The USB volume did not appear after formatting. Reconnect the USB and try again."));
 
             // --- 2) 미디어 복사 (boot.wim은 커서 진행률 표시) --------------------
-            Report(L.T("부팅 파일 복사", "Copying boot files"));
+            Report(L.T("부팅 파일 복사", "Copying boot files"), 0.25);
             await Task.Run(() => CopyTree(mediaRoot, root, ct), ct);
 
             // --- 3) 검증 ---------------------------------------------------------
-            Report(L.T("확인", "Verifying"));
+            Report(L.T("확인", "Verifying"), 0.96);
             string wimDst = Path.Combine(root, "sources", "boot.wim");
             string efiDst = Path.Combine(root, "EFI", "Boot", "bootx64.efi");
             if (!File.Exists(efiDst) || !File.Exists(wimDst) ||
@@ -160,9 +160,11 @@ public sealed class UsbBootWriter(ILogger? logger = null)
                 if (pct / 10 > lastPct / 10)
                 {
                     lastPct = pct;
+                    // USB 쓰기(0.25~0.95 구간)의 대부분이 이 boot.wim 한 파일입니다.
                     Report(L.T(
                         $"부팅 파일 복사 ({Path.GetFileName(file)} {pct}%)",
-                        $"Copying boot files ({Path.GetFileName(file)} {pct}%)"));
+                        $"Copying boot files ({Path.GetFileName(file)} {pct}%)"),
+                        0.25 + 0.70 * pct / 100.0);
                 }
             }
             dst.Flush(flushToDisk: true);   // USB는 캐시에 남으면 뽑을 때 깨집니다.
@@ -220,9 +222,9 @@ public sealed class UsbBootWriter(ILogger? logger = null)
         }
     }
 
-    private void Report(string step)
+    private void Report(string step, double fraction)
     {
         _logger.LogInformation("부팅 USB: {Step}", step);
-        Progress?.Invoke(step);
+        Progress?.Invoke(step, fraction);
     }
 }

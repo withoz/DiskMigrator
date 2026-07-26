@@ -40,8 +40,12 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
 {
     private readonly ILogger _logger = logger ?? NullLogger.Instance;
 
-    /// <summary>진행 단계 알림(사람이 읽을 문구).</summary>
-    public event Action<string>? Progress;
+    /// <summary>진행 알림: (사람이 읽을 문구, 이 빌더 안에서의 진행률 0~1).</summary>
+    /// <remarks>
+    /// DISM 커밋처럼 내부 진행을 알 수 없는 단계는 시작 시점의 값에 머뭅니다 — 문구가
+    /// "잠시 걸립니다"로 그 사정을 설명합니다. 큰 파일 복사(winre.wim)는 10% 단위로 움직입니다.
+    /// </remarks>
+    public event Action<string, double>? Progress;
 
     /// <param name="ingredients">재료 탐지 결과(<see cref="WinPeIngredientsReport.AllFound"/>여야 함).</param>
     /// <param name="appExePath">주입할 자체 포함 단일 exe(publish 산출물).</param>
@@ -66,7 +70,7 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         try
         {
             // --- 0) 작업 폴더 준비 ---------------------------------------------
-            Report(L.T("작업 폴더 준비", "Preparing work folder"));
+            Report(L.T("작업 폴더 준비", "Preparing work folder"), 0.00);
             if (Directory.Exists(workRoot)) TryCleanup(workRoot, mount);
             Directory.CreateDirectory(Path.Combine(media, "sources"));
             Directory.CreateDirectory(Path.Combine(media, "boot"));
@@ -76,8 +80,10 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
 
             // --- 1) 재료 복사 ---------------------------------------------------
             Report(L.T("복구 환경 이미지 복사 (수백 MB — 잠시 걸립니다)",
-                       "Copying recovery image (hundreds of MB — this takes a moment)"));
-            await Task.Run(() => CopyFile(ingredients.WinreWimPath!, bootWim), ct);
+                       "Copying recovery image (hundreds of MB — this takes a moment)"), 0.02);
+            await Task.Run(() => CopyFile(ingredients.WinreWimPath!, bootWim, ct,
+                f => Report(L.T($"복구 환경 이미지 복사 ({f:P0})",
+                                $"Copying recovery image ({f:P0})"), 0.02 + 0.28 * f)), ct);
             // Winre.wim은 원본 위치에서 읽기 전용 속성이 있을 수 있어, 사본은 수정 가능하게 풉니다.
             File.SetAttributes(bootWim, FileAttributes.Normal);
 
@@ -85,14 +91,14 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             CopyFile(ingredients.BootMgfwEfiPath!, Path.Combine(media, @"EFI\Boot", "bootx64.efi"));
 
             // --- 2) 앱 주입 (DISM 마운트) --------------------------------------
-            Report(L.T("이미지 열기 (DISM 마운트)", "Opening image (DISM mount)"));
+            Report(L.T("이미지 열기 (DISM 마운트)", "Opening image (DISM mount)"), 0.32);
             RunOrThrow(ingredients.DismPath!,
                 $"/Mount-Wim /WimFile:\"{bootWim}\" /Index:1 /MountDir:\"{mount}\"", ct);
 
             bool committed = false;
             try
             {
-                Report(L.T("DiskMigrator 앱 넣기", "Injecting the DiskMigrator app"));
+                Report(L.T("DiskMigrator 앱 넣기", "Injecting the DiskMigrator app"), 0.48);
                 string appDir = Path.Combine(mount, "DiskMigrator");
                 Directory.CreateDirectory(appDir);
                 CopyFile(appExePath, Path.Combine(appDir, "DiskMigrator.exe"));
@@ -107,8 +113,8 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
                     "cmd.exe\r\n",
                     new UTF8Encoding(false));
 
-                Report(L.T("이미지 저장 (DISM 커밋 — 잠시 걸립니다)",
-                           "Saving image (DISM commit — this takes a moment)"));
+                Report(L.T("이미지 저장 (DISM 커밋 — 몇 분 걸릴 수 있습니다)",
+                           "Saving image (DISM commit — this can take a few minutes)"), 0.52);
                 RunOrThrow(ingredients.DismPath!, $"/Unmount-Wim /MountDir:\"{mount}\" /Commit", ct);
                 committed = true;
             }
@@ -122,7 +128,7 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             }
 
             // --- 3) 부팅 구성(BCD) 생성 ----------------------------------------
-            Report(L.T("부팅 구성(BCD) 만들기", "Creating boot configuration (BCD)"));
+            Report(L.T("부팅 구성(BCD) 만들기", "Creating boot configuration (BCD)"), 0.92);
             BuildBcd(ingredients.BcdeditPath!, Path.Combine(media, @"EFI\Microsoft\Boot", "BCD"), ct);
 
             long wimBytes = new FileInfo(bootWim).Length;
@@ -201,18 +207,42 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         catch (Exception ex) { _logger.LogWarning(ex, "이전 작업 폴더 정리 실패 — 계속 진행합니다."); }
     }
 
-    private void Report(string step)
+    private void Report(string step, double fraction)
     {
         _logger.LogInformation("부팅 미디어: {Step}", step);
-        Progress?.Invoke(step);
+        Progress?.Invoke(step, fraction);
     }
 
     /// <summary>볼륨 GUID·GLOBALROOT 경로도 다루도록 스트림 복사를 씁니다.</summary>
-    private static void CopyFile(string source, string destination)
+    private static void CopyFile(string source, string destination,
+        CancellationToken ct = default, Action<double>? onProgress = null)
     {
         using var src = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var dst = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
-        src.CopyTo(dst, 1 << 20);
+
+        if (onProgress is null || src.Length == 0)
+        {
+            src.CopyTo(dst, 1 << 20);
+            return;
+        }
+
+        // 큰 파일(winre.wim 수백 MB)은 10% 단위로 진행을 알립니다.
+        var buffer = new byte[1 << 20];
+        long copied = 0;
+        int lastDecile = -1;
+        int read;
+        while ((read = src.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            dst.Write(buffer, 0, read);
+            copied += read;
+            int decile = (int)(copied * 10 / src.Length);
+            if (decile > lastDecile)
+            {
+                lastDecile = decile;
+                onProgress(copied / (double)src.Length);
+            }
+        }
     }
 
     private void RunOrThrow(string exe, string args, CancellationToken ct)

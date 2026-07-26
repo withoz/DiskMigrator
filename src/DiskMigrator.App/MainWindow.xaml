@@ -1138,29 +1138,74 @@
                     </DockPanel>
                 </Border>
 
-                <!-- 진행 중: 단계 문구 + 취소 -->
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
-                            Visibility="{Binding IsPeBuilding, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="{Binding PeStatus}" Style="{StaticResource Caption}" TextWrapping="Wrap"
-                               MaxWidth="560" VerticalAlignment="Center" />
-                    <Button Content="{loc:Loc BootUsbCancelBtn}" Command="{Binding CancelBootUsbCommand}"
-                            Margin="14,0,0,0" Padding="12,5" VerticalAlignment="Center" />
-                </StackPanel>
+                <!-- 진행 중: 진행 막대 + 퍼센트 + 단계 문구 + 취소 -->
+                <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,12,0,0"
+                        Visibility="{Binding IsPeBuilding, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <DockPanel LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Right" FontWeight="Bold" Margin="12,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding PeProgress, StringFormat={}{0:0}%}" />
+                            <ProgressBar Value="{Binding PeProgress, Mode=OneWay}" Maximum="100" Height="10"
+                                         VerticalAlignment="Center" />
+                        </DockPanel>
+                        <DockPanel LastChildFill="True" Margin="0,8,0,0">
+                            <Button DockPanel.Dock="Right" Content="{loc:Loc BootUsbCancelBtn}"
+                                    Command="{Binding CancelBootUsbCommand}"
+                                    Margin="12,0,0,0" Padding="12,5" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding PeStatus}" Style="{StaticResource Caption}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
 
-                <!-- 완료: 결과 메시지 -->
-                <TextBlock Text="{Binding PeStatus}" TextWrapping="Wrap" Margin="0,12,0,0"
-                           Visibility="{Binding PeRan, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
-                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                <!-- 완료: 결과 카드 (성공=초록, 실패=빨강) -->
+                <Border BorderThickness="1" CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                        Visibility="{Binding PeRan, Converter={StaticResource BoolToVisibility}}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+                            <Setter Property="BorderBrush" Value="#FECACA" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding PeSuccess}" Value="True">
-                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                    <Setter Property="Background" Value="#EDF7F2" />
+                                    <Setter Property="BorderBrush" Value="#CDE8DB" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                    </Border.Style>
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" FontSize="17" Margin="0,0,10,0"
+                                   VerticalAlignment="Center" FontFamily="Segoe UI Emoji">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="❌" />
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PeSuccess}" Value="True">
+                                            <Setter Property="Text" Value="✔" />
+                                            <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding PeStatus}" TextWrapping="Wrap" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PeSuccess}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DockPanel>
+                </Border>
 
                 <TextBlock Text="{loc:Loc BootUsbAfterHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,12,0,0" />
             </StackPanel>

@@ -2069,6 +2069,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>진행 단계·결과 메시지(한 줄).</summary>
     [ObservableProperty] private string _peStatus = "";
 
+    /// <summary>전체 진행률(0~100). 재료 탐지 ~5% → 미디어 조립 5~65% → USB 기록 65~100%.</summary>
+    [ObservableProperty] private double _peProgress;
+
     private CancellationTokenSource? _peCts;
 
     /// <summary>부팅 USB 시작 버튼이 비활성인 이유. 쓸 수 있으면 빈 문자열.</summary>
@@ -2107,6 +2110,7 @@ public sealed partial class MainViewModel : ObservableObject
         PeRan = false;
         PeSuccess = false;
         PeStatus = Strings.Get("PeStatusPreparing");
+        PeProgress = 0;
         _peCts = new CancellationTokenSource();
         string workRoot = Path.Combine(Path.GetTempPath(), "DiskMigrator-pe-work");
 
@@ -2134,8 +2138,10 @@ public sealed partial class MainViewModel : ObservableObject
             string appExe = Environment.ProcessPath
                 ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
 
+            PeProgress = 5;   // 재료 탐지 완료
+
             var builder = new WinPeMediaBuilder(_loggerFactory.CreateLogger<WinPeMediaBuilder>());
-            builder.Progress += step => PeStatus = step;
+            builder.Progress += (step, f) => { PeStatus = step; PeProgress = 5 + f * 60; };
             // DISM 실행이 스레드를 붙잡으므로 UI가 굳지 않게 백그라운드에서 돌립니다.
             var build = await Task.Run(() => builder.BuildAsync(ingredients, appExe, workRoot, _peCts.Token));
             if (!build.Success)
@@ -2145,11 +2151,12 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             var writer = new UsbBootWriter(_loggerFactory.CreateLogger<UsbBootWriter>());
-            writer.Progress += step => PeStatus = step;
+            writer.Progress += (step, f) => { PeStatus = step; PeProgress = 65 + f * 35; };
             var write = await writer.WriteAsync(target, build.MediaRoot!, _peCts.Token);
 
             PeSuccess = write.Success;
             PeStatus = write.Message;
+            if (write.Success) PeProgress = 100;
         }
         catch (OperationCanceledException)
         {
