@@ -400,7 +400,7 @@
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="💽" Margin="0,0,7,0" />
+                        <TextBlock Text="💽" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#7FA6C8" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc ModeClone}" />
                     </StackPanel>
                     <Button.Style>
@@ -417,7 +417,7 @@
                 </Button>
                 <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📦" Margin="0,0,7,0" />
+                        <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#D9A65A" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc ModeBackup}" />
                     </StackPanel>
                     <Button.Style>
@@ -434,7 +434,7 @@
                 </Button>
                 <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="♻️" Margin="0,0,7,0" />
+                        <TextBlock Text="♻️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#6FBF97" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc ModeRestore}" />
                     </StackPanel>
                     <Button.Style>
@@ -451,7 +451,7 @@
                 </Button>
                 <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🛠️" Margin="0,0,7,0" />
+                        <TextBlock Text="🛠️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#B39A6B" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc ModeFixBoot}" />
                     </StackPanel>
                     <Button.Style>
@@ -468,7 +468,7 @@
                 </Button>
                 <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🚑" Margin="0,0,7,0" />
+                        <TextBlock Text="🚑" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#E57373" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc ModeBootUsb}" />
                     </StackPanel>
                     <Button.Style>
