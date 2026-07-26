@@ -1223,17 +1223,18 @@ public sealed partial class MainViewModel : ObservableObject
                     _ => (Strings.Get("VerdictUnknown"), false),
                 };
 
-            // BCD 장치 참조가 이 디스크와 불일치(0xc000000e)면 복구 버튼을 제안합니다.
+            // 부팅 복구(BootRepair)가 고칠 수 있는 실패가 있으면 복구 버튼을 제안합니다:
+            // BCD 장치 참조 불일치(0xc000000e)와 최대 절전 이미지 잔존(재개를 끄고 hiberfil 삭제).
             // 이름은 언어에 따라 바뀌므로 안정 코드로 판별합니다.
             BootRepairAvailable = report.Items.Any(i =>
-                i.Passed == false && i.Code == BootReadinessCheck.CodeDeviceRef);
+                i.Passed == false && IsRepairableCode(i.Code));
 
-            // 치명 실패가 장치 참조 하나뿐이면(다른 치명 항목은 모두 통과) 클론 직후 자동 복구가
-            // 안전합니다 — 재서명으로 어긋난 참조만 고치면 부팅되기 때문입니다.
+            // 치명 실패가 전부 복구로 고칠 수 있는 항목뿐이면(다른 치명 항목은 모두 통과)
+            // 클론 직후 자동 복구가 안전합니다 — 고치면 부팅되기 때문입니다.
             _deviceRefIsOnlyFatalFailure = BootRepairAvailable && report.Items.All(i =>
                 i.Severity != BootCheckSeverity.Fatal ||
                 i.Passed == true ||
-                i.Code == BootReadinessCheck.CodeDeviceRef);
+                IsRepairableCode(i.Code));
 
             BootCheckRan = true;
             _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
@@ -1251,8 +1252,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>부팅 복구가 고칠 수 있는 검사 항목 코드인지 — 장치 참조·최대 절전 이미지.</summary>
+    private static bool IsRepairableCode(string? code) =>
+        code is BootReadinessCheck.CodeDeviceRef or BootReadinessCheck.CodeHibernation;
+
     /// <summary>
-    /// 클론의 BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다.
+    /// 클론의 BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고치고,
+    /// 최대 절전(빠른 시작) 재개를 꺼서 hiberfil.sys 잔존도 함께 정리합니다.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanRepairBoot))]
     private async Task RepairBootAsync()

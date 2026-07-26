@@ -223,8 +223,11 @@ public sealed class BootRepair(ILogger? logger = null)
         {
             _logger.LogWarning(ex, "최대 절전 이미지 정리에 실패했습니다.");
             steps.Add($"최대 절전 정리 실패: {ex.Message}");
-            return " (최대 절전 이미지는 정리하지 못했습니다 — 사본이 검은 화면에서 멈추면 " +
-                   "hiberfil.sys 를 지우십시오.)";
+            return L.T(
+                " (최대 절전 이미지는 정리하지 못했습니다 — 사본이 검은 화면에서 멈추면 " +
+                "hiberfil.sys 를 지우십시오.)",
+                " (The hibernation image could not be cleaned up — if the copy hangs on a black " +
+                "screen, delete hiberfil.sys.)");
         }
     }
 

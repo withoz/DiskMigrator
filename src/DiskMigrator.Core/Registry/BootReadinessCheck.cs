@@ -87,6 +87,12 @@ public static class BootReadinessCheck
     /// </summary>
     public const string CodeDeviceRef = "DEVICE_REF";
 
+    /// <summary>
+    /// 최대 절전 이미지(hiberfil.sys) 잔존 항목의 언어 무관 식별자. 부팅 복구(BootRepair)가
+    /// 재개를 끄고 이미지를 지워 고칠 수 있으므로, UI가 이 코드로도 복구 버튼을 제안합니다.
+    /// </summary>
+    public const string CodeHibernation = "HIBERNATION";
+
     /// <summary>BCD 요소 코드: BcdLibraryString_ApplicationPath (OS 로더의 winload 경로).</summary>
     private const string ElementApplicationPath = "12000002";
 
@@ -262,7 +268,8 @@ public static class BootReadinessCheck
         items.Add(new(Strings.Get("BcNameHibernation"), !exists, BootCheckSeverity.Fatal,
             exists
                 ? Strings.Get("BcDetailHibernationPresent")
-                : Strings.Get("BcDetailHibernationNone")));
+                : Strings.Get("BcDetailHibernationNone"),
+            CodeHibernation));
     }
 
     private static void AnalyzeBcd(string bcdPath, Guid? diskGuid, uint? mbrSignature, List<BootCheckItem> items)
