@@ -14,6 +14,28 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         UpdateLanguageToggle();
+        FitToScreen();
+    }
+
+    /// <summary>
+    /// 화면(작업 영역)보다 큰 창은 잘립니다 — 특히 부팅 USB(WinPE)는 그래픽 드라이버가 없어
+    /// 1024×768 같은 낮은 해상도로 뜨는데, 기본 창(1180×840)이 그보다 커서 가장자리가 화면
+    /// 밖으로 나갔습니다(실기에서 확인). 시작 시 창·최소 크기를 작업 영역에 맞게 줄이고,
+    /// 화면이 기본 창보다 작으면 아예 최대화해 쓸 수 있는 공간을 전부 씁니다.
+    /// </summary>
+    private void FitToScreen()
+    {
+        var wa = SystemParameters.WorkArea;
+
+        MinWidth = Math.Min(MinWidth, wa.Width);
+        MinHeight = Math.Min(MinHeight, wa.Height);
+        if (Width > wa.Width) Width = wa.Width;
+        if (Height > wa.Height) Height = wa.Height;
+
+        if (wa.Width < 1180 || wa.Height < 840)
+        {
+            WindowState = WindowState.Maximized;
+        }
     }
 
     // --- 언어 전환 --------------------------------------------------------
