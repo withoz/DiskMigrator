@@ -398,7 +398,11 @@
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
+                <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="💽" Margin="0,0,7,0" />
+                        <TextBlock Text="{loc:Loc ModeClone}" />
+                    </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -411,7 +415,11 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
+                <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📦" Margin="0,0,7,0" />
+                        <TextBlock Text="{loc:Loc ModeBackup}" />
+                    </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -424,7 +432,11 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
+                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="♻️" Margin="0,0,7,0" />
+                        <TextBlock Text="{loc:Loc ModeRestore}" />
+                    </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -437,7 +449,11 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
+                <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🛠️" Margin="0,0,7,0" />
+                        <TextBlock Text="{loc:Loc ModeFixBoot}" />
+                    </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -450,7 +466,11 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
+                <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🚑" Margin="0,0,7,0" />
+                        <TextBlock Text="{loc:Loc ModeBootUsb}" />
+                    </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
