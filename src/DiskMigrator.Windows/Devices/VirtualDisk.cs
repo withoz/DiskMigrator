@@ -51,7 +51,7 @@ public sealed class VirtualDisk : IDisposable
     public static VirtualDisk CreateAndAttach(string path, long sizeBytes, int sectorSize = 512)
     {
         if (sizeBytes <= 0 || sizeBytes % sectorSize != 0)
-            throw new ArgumentException($"크기 {sizeBytes:N0}가 섹터 크기 {sectorSize}의 배수가 아닙니다.", nameof(sizeBytes));
+            throw new ArgumentException(DiskMigrator.Core.Localization.L.T($"크기 {sizeBytes:N0}가 섹터 크기 {sectorSize}의 배수가 아닙니다.", $"Size {sizeBytes:N0} is not a multiple of the sector size {sectorSize}."), nameof(sizeBytes));
 
         var storageType = new VIRTUAL_STORAGE_TYPE
         {
@@ -75,7 +75,7 @@ public sealed class VirtualDisk : IDisposable
             CREATE_VIRTUAL_DISK_FLAG_NONE, 0, ref createParams, IntPtr.Zero, out SafeFileHandle handle);
 
         if (result != ERROR_SUCCESS)
-            throw new Win32Exception((int)result, $"VHDX 생성 실패: {path}");
+            throw new Win32Exception((int)result, DiskMigrator.Core.Localization.L.T($"VHDX 생성 실패: {path}", $"Failed to create VHDX: {path}"));
 
         return AttachAndDescribe(handle, path, sizeBytes, readOnly: false);
     }
@@ -95,7 +95,7 @@ public sealed class VirtualDisk : IDisposable
     public static VirtualDisk CreateDifferencingAndAttach(string childPath, string parentPath)
     {
         if (!File.Exists(parentPath))
-            throw new FileNotFoundException($"부모 VHDX를 찾지 못했습니다: {parentPath}", parentPath);
+            throw new FileNotFoundException(DiskMigrator.Core.Localization.L.T($"부모 VHDX를 찾지 못했습니다: {parentPath}", $"Parent VHDX not found: {parentPath}"), parentPath);
 
         var storageType = new VIRTUAL_STORAGE_TYPE
         {
@@ -124,7 +124,7 @@ public sealed class VirtualDisk : IDisposable
                 CREATE_VIRTUAL_DISK_FLAG_NONE, 0, ref createParams, IntPtr.Zero, out SafeFileHandle handle);
 
             if (result != ERROR_SUCCESS)
-                throw new Win32Exception((int)result, $"차등 VHDX 생성 실패: {childPath} (부모 {parentPath})");
+                throw new Win32Exception((int)result, DiskMigrator.Core.Localization.L.T($"차등 VHDX 생성 실패: {childPath} (부모 {parentPath})", $"Failed to create differencing VHDX: {childPath} (parent {parentPath})"));
 
             // 크기는 부모에서 상속하므로 생성 시점엔 모릅니다(0). 필요하면 디스크 열거로 확인합니다.
             return AttachAndDescribe(handle, childPath, sizeBytes: 0, readOnly: false);
@@ -141,7 +141,7 @@ public sealed class VirtualDisk : IDisposable
     public static VirtualDisk OpenAndAttach(string path, bool readOnly = true)
     {
         if (!File.Exists(path))
-            throw new FileNotFoundException($"VHDX 파일을 찾지 못했습니다: {path}", path);
+            throw new FileNotFoundException(DiskMigrator.Core.Localization.L.T($"VHDX 파일을 찾지 못했습니다: {path}", $"VHDX file not found: {path}"), path);
 
         var storageType = new VIRTUAL_STORAGE_TYPE
         {
@@ -155,7 +155,7 @@ public sealed class VirtualDisk : IDisposable
             IntPtr.Zero, out SafeFileHandle handle);
 
         if (result != ERROR_SUCCESS)
-            throw new Win32Exception((int)result, $"VHDX 열기 실패: {path}");
+            throw new Win32Exception((int)result, DiskMigrator.Core.Localization.L.T($"VHDX 열기 실패: {path}", $"Failed to open VHDX: {path}"));
 
         return AttachAndDescribe(handle, path, sizeBytes: 0, readOnly);
     }
@@ -171,7 +171,7 @@ public sealed class VirtualDisk : IDisposable
 
             uint result = AttachVirtualDisk(handle, IntPtr.Zero, attachFlags, 0, ref attachParams, IntPtr.Zero);
             if (result != ERROR_SUCCESS)
-                throw new Win32Exception((int)result, $"VHDX 부착 실패: {path}");
+                throw new Win32Exception((int)result, DiskMigrator.Core.Localization.L.T($"VHDX 부착 실패: {path}", $"Failed to attach VHDX: {path}"));
 
             string physicalPath = QueryPhysicalPath(handle);
             int diskNumber = ParseDiskNumber(physicalPath);
@@ -198,7 +198,7 @@ public sealed class VirtualDisk : IDisposable
         var sb = new StringBuilder((int)(size / 2) + 1);
         uint result = GetVirtualDiskPhysicalPath(handle, ref size, sb);
         if (result != ERROR_SUCCESS)
-            throw new Win32Exception((int)result, "부착된 VHDX의 물리 경로를 얻지 못했습니다.");
+            throw new Win32Exception((int)result, DiskMigrator.Core.Localization.L.T("부착된 VHDX의 물리 경로를 얻지 못했습니다.", "Failed to get the attached VHDX's physical path."));
 
         return sb.ToString();
     }
@@ -210,7 +210,7 @@ public sealed class VirtualDisk : IDisposable
         while (i > 0 && char.IsDigit(physicalPath[i - 1])) i--;
         if (i < physicalPath.Length && int.TryParse(physicalPath.AsSpan(i), out int n))
             return n;
-        throw new FormatException($"물리 경로에서 디스크 번호를 파싱하지 못했습니다: {physicalPath}");
+        throw new FormatException(DiskMigrator.Core.Localization.L.T($"물리 경로에서 디스크 번호를 파싱하지 못했습니다: {physicalPath}", $"Failed to parse the disk number from the physical path: {physicalPath}"));
     }
 
     public void Dispose()

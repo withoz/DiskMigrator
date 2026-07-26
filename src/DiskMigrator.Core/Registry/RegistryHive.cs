@@ -33,9 +33,9 @@ public sealed class RegistryHive
     {
         ArgumentNullException.ThrowIfNull(data);
         if (data.Length < BaseBlockSize)
-            throw new InvalidDataException("하이브가 너무 작습니다 (베이스 블록 미만).");
+            throw new InvalidDataException(DiskMigrator.Core.Localization.L.T("하이브가 너무 작습니다 (베이스 블록 미만).", "The hive is too small (smaller than a base block)."));
         if (Encoding.ASCII.GetString(data, 0, 4) != "regf")
-            throw new InvalidDataException("regf 시그니처가 없습니다 — 레지스트리 하이브가 아닙니다.");
+            throw new InvalidDataException(DiskMigrator.Core.Localization.L.T("regf 시그니처가 없습니다 — 레지스트리 하이브가 아닙니다.", "Missing regf signature — this is not a registry hive."));
 
         _data = data;
     }
@@ -120,7 +120,7 @@ public sealed class RegistryHive
                 break;
 
             default:
-                throw new InvalidDataException($"알 수 없는 하위키 목록 시그니처: '{sig}'");
+                throw new InvalidDataException(DiskMigrator.Core.Localization.L.T($"알 수 없는 하위키 목록 시그니처: '{sig}'", $"Unknown subkey list signature: '{sig}'"));
         }
     }
 

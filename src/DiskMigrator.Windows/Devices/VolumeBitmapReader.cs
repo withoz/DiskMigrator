@@ -84,7 +84,7 @@ internal sealed class VolumeBitmapReader(ILogger? logger = null)
         if (handle.IsInvalid)
         {
             throw new Win32Exception(Marshal.GetLastWin32Error(),
-                $"할당 비트맵을 읽기 위해 볼륨 {path} 을(를) 열지 못했습니다.");
+                DiskMigrator.Core.Localization.L.T($"할당 비트맵을 읽기 위해 볼륨 {path} 을(를) 열지 못했습니다.", $"Failed to open volume {path} to read the allocation bitmap."));
         }
 
         return handle;
@@ -99,7 +99,7 @@ internal sealed class VolumeBitmapReader(ILogger? logger = null)
         if (data.Length < 48)
         {
             throw new InvalidOperationException(
-                $"NTFS 볼륨 데이터가 너무 짧습니다({data.Length}바이트). NTFS 볼륨이 아닐 수 있습니다.");
+                DiskMigrator.Core.Localization.L.T($"NTFS 볼륨 데이터가 너무 짧습니다({data.Length}바이트). NTFS 볼륨이 아닐 수 있습니다.", $"NTFS volume data is too short ({data.Length} bytes). This may not be an NTFS volume."));
         }
 
         long totalClusters = BitConverter.ToInt64(data, 16);
@@ -107,7 +107,7 @@ internal sealed class VolumeBitmapReader(ILogger? logger = null)
 
         if (bytesPerCluster == 0)
         {
-            throw new InvalidOperationException("BytesPerCluster가 0입니다 — 예상치 못한 NTFS 볼륨 데이터.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("BytesPerCluster가 0입니다 — 예상치 못한 NTFS 볼륨 데이터.", "BytesPerCluster is 0 — unexpected NTFS volume data."));
         }
 
         return (bytesPerCluster, totalClusters);
@@ -145,7 +145,7 @@ internal sealed class VolumeBitmapReader(ILogger? logger = null)
                 int error = ok ? 0 : Marshal.GetLastWin32Error();
                 if (!ok && error != NativeMethods.ERROR_MORE_DATA)
                 {
-                    throw new Win32Exception(error, "FSCTL_GET_VOLUME_BITMAP 호출이 실패했습니다.");
+                    throw new Win32Exception(error, DiskMigrator.Core.Localization.L.T("FSCTL_GET_VOLUME_BITMAP 호출이 실패했습니다.", "The FSCTL_GET_VOLUME_BITMAP call failed."));
                 }
 
                 long outStartLcn = Marshal.ReadInt64(outBuf, 0);   // 바이트 경계로 내림된 시작 LCN

@@ -59,7 +59,7 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
 
         if (!target.CanWrite)
         {
-            throw new InvalidOperationException($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.", $"{target.Id} is not open for writing."));
         }
 
         int sectorSize = target.SectorSize;
@@ -103,8 +103,7 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
         if (headerSize is < 92 or > 512 || entryCount == 0 || entrySize < 128)
         {
             throw new InvalidOperationException(
-                $"GPT 헤더 값이 비정상입니다 (HeaderSize={headerSize}, 항목 {entryCount}개 × {entrySize}바이트). " +
-                "대상 디스크를 신뢰할 수 없습니다.");
+                DiskMigrator.Core.Localization.L.T($"GPT 헤더 값이 비정상입니다 (HeaderSize={headerSize}, 항목 {entryCount}개 × {entrySize}바이트). 대상 디스크를 신뢰할 수 없습니다.", $"GPT header values are invalid (HeaderSize={headerSize}, {entryCount} entries × {entrySize} bytes). The target disk cannot be trusted."));
         }
 
         long entryArrayBytes = (long)entryCount * entrySize;
@@ -117,7 +116,7 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
 
         if (target.Read(primaryEntryLba * sectorSize, entries) < entryBufferSize)
         {
-            throw new InvalidOperationException("GPT 파티션 항목 배열을 읽지 못했습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("GPT 파티션 항목 배열을 읽지 못했습니다.", "Failed to read the GPT partition entry array."));
         }
 
         uint entriesCrc = Crc32.Compute(entries[..(int)entryArrayBytes]);
@@ -129,8 +128,9 @@ public sealed class GptRepair(ILogger<GptRepair>? logger = null)
         long firstUsableLba = ReadInt64(header, GptHeaderOffsets.FirstUsableLba);
         if (newLastUsableLba <= firstUsableLba)
         {
-            throw new InvalidOperationException(
-                "대상 디스크가 너무 작아 GPT 백업 헤더를 놓을 자리가 없습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T(
+                "대상 디스크가 너무 작아 GPT 백업 헤더를 놓을 자리가 없습니다.",
+                "The target disk is too small to hold the GPT backup header."));
         }
 
         // --- 주 헤더 갱신 ---------------------------------------------------

@@ -59,7 +59,7 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
 
         if (volumeGuidPaths.Count == 0)
         {
-            throw new ArgumentException("스냅샷을 만들 볼륨이 없습니다.", nameof(volumeGuidPaths));
+            throw new ArgumentException(DiskMigrator.Core.Localization.L.T("스냅샷을 만들 볼륨이 없습니다.", "There are no volumes to snapshot."), nameof(volumeGuidPaths));
         }
 
         return Task.Run<ISnapshotSet>(() => Create(volumeGuidPaths, ct), ct);

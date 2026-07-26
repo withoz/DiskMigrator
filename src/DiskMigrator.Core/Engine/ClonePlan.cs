@@ -68,12 +68,12 @@ public sealed class ClonePlan
     {
         if (!Target.CanWrite)
         {
-            throw new InvalidOperationException($"대상 장치 {Target.Id} 을(를) 쓰기용으로 열지 못했습니다.");
+            throw new InvalidOperationException(Localization.L.T($"대상 장치 {Target.Id} 을(를) 쓰기용으로 열지 못했습니다.", $"Failed to open target device {Target.Id} for writing."));
         }
 
         if (Regions.Count == 0)
         {
-            throw new InvalidOperationException("복사할 구간이 없습니다.");
+            throw new InvalidOperationException(Localization.L.T("복사할 구간이 없습니다.", "There are no regions to copy."));
         }
 
         int sector = Target.SectorSize;
@@ -82,33 +82,32 @@ public sealed class ClonePlan
         {
             if (region.Length <= 0)
             {
-                throw new InvalidOperationException($"{region.Description}: 길이가 0 이하입니다.");
+                throw new InvalidOperationException(Localization.L.T($"{region.Description}: 길이가 0 이하입니다.", $"{region.Description}: length is zero or less."));
             }
 
             if (region.SourceOffset % region.Source.SectorSize != 0 ||
                 region.Length % region.Source.SectorSize != 0)
             {
                 throw new InvalidOperationException(
-                    $"{region.Description}: 원본 오프셋/길이가 섹터({region.Source.SectorSize}바이트) 정렬이 아닙니다.");
+                    Localization.L.T($"{region.Description}: 원본 오프셋/길이가 섹터({region.Source.SectorSize}바이트) 정렬이 아닙니다.", $"{region.Description}: source offset/length is not aligned to the sector size ({region.Source.SectorSize} bytes)."));
             }
 
             if (region.TargetOffset % sector != 0 || region.Length % sector != 0)
             {
                 throw new InvalidOperationException(
-                    $"{region.Description}: 대상 오프셋/길이가 섹터({sector}바이트) 정렬이 아닙니다.");
+                    Localization.L.T($"{region.Description}: 대상 오프셋/길이가 섹터({sector}바이트) 정렬이 아닙니다.", $"{region.Description}: target offset/length is not aligned to the sector size ({sector} bytes)."));
             }
 
             if (region.SourceOffset + region.Length > region.Source.Length)
             {
                 throw new InvalidOperationException(
-                    $"{region.Description}: 원본 장치 끝을 넘어서 읽으려 합니다.");
+                    Localization.L.T($"{region.Description}: 원본 장치 끝을 넘어서 읽으려 합니다.", $"{region.Description}: attempts to read past the end of the source device."));
             }
 
             if (region.TargetOffset + region.Length > Target.Length)
             {
                 throw new InvalidOperationException(
-                    $"{region.Description}: 대상 장치 끝을 넘어서 쓰려 합니다. " +
-                    $"대상 크기 {Target.Length:N0}바이트, 필요 {region.TargetOffset + region.Length:N0}바이트.");
+                    DiskMigrator.Core.Localization.L.T($"{region.Description}: 대상 장치 끝을 넘어서 쓰려 합니다. 대상 크기 {Target.Length:N0}바이트, 필요 {region.TargetOffset + region.Length:N0}바이트.", $"{region.Description}: attempts to write past the end of the target device. Target size {Target.Length:N0} bytes, required {region.TargetOffset + region.Length:N0} bytes."));
             }
         }
 

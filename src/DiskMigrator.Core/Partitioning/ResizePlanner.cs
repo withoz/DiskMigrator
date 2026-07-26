@@ -354,9 +354,9 @@ public static class ResizePlanner
         {
             var p = layout[i];
             if (p.LengthBytes <= 0)
-                throw new InvalidOperationException($"파티션 {p.SourceNumber}의 크기가 0 이하입니다.");
+                throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"파티션 {p.SourceNumber}의 크기가 0 이하입니다.", $"Partition {p.SourceNumber} has a size of zero or less."));
             if (p.StartingOffset < 0)
-                throw new InvalidOperationException($"파티션 {p.SourceNumber}의 시작 오프셋이 음수입니다.");
+                throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"파티션 {p.SourceNumber}의 시작 오프셋이 음수입니다.", $"Partition {p.SourceNumber} has a negative starting offset."));
 
             if (i > 0 && layout[i - 1].EndOffset > p.StartingOffset)
                 throw new InvalidOperationException(

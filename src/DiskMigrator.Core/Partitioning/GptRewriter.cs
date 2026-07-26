@@ -61,7 +61,7 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
         ArgumentNullException.ThrowIfNull(remaps);
 
         if (!target.CanWrite)
-            throw new InvalidOperationException($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.", $"{target.Id} is not open for writing."));
 
         int sectorSize = target.SectorSize;
         long lastLba = (target.Length / sectorSize) - 1;
@@ -70,10 +70,10 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
         var header = headerBuffer.SpanOf(sectorSize);
 
         if (target.Read(sectorSize, header) < sectorSize)
-            throw new InvalidOperationException("주 GPT 헤더를 읽지 못했습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("주 GPT 헤더를 읽지 못했습니다.", "Failed to read the primary GPT header."));
 
         if (!header[..8].SequenceEqual(GptSignature))
-            throw new InvalidOperationException("대상이 GPT 디스크가 아닙니다. 리사이즈에는 GPT가 필요합니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("대상이 GPT 디스크가 아닙니다. 리사이즈에는 GPT가 필요합니다.", "The target is not a GPT disk. Resizing requires GPT."));
 
         uint headerSize = ReadUInt32(header, GptHeaderOffsets.HeaderSize);
         uint entryCount = ReadUInt32(header, GptHeaderOffsets.NumberOfPartitionEntries);
@@ -83,7 +83,7 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
 
         if (headerSize is < 92 or > 512 || entryCount == 0 || entrySize < 128)
             throw new InvalidOperationException(
-                $"GPT 헤더 값이 비정상입니다 (HeaderSize={headerSize}, 항목 {entryCount}개 × {entrySize}바이트).");
+                DiskMigrator.Core.Localization.L.T($"GPT 헤더 값이 비정상입니다 (HeaderSize={headerSize}, 항목 {entryCount}개 × {entrySize}바이트).", $"GPT header values are invalid (HeaderSize={headerSize}, {entryCount} entries × {entrySize} bytes)."));
 
         long entryArrayBytes = (long)entryCount * entrySize;
         long entryArrayLbaCount = (entryArrayBytes + sectorSize - 1) / sectorSize;
@@ -93,7 +93,7 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
         var entries = entryBuffer.SpanOf(entryBufferSize);
 
         if (target.Read(primaryEntryLba * sectorSize, entries) < entryBufferSize)
-            throw new InvalidOperationException("GPT 파티션 항목 배열을 읽지 못했습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("GPT 파티션 항목 배열을 읽지 못했습니다.", "Failed to read the GPT partition entry array."));
 
         // --- 엔트리 재배치 --------------------------------------------------
         var applied = new bool[remaps.Count];
@@ -113,8 +113,7 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
             int match = FindRemap(remaps, applied, startLba);
             if (match < 0)
                 throw new InvalidOperationException(
-                    $"GPT에 사용 중인 파티션(StartingLBA {startLba})이 있는데 대응하는 재배치 정보가 없습니다. " +
-                    "모든 원본 파티션을 배치에 포함해야 안전하게 리사이즈할 수 있습니다.");
+                    DiskMigrator.Core.Localization.L.T($"GPT에 사용 중인 파티션(StartingLBA {startLba})이 있는데 대응하는 재배치 정보가 없습니다. 모든 원본 파티션을 배치에 포함해야 안전하게 리사이즈할 수 있습니다.", $"The GPT has an in-use partition (StartingLBA {startLba}) with no matching remap. All source partitions must be included in the layout for a safe resize."));
 
             var remap = remaps[match];
             applied[match] = true;
@@ -129,7 +128,7 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
         {
             if (!applied[i])
                 throw new InvalidOperationException(
-                    $"재배치 정보(StartingLBA {remaps[i].OldStartLba})에 해당하는 GPT 파티션을 찾지 못했습니다.");
+                    DiskMigrator.Core.Localization.L.T($"재배치 정보(StartingLBA {remaps[i].OldStartLba})에 해당하는 GPT 파티션을 찾지 못했습니다.", $"No GPT partition matches the remap entry (StartingLBA {remaps[i].OldStartLba})."));
         }
 
         // --- 백업 위치·사용 가능 경계 계산 (GptRepair와 동일 규칙) -----------
@@ -137,12 +136,11 @@ public sealed class GptRewriter(ILogger<GptRewriter>? logger = null)
         long newLastUsableLba = backupEntryLba - 1;
 
         if (newLastUsableLba <= firstUsableLba)
-            throw new InvalidOperationException("대상이 너무 작아 GPT 백업 헤더를 놓을 자리가 없습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("대상이 너무 작아 GPT 백업 헤더를 놓을 자리가 없습니다.", "The target is too small to hold the GPT backup header."));
 
         if (maxNewEndLba > newLastUsableLba)
             throw new InvalidOperationException(
-                $"새 파티션 배치가 사용 가능 영역을 넘습니다(마지막 파티션 끝 LBA {maxNewEndLba} > " +
-                $"마지막 사용 가능 LBA {newLastUsableLba}).");
+                DiskMigrator.Core.Localization.L.T($"새 파티션 배치가 사용 가능 영역을 넘습니다(마지막 파티션 끝 LBA {maxNewEndLba} > 마지막 사용 가능 LBA {newLastUsableLba}).", $"The new layout exceeds the usable area (last partition end LBA {maxNewEndLba} > last usable LBA {newLastUsableLba})."));
 
         uint entriesCrc = Crc32.Compute(entries[..(int)entryArrayBytes]);
 

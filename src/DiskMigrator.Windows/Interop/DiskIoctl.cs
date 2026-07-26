@@ -59,7 +59,7 @@ internal static class DiskIoctl
     {
         if (!TryControl(handle, controlCode))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), $"{operationName} 이(가) 실패했습니다.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), DiskMigrator.Core.Localization.L.T($"{operationName} 이(가) 실패했습니다.", $"{operationName} failed."));
         }
     }
 

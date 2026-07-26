@@ -123,7 +123,8 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                 VerificationPassed = verificationPassed,
                 VerificationMismatches = mismatches,
                 ErrorMessage = verificationPassed == false
-                    ? "복제는 끝났지만 검증에서 원본과 대상이 일치하지 않았습니다. 대상 디스크를 신뢰하지 마십시오."
+                    ? L.T("복제는 끝났지만 검증에서 원본과 대상이 일치하지 않았습니다. 대상 디스크를 신뢰하지 마십시오.",
+                          "Copying finished, but verification found that the source and target do not match. Do not trust the target disk.")
                     : null,
             };
         }

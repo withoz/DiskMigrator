@@ -266,7 +266,7 @@ public sealed class BootRepair(ILogger? logger = null)
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         using var p = Process.Start(psi)
-            ?? throw new InvalidOperationException("bcdedit를 시작하지 못했습니다.");
+            ?? throw new InvalidOperationException(L.T("bcdedit를 시작하지 못했습니다.", "Failed to start bcdedit."));
         string stdout = p.StandardOutput.ReadToEnd();
         string stderr = p.StandardError.ReadToEnd();
         p.WaitForExit(30_000);

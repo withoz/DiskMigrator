@@ -81,7 +81,7 @@ public sealed class FileBlockDevice : IBlockDevice
     {
         if (!_canWrite)
         {
-            throw new InvalidOperationException($"{Id} 은(는) 읽기 전용으로 열렸습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"{Id} 은(는) 읽기 전용으로 열렸습니다.", $"{Id} was opened read-only."));
         }
 
         ValidateAlignment(offset, buffer.Length);

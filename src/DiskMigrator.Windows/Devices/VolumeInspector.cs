@@ -52,7 +52,7 @@ internal sealed class VolumeInspector(ILogger? logger = null)
         using var find = VolumeApi.FindFirstVolume(buffer, (uint)buffer.Length);
         if (find.IsInvalid)
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "볼륨 열거를 시작하지 못했습니다.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), DiskMigrator.Core.Localization.L.T("볼륨 열거를 시작하지 못했습니다.", "Failed to start volume enumeration."));
         }
 
         do

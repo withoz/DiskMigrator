@@ -66,7 +66,7 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
         ArgumentNullException.ThrowIfNull(remaps);
 
         if (!target.CanWrite)
-            throw new InvalidOperationException($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T($"{target.Id} 은(는) 쓰기용으로 열려 있지 않습니다.", $"{target.Id} is not open for writing."));
 
         int sectorSize = target.SectorSize;
         long lastLba = (target.Length / sectorSize) - 1;
@@ -75,15 +75,15 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
         var mbr = buffer.SpanOf(sectorSize);
 
         if (target.Read(0, mbr) < sectorSize)
-            throw new InvalidOperationException("MBR을 읽지 못했습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("MBR을 읽지 못했습니다.", "Failed to read the MBR."));
 
         if (mbr[510] != 0x55 || mbr[511] != 0xAA)
-            throw new InvalidOperationException("대상에 MBR 서명(0x55AA)이 없습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("대상에 MBR 서명(0x55AA)이 없습니다.", "The target has no MBR signature (0x55AA)."));
 
         // 보호 MBR(0xEE)은 GPT 디스크의 껍데기입니다. 여기까지 왔다면 배선이 잘못된 것이므로
         // 파티션 테이블을 덮어쓰기 전에 멈춥니다 — GPT를 MBR로 잘못 쓰면 디스크를 못 읽습니다.
         if (mbr[TableOffset + MbrEntryOffsets.PartitionType] == 0xEE)
-            throw new InvalidOperationException("대상이 GPT 디스크입니다(보호 MBR). MBR 재작성을 적용할 수 없습니다.");
+            throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T("대상이 GPT 디스크입니다(보호 MBR). MBR 재작성을 적용할 수 없습니다.", "The target is a GPT disk (protective MBR). MBR rewriting cannot be applied."));
 
         var applied = new bool[remaps.Count];
         long maxNewEndLba = 0;
@@ -103,9 +103,7 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
             if (type is 0x05 or 0x0F)
             {
                 throw new InvalidOperationException(
-                    "원본에 확장 파티션(논리 드라이브)이 있어 리사이즈할 수 없습니다. " +
-                    "논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다. " +
-                    "'마지막 파티션에 합치기'나 '그대로 둡니다'를 쓰십시오.");
+                    DiskMigrator.Core.Localization.L.T("원본에 확장 파티션(논리 드라이브)이 있어 리사이즈할 수 없습니다. 논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다. '마지막 파티션에 합치기'나 '그대로 둡니다'를 쓰십시오.", "The source has an extended partition (logical drives), so it cannot be resized. Logical drives are chained via EBRs — moving them requires rewriting the whole chain. Use 'Merge into last partition' or 'Leave as is'."));
             }
 
             long startLba = BinaryPrimitives.ReadUInt32LittleEndian(
@@ -114,8 +112,7 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
             int match = FindRemap(remaps, applied, startLba);
             if (match < 0)
                 throw new InvalidOperationException(
-                    $"MBR에 사용 중인 파티션(시작 LBA {startLba})이 있는데 대응하는 재배치 정보가 없습니다. " +
-                    "모든 원본 파티션을 배치에 포함해야 안전하게 리사이즈할 수 있습니다.");
+                    DiskMigrator.Core.Localization.L.T($"MBR에 사용 중인 파티션(시작 LBA {startLba})이 있는데 대응하는 재배치 정보가 없습니다. 모든 원본 파티션을 배치에 포함해야 안전하게 리사이즈할 수 있습니다.", $"The MBR has an in-use partition (start LBA {startLba}) with no matching remap. All source partitions must be included in the layout for a safe resize."));
 
             var remap = remaps[match];
             applied[match] = true;
@@ -125,14 +122,13 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
             // 0번 섹터는 MBR 자신입니다. 파티션이 거기서 시작하면 파티션 테이블을 덮어씁니다.
             if (remap.NewStartLba < 1)
                 throw new InvalidOperationException(
-                    $"파티션 시작 LBA가 {remap.NewStartLba}입니다 — 0번 섹터는 MBR 자신이라 쓸 수 없습니다.");
+                    DiskMigrator.Core.Localization.L.T($"파티션 시작 LBA가 {remap.NewStartLba}입니다 — 0번 섹터는 MBR 자신이라 쓸 수 없습니다.", $"The partition start LBA is {remap.NewStartLba} — sector 0 is the MBR itself and cannot be used."));
 
             // 시작·길이 모두 32비트 필드입니다. 길이도 함께 봐야 합니다 — 끝 LBA만 검사하면
             // 길이가 2^32가 되는 경우 캐스트에서 0으로 잘려 '길이 0' 항목이 조용히 써집니다.
             if (remap.NewEndLba > MaxLba || newCount <= 0 || newCount > MaxLba)
                 throw new InvalidOperationException(
-                    $"새 배치가 MBR의 32비트 한계를 넘습니다(끝 LBA {remap.NewEndLba}, 길이 {newCount}섹터). " +
-                    "MBR 디스크는 약 2 TB까지만 가리킬 수 있습니다.");
+                    DiskMigrator.Core.Localization.L.T($"새 배치가 MBR의 32비트 한계를 넘습니다(끝 LBA {remap.NewEndLba}, 길이 {newCount}섹터). MBR 디스크는 약 2 TB까지만 가리킬 수 있습니다.", $"The new layout exceeds the MBR 32-bit limit (end LBA {remap.NewEndLba}, length {newCount} sectors). MBR disks can only address about 2 TB."));
 
             BinaryPrimitives.WriteUInt32LittleEndian(
                 entry.Slice(MbrEntryOffsets.StartLba, 4), (uint)remap.NewStartLba);
@@ -152,13 +148,12 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
         {
             if (!applied[i])
                 throw new InvalidOperationException(
-                    $"재배치 정보(시작 LBA {remaps[i].OldStartLba})에 해당하는 MBR 파티션을 찾지 못했습니다.");
+                    DiskMigrator.Core.Localization.L.T($"재배치 정보(시작 LBA {remaps[i].OldStartLba})에 해당하는 MBR 파티션을 찾지 못했습니다.", $"No MBR partition matches the remap entry (start LBA {remaps[i].OldStartLba})."));
         }
 
         if (maxNewEndLba > lastLba)
             throw new InvalidOperationException(
-                $"새 파티션 배치가 대상 디스크를 넘습니다(마지막 파티션 끝 LBA {maxNewEndLba} > " +
-                $"디스크 마지막 LBA {lastLba}).");
+                DiskMigrator.Core.Localization.L.T($"새 파티션 배치가 대상 디스크를 넘습니다(마지막 파티션 끝 LBA {maxNewEndLba} > 디스크 마지막 LBA {lastLba}).", $"The new layout exceeds the target disk (last partition end LBA {maxNewEndLba} > disk last LBA {lastLba})."));
 
         // 파티션 테이블을 쓰기 직전 마지막 방어선입니다. 겹친 배치를 쓰면 두 파일시스템이
         // 같은 섹터를 자기 것으로 알고 서로를 덮어써, 디스크를 통째로 못 읽게 됩니다.
@@ -169,8 +164,7 @@ public sealed class MbrRewriter(ILogger<MbrRewriter>? logger = null)
         {
             if (ordered[i].NewStartLba <= ordered[i - 1].NewEndLba)
                 throw new InvalidOperationException(
-                    $"새 파티션 배치가 서로 겹칩니다(앞 파티션 끝 LBA {ordered[i - 1].NewEndLba}, " +
-                    $"뒤 파티션 시작 LBA {ordered[i].NewStartLba}). 파티션 테이블을 쓰지 않았습니다.");
+                    DiskMigrator.Core.Localization.L.T($"새 파티션 배치가 서로 겹칩니다(앞 파티션 끝 LBA {ordered[i - 1].NewEndLba}, 뒤 파티션 시작 LBA {ordered[i].NewStartLba}). 파티션 테이블을 쓰지 않았습니다.", $"The new layout overlaps (previous partition end LBA {ordered[i - 1].NewEndLba}, next partition start LBA {ordered[i].NewStartLba}). The partition table was not written."));
         }
 
         target.Write(0, mbr);

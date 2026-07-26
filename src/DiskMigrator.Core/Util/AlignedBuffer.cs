@@ -25,7 +25,7 @@ public sealed unsafe class AlignedBuffer : IDisposable
         _pointer = NativeMemory.AlignedAlloc((nuint)length, (nuint)alignment);
         if (_pointer is null)
         {
-            throw new OutOfMemoryException($"{length}바이트 정렬 버퍼를 할당하지 못했습니다.");
+            throw new OutOfMemoryException(DiskMigrator.Core.Localization.L.T($"{length}바이트 정렬 버퍼를 할당하지 못했습니다.", $"Failed to allocate a {length}-byte aligned buffer."));
         }
 
         Length = length;
