@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiskMigrator User Manual</title>
+<style>
+  :root {
+    --ink: #2b2622; --muted: #837b72; --line: #e6e0d8;
+    --accent: #52738f; --accent-soft: #eef2f6;
+    --danger: #dc2626; --danger-soft: #fef2f2;
+    --ok: #2f7d5d; --ok-soft: #edf7f2;
+    --card: #ffffff; --bg: #faf8f5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    line-height: 1.65; font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 36px 20px 80px; }
+  header { display: flex; align-items: center; gap: 16px;
+           border-bottom: 2px solid var(--ink); padding-bottom: 18px; }
+  .logo { width: 48px; height: 48px; border-radius: 12px; background: var(--ink); color: #fff;
+          font-weight: 900; font-size: 20px; letter-spacing: -1px; flex: none;
+          display: flex; align-items: center; justify-content: center; }
+  header h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: 1px; }
+  header p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .badge { display: inline-block; background: var(--accent); color: #fff; border-radius: 20px;
+           padding: 2px 12px; font-size: 12px; font-weight: 700; margin-left: 8px; vertical-align: middle; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+  .toc a { text-decoration: none; color: var(--accent); background: var(--accent-soft);
+           border: 1px solid #d3dde7; border-radius: 20px; padding: 4px 13px; font-size: 12.5px;
+           transition: background .15s, color .15s; }
+  .toc a:hover { background: var(--accent); color: #fff; }
+  h2 { font-size: 19px; margin: 44px 0 12px; padding-left: 10px;
+       border-left: 4px solid var(--accent); scroll-margin-top: 16px; }
+  h3 { font-size: 15.5px; margin: 20px 0 8px; }
+  p { margin: 8px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 12px 0; }
+  .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
+  .mode { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; }
+  .mode b { color: var(--accent); font-size: 15.5px; }
+  .mode .ico { font-size: 19px; margin-right: 7px; vertical-align: -2px; }
+  .mode p { font-size: 13.5px; color: var(--muted); margin: 7px 0 0; }
+  ol.steps { counter-reset: n; list-style: none; padding: 0; margin: 10px 0; }
+  ol.steps li { counter-increment: n; position: relative; padding: 10px 14px 10px 48px;
+                background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
+  ol.steps li::before { content: counter(n); position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+                width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff;
+                font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .warn { background: var(--danger-soft); border: 1px solid #fecaca; border-radius: 10px; padding: 12px 16px; margin: 12px 0; }
+  .warn b { color: var(--danger); }
+  .tip { background: var(--ok-soft); border: 1px solid #cde8db; border-radius: 10px; padding: 12px 16px; margin: 12px 0; }
+  .tip b { color: var(--ok); }
+  .note { background: var(--accent-soft); border: 1px solid #d3dde7; border-radius: 10px; padding: 12px 16px; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; background: var(--card);
+          border-radius: 10px; overflow: hidden; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: #f3efe9; font-size: 13px; }
+  tr:nth-child(odd) td { background: #fbfaf7; }
+  dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 26px; margin: 0; }
+  @media (max-width: 640px) { dl { grid-template-columns: 1fr; } }
+  dt { font-weight: 700; color: var(--accent); font-size: 13px; }
+  dd { margin: 2px 0 0 0; color: var(--ink); font-size: 12.5px; line-height: 1.55; }
+  .term { border-bottom: 1px dotted var(--accent); cursor: help; }
+  code { background: #f3efe9; border-radius: 4px; padding: 1px 6px; font-size: 13px; }
+  footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: 12.5px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">DM</div>
+  <div>
+    <h1>DISKMIGRATOR USER MANUAL <span class="badge">v1.1</span></h1>
+    <p>Copy, back up, and restore an entire Windows disk — a beginner-friendly guide</p>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#before">Before you start</a>
+  <a href="#modes">The five modes</a>
+  <a href="#clone">① Clone</a>
+  <a href="#backup">② Backup</a>
+  <a href="#restore">③ Restore</a>
+  <a href="#fixboot">④ Fix Boot</a>
+  <a href="#bootusb">⑤ Boot USB</a>
+  <a href="#faq">FAQ</a>
+  <a href="#terms">Glossary</a>
+  <a href="manual.html">한국어</a>
+</nav>
+
+<div class="card" style="margin-top:0;">
+  <p>Copy the disk in your current computer — <b>Windows, programs, and files, all of it</b> — onto a new
+  disk, or save it as a single file to bring back later. The copy <b>boots as-is</b>, so there is no
+  need to reinstall Windows.</p>
+  <p style="color:var(--muted); font-size:13.5px;">Examples: move from a slow hard drive to a new SSD, keep a full backup in case of failure, move your system to a new PC</p>
+</div>
+
+<h2 id="before">Before you start (please read)</h2>
+<div class="warn"><b>⚠ The target disk is completely erased.</b> Everything on the disk that <i>receives</i> the copy
+  will be gone. Move any important files off it first.</div>
+<div class="card">
+  <p>• The program runs with <span class="term">administrator rights</span> (click "Yes" on the blue prompt at launch).</p>
+  <p>• A <b>USB adapter (external enclosure)</b> for connecting the new disk (M.2/SSD) is handy.</p>
+  <p>• Depending on the amount of data, it takes 30 minutes to several hours. Do not turn off the computer part-way.</p>
+</div>
+
+<h2 id="modes">The five modes — pick one at the top of the window</h2>
+<div class="modes">
+  <div class="mode"><span class="ico">💽</span><b>Disk Clone</b><p>Copy disk → disk directly.<br>For moving to a new SSD.</p></div>
+  <div class="mode"><span class="ico">📦</span><b>Image Backup</b><p>Save disk → file (.vhdx).<br>Insurance against failure.</p></div>
+  <div class="mode"><span class="ico">♻️</span><b>Image Restore</b><p>Saved file → disk.<br>Bring a backed-up system back.</p></div>
+  <div class="mode"><span class="ico">🛠️</span><b>Fix Boot</b><p>When a copied disk won't start.<br>Checks and repairs without re-copying.</p></div>
+  <div class="mode"><span class="ico">🚑</span><b>Boot USB</b><p>For when Windows won't start at all.<br>Boot from USB and use this app.</p></div>
+</div>
+
+<h2 id="clone">① Disk Clone — step by step</h2>
+<ol class="steps">
+  <li>Select the <b>source</b> (the disk to copy, usually marked <code>System</code>) on the left</li>
+  <li>Select the <b>target</b> (the new disk) on the right — <b style="color:var(--danger)">this disk will be erased</b></li>
+  <li>Leave the options at their defaults; if the disk is going into a different computer, make sure <b>"Prepare for new hardware" is checked</b></li>
+  <li>In the red box, <b>type the target disk's model name exactly</b> (this is a mistake-prevention safeguard)</li>
+  <li>Click <b>Start Clone</b> → when it finishes, the boot check and repair run automatically</li>
+</ol>
+<div class="tip"><b>✓ Different sizes are fine.</b> If the target is larger, the extra space is made usable;
+  if it is <b>smaller</b>, the largest partition is <b>shrunk automatically</b> to fit (a notice tells you what will happen).
+  If your actual data won't fit on the target, the app explains why and stops before touching anything.</div>
+
+<h2 id="backup">② Image Backup — step by step</h2>
+<div class="tip"><b>✓ Save your current computer (C:\) into a single file now (recommended)</b><br>
+  Even if you replace the disk or it fails, restoring brings everything back exactly as it was.</div>
+<ol class="steps">
+  <li>Select the <b>source</b> disk</li>
+  <li>Choose the <b>save location</b> — on a <b>different disk</b> than the source; a fast disk is best</li>
+  <li>Click <b>Start Backup</b> → a single <code>.vhdx</code> file is created (it only takes up as much space as your actual data)</li>
+</ol>
+<div class="note">You can also double-click the .vhdx file in File Explorer to browse its contents.</div>
+
+<h2 id="restore">③ Image Restore — step by step</h2>
+<ol class="steps">
+  <li>Use <b>Browse</b> to pick the <code>.vhdx</code> file you backed up</li>
+  <li>Select the <b>target</b> disk — it will be erased. If it is smaller, an automatic-shrink notice appears</li>
+  <li>If the disk will go into a different computer, turn on <b>"Prepare for new hardware"</b> → type the model name → <b>Start Restore</b></li>
+</ol>
+
+<h2 id="fixboot">④ Fix Boot — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">A tool for when a cloned or restored disk won't boot. It does not copy anything again.</p>
+<ol class="steps">
+  <li>Connect the disk that wouldn't start <b>to this computer, e.g. with a USB adapter</b></li>
+  <li>Select that disk on the <b>Fix Boot</b> tab</li>
+  <li>Click <b>Check Boot</b> — it only reads, so it is safe</li>
+  <li>If problems are found, click the <b>Repair Boot</b> button that appears — after repairing, the check runs again automatically</li>
+</ol>
+<div class="note">The disk this computer is currently booted from needs no fixing, so repairs are not applied to it. When the check says "ready to boot", put the disk back in its machine and try booting.</div>
+
+<h2 id="bootusb">⑤ Boot USB — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Make an <b>emergency USB</b> ahead of time, to rescue a computer whose Windows won't start at all.
+Nothing extra to install — it is built entirely from materials already inside your Windows.</p>
+<div class="warn"><b>⚠ The USB stick is completely erased.</b> Have an empty USB stick of 8 GB or more ready.</div>
+<ol class="steps">
+  <li>Plug in the USB stick and select it on the <b>Boot USB</b> tab</li>
+  <li>In the red box, <b>type the USB stick's model name exactly</b> (a mistake-prevention safeguard)</li>
+  <li>Click <b>Create Boot USB</b> → done in a few minutes</li>
+</ol>
+<div class="card">
+  <p><b>How to use it:</b> when a computer won't start, plug in this USB and power on — <b>DiskMigrator starts automatically</b>.
+  From there you can restore a backup image, clone a disk, or repair the boot configuration, just like normal.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• If the computer doesn't boot from the USB, press the boot-menu key while powering on (F12, F8, ESC, etc., depending on the maker) and pick the USB.<br>
+  • Making it <b>in advance</b> is the whole point — once a PC is dead, you'd have to build the USB on another computer.</p>
+</div>
+
+<h2>Booting from the copied disk</h2>
+<div class="card">
+  <p>① Shut the computer down → ② mount the copied disk <b>inside the computer</b> → ③ power on. Done.</p>
+  <p style="color:var(--muted); font-size:13.5px;">It cannot boot while sitting in a USB adapter — it must be mounted internally.</p>
+</div>
+
+<h2>If it won't boot</h2>
+<div class="card">
+  <p><b>Don't panic.</b> It is usually just a slightly misaligned boot setting, and it can be fixed.
+  Following <b>④ Fix Boot — step by step</b> above resolves most cases.</p>
+  <p>• Right after a clone/restore, the same button is on the completion screen. (It also runs once automatically on completion.)</p>
+  <p>• If Windows was installed the old way (BIOS) and won't start on a modern computer, use <b>Convert to UEFI</b> on the completion screen.</p>
+  <p>• If the computer won't turn on at all — so you can't even run this app — boot from the <b>⑤ Boot USB</b> you made in advance and do the same work there.</p>
+</div>
+
+<h2 id="faq">Frequently asked questions</h2>
+<table>
+  <tr><th style="width:38%">Question</th><th>Answer</th></tr>
+  <tr><td>Could my source disk get damaged?</td><td>No. The source is <b>only read</b>. No mode ever modifies the source.</td></tr>
+  <tr><td>Can I use the computer while it copies?</td><td>Yes. The <span class="term">snapshot</span> feature copies the disk exactly as it was at the starting moment. Avoiding heavy work is still a good idea.</td></tr>
+  <tr><td>Why does it ask me to type the model name?</td><td>It is a <b>safeguard</b> asking whether you really checked which disk will be erased. Type the name exactly as shown in the list.</td></tr>
+  <tr><td>How long does it take?</td><td>It depends on how much data is in use and how fast the disks are. Roughly 30–60 minutes per 300 GB.</td></tr>
+</table>
+
+<h2 id="terms">Glossary</h2>
+<div class="card">
+<dl>
+  <div><dt>Clone</dt><dd>Copying a disk in its entirety onto another disk. The copy boots as-is.</dd></div>
+  <div><dt>Image / .vhdx</dt><dd>A <b>single file</b> holding an entire disk. It is a Microsoft-standard format, so File Explorer can open it.</dd></div>
+  <div><dt>Partition</dt><dd>A section a disk is divided into. There is usually one big section for Windows (C:) and a few small ones for booting.</dd></div>
+  <div><dt>Boot</dt><dd>The process of Windows starting up when you power on the computer.</dd></div>
+  <div><dt>Administrator rights</dt><dd>The elevated Windows permission needed to read and write whole disks. A blue confirmation prompt appears at launch.</dd></div>
+  <div><dt>Snapshot (VSS)</dt><dd>A Windows feature that freezes a "moment in time" of a disk in use and copies that. Files changing during the copy can't corrupt the result.</dd></div>
+  <div><dt>Smart clone</dt><dd>Skips empty space and copies only actual data, cutting the time dramatically.</dd></div>
+  <div><dt>Prepare for new hardware (Universal Restore)</dt><dd>Adjusts Windows' internal settings so the copy boots even <b>in a different computer</b>. Always turn it on when moving to another PC.</dd></div>
+  <div><dt>Automatic shrink</dt><dd>When the target disk is smaller than the source, safely gathers the data forward and shrinks the partition to fit. The source is never touched.</dd></div>
+  <div><dt>BIOS / UEFI</dt><dd>The base program that runs first when a computer powers on. <b>BIOS is the old way, UEFI is the modern way</b>; recent M.2 disks boot only via UEFI.</dd></div>
+  <div><dt>MBR / GPT</dt><dd>The scheme used to record how a disk is partitioned. MBR is the old one (paired with BIOS); GPT is the modern one (paired with UEFI).</dd></div>
+  <div><dt>M.2 / NVMe / SSD</dt><dd>Today's fast, small storage. M.2 is the stick-of-gum shape, NVMe is the fast connection, SSD means solid-state storage.</dd></div>
+  <div><dt>Fix Boot</dt><dd>Automatically corrects the boot configuration (BCD) of a copied disk when it is out of line. The program runs it automatically after completion.</dd></div>
+</dl>
+</div>
+
+<footer>
+  DiskMigrator v1.1 · Download: github.com/withoz/DiskMigrator/releases ·
+  If something goes wrong, send us the log files in <code>C:\Users\&lt;you&gt;\AppData\Local\DiskMigrator\logs</code>.
+</footer>
+
+</div>
+</body>
+</html>

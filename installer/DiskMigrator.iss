@@ -47,11 +47,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\DiskMigrator.App.exe"; DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
-; 사용설명서(단일 HTML) — 시작 메뉴에서 바로 열 수 있게 함께 설치합니다.
+; 사용설명서(단일 HTML, 영어·한국어) — 시작 메뉴에서 바로 열 수 있게 함께 설치합니다.
+; 두 파일은 서로 언어 링크로 연결되므로 같은 폴더에 나란히 있어야 합니다.
 Source: "..\docs\manual.html"; DestDir: "{app}"; DestName: "manual.html"; Flags: ignoreversion
+Source: "..\docs\manual-en.html"; DestDir: "{app}"; DestName: "manual-en.html"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppName} User Manual"; Filename: "{app}\manual-en.html"
 Name: "{group}\{#AppName} 사용설명서"; Filename: "{app}\manual.html"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
