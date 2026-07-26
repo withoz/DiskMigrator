@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -43,23 +44,30 @@ public sealed class UsbBootWriter(ILogger? logger = null)
 
         // --- 마지막 안전 관문 -------------------------------------------------
         if (target.IsSystemDisk || target.IsBootDisk || target.HasPageFile)
-            return new(false, null, "시스템/부팅/페이지파일 디스크에는 쓸 수 없습니다.");
+            return new(false, null, L.T(
+                "시스템/부팅/페이지파일 디스크에는 쓸 수 없습니다.",
+                "Cannot write to a system/boot/pagefile disk."));
         if (target.BusType != DiskBusType.Usb && !target.IsRemovable)
-            return new(false, null, "안전을 위해 USB(이동식) 디스크에만 쓸 수 있습니다.");
+            return new(false, null, L.T(
+                "안전을 위해 USB(이동식) 디스크에만 쓸 수 있습니다.",
+                "For safety, only USB (removable) disks can be written to."));
 
         string bootWimSrc = Path.Combine(mediaRoot, "sources", "boot.wim");
         if (!File.Exists(bootWimSrc))
-            return new(false, null, $"미디어가 불완전합니다(boot.wim 없음): {mediaRoot}");
+            return new(false, null, L.T(
+                $"미디어가 불완전합니다(boot.wim 없음): {mediaRoot}",
+                $"The media is incomplete (boot.wim missing): {mediaRoot}"));
 
         long neededBytes = new FileInfo(bootWimSrc).Length + (512L << 20); // 여유 512MB
         if (target.SizeBytes < neededBytes)
-            return new(false, null,
-                $"USB가 너무 작습니다. 최소 {neededBytes / 1073741824.0:F1} GB 필요.");
+            return new(false, null, L.T(
+                $"USB가 너무 작습니다. 최소 {neededBytes / 1073741824.0:F1} GB 필요.",
+                $"The USB is too small. At least {neededBytes / 1073741824.0:F1} GB is required."));
 
         try
         {
             // --- 1) FAT32로 새로 포맷 (기존 내용 삭제) --------------------------
-            Report("USB 포맷 (FAT32)");
+            Report(L.T("USB 포맷 (FAT32)", "Formatting USB (FAT32)"));
             char letter = PickFreeLetter();
 
             // Windows FAT32 포맷 한계(32GB) 때문에 큰 USB에는 32GB 파티션만 만듭니다.
@@ -77,25 +85,30 @@ public sealed class UsbBootWriter(ILogger? logger = null)
 
             string root = $"{letter}:\\";
             if (!Directory.Exists(root))
-                return new(false, null, "포맷 후 USB 볼륨이 나타나지 않았습니다. USB를 다시 연결해 재시도하세요.");
+                return new(false, null, L.T(
+                    "포맷 후 USB 볼륨이 나타나지 않았습니다. USB를 다시 연결해 재시도하세요.",
+                    "The USB volume did not appear after formatting. Reconnect the USB and try again."));
 
             // --- 2) 미디어 복사 (boot.wim은 커서 진행률 표시) --------------------
-            Report("부팅 파일 복사");
+            Report(L.T("부팅 파일 복사", "Copying boot files"));
             await Task.Run(() => CopyTree(mediaRoot, root, ct), ct);
 
             // --- 3) 검증 ---------------------------------------------------------
-            Report("확인");
+            Report(L.T("확인", "Verifying"));
             string wimDst = Path.Combine(root, "sources", "boot.wim");
             string efiDst = Path.Combine(root, "EFI", "Boot", "bootx64.efi");
             if (!File.Exists(efiDst) || !File.Exists(wimDst) ||
                 new FileInfo(wimDst).Length != new FileInfo(bootWimSrc).Length)
             {
-                return new(false, null, "복사 검증에 실패했습니다(파일 누락 또는 크기 불일치). 다시 시도하세요.");
+                return new(false, null, L.T(
+                    "복사 검증에 실패했습니다(파일 누락 또는 크기 불일치). 다시 시도하세요.",
+                    "Copy verification failed (missing file or size mismatch). Please try again."));
             }
 
             _logger.LogInformation("부팅 USB 완성: 디스크 {Num} ({Letter}:)", target.DeviceNumber, letter);
-            return new(true, $"{letter}:",
-                $"부팅 USB가 완성됐습니다({letter}:). 대상 PC에서 USB로 UEFI 부팅하면 DiskMigrator가 자동 실행됩니다.");
+            return new(true, $"{letter}:", L.T(
+                $"부팅 USB가 완성됐습니다({letter}:). 대상 PC에서 USB로 UEFI 부팅하면 DiskMigrator가 자동 실행됩니다.",
+                $"The boot USB is ready ({letter}:). Boot the target PC from this USB (UEFI) and DiskMigrator starts automatically."));
         }
         catch (OperationCanceledException)
         {
@@ -104,7 +117,9 @@ public sealed class UsbBootWriter(ILogger? logger = null)
         catch (Exception ex)
         {
             _logger.LogError(ex, "부팅 USB 기록 실패.");
-            return new(false, null, $"부팅 USB 기록에 실패했습니다: {ex.Message}");
+            return new(false, null, L.T(
+                $"부팅 USB 기록에 실패했습니다: {ex.Message}",
+                $"Writing the boot USB failed: {ex.Message}"));
         }
     }
 
@@ -145,7 +160,9 @@ public sealed class UsbBootWriter(ILogger? logger = null)
                 if (pct / 10 > lastPct / 10)
                 {
                     lastPct = pct;
-                    Report($"부팅 파일 복사 ({Path.GetFileName(file)} {pct}%)");
+                    Report(L.T(
+                        $"부팅 파일 복사 ({Path.GetFileName(file)} {pct}%)",
+                        $"Copying boot files ({Path.GetFileName(file)} {pct}%)"));
                 }
             }
             dst.Flush(flushToDisk: true);   // USB는 캐시에 남으면 뽑을 때 깨집니다.
@@ -161,7 +178,8 @@ public sealed class UsbBootWriter(ILogger? logger = null)
             if (!used.Contains(c)) return c;
         for (char c = 'G'; c <= 'S'; c++)
             if (!used.Contains(c)) return c;
-        throw new InvalidOperationException("사용할 드라이브 문자가 없습니다.");
+        throw new InvalidOperationException(L.T(
+            "사용할 드라이브 문자가 없습니다.", "No free drive letter is available."));
     }
 
     private void RunDiskpart(string script, CancellationToken ct)
@@ -179,7 +197,8 @@ public sealed class UsbBootWriter(ILogger? logger = null)
                 StandardOutputEncoding = Encoding.UTF8,
             };
             using var p = Process.Start(psi)
-                ?? throw new InvalidOperationException("diskpart를 시작하지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    "diskpart를 시작하지 못했습니다.", "Failed to start diskpart."));
             string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
             while (!p.WaitForExit(500))
             {
@@ -191,7 +210,9 @@ public sealed class UsbBootWriter(ILogger? logger = null)
             }
             _logger.LogInformation("diskpart 부팅 USB 준비 (종료코드 {Code}):\n{Output}", p.ExitCode, output.Trim());
             if (p.ExitCode != 0)
-                throw new InvalidOperationException($"diskpart가 실패했습니다(종료코드 {p.ExitCode}).");
+                throw new InvalidOperationException(L.T(
+                    $"diskpart가 실패했습니다(종료코드 {p.ExitCode}).",
+                    $"diskpart failed (exit code {p.ExitCode})."));
         }
         finally
         {

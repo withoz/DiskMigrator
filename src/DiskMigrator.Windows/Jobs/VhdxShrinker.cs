@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 using DiskMigrator.Windows.Devices;
@@ -75,16 +76,19 @@ public sealed class VhdxShrinker(IDiskService diskService, ILogger? logger = nul
         var before = await FindPartitionAsync(diskNumber, partitionNumber, ct);
         if (before is null)
         {
-            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, 0,
-                $"부착된 이미지(디스크 {diskNumber})에서 파티션 {partitionNumber}을(를) 찾지 못했습니다.");
+            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, 0, L.T(
+                $"부착된 이미지(디스크 {diskNumber})에서 파티션 {partitionNumber}을(를) 찾지 못했습니다.",
+                $"Partition {partitionNumber} was not found on the attached image (disk {diskNumber})."));
         }
 
         long currentBytes = before.LengthBytes;
         if (newPartitionBytes >= currentBytes)
         {
-            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, currentBytes,
+            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, currentBytes, L.T(
                 $"새 크기({SizeFormatter.Format(newPartitionBytes)})가 현재 크기" +
-                $"({SizeFormatter.Format(currentBytes)}) 이상이라 축소할 것이 없습니다.");
+                $"({SizeFormatter.Format(currentBytes)}) 이상이라 축소할 것이 없습니다.",
+                $"The new size ({SizeFormatter.Format(newPartitionBytes)}) is not smaller than the current size " +
+                $"({SizeFormatter.Format(currentBytes)}) — nothing to shrink."));
         }
 
         // diskpart shrink는 '줄일 양'(MB)을 받습니다. 목표 크기까지 줄이도록 감소량을 계산하고,
@@ -92,8 +96,9 @@ public sealed class VhdxShrinker(IDiskService diskService, ILogger? logger = nul
         long reduceMb = (currentBytes - newPartitionBytes) / (1024 * 1024);
         if (reduceMb <= 0)
         {
-            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, currentBytes,
-                "축소량이 1MB 미만입니다. 더 작은 목표 크기를 지정하십시오.");
+            return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, currentBytes, L.T(
+                "축소량이 1MB 미만입니다. 더 작은 목표 크기를 지정하십시오.",
+                "The shrink amount is under 1 MB. Specify a smaller target size."));
         }
         long minimumMb = Math.Max(1, reduceMb - 64);
 
@@ -115,16 +120,20 @@ public sealed class VhdxShrinker(IDiskService diskService, ILogger? logger = nul
         {
             _logger.LogInformation("파티션 축소 완료: {Cur} → {Ach}.",
                 SizeFormatter.Format(currentBytes), SizeFormatter.Format(achieved));
-            return new VhdxShrinkResult(true, childImagePath, newPartitionBytes, achieved,
+            return new VhdxShrinkResult(true, childImagePath, newPartitionBytes, achieved, L.T(
                 $"파티션 {partitionNumber}을(를) {SizeFormatter.Format(currentBytes)} → " +
-                $"{SizeFormatter.Format(achieved)}로 축소했습니다.");
+                $"{SizeFormatter.Format(achieved)}로 축소했습니다.",
+                $"Shrunk partition {partitionNumber} from {SizeFormatter.Format(currentBytes)} to " +
+                $"{SizeFormatter.Format(achieved)}."));
         }
 
         _logger.LogWarning("파티션 {Part}이(가) 축소되지 않았습니다({Cur}).",
             partitionNumber, SizeFormatter.Format(currentBytes));
-        return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, achieved,
+        return new VhdxShrinkResult(false, childImagePath, newPartitionBytes, achieved, L.T(
             "파티션이 축소되지 않았습니다(축소 한계·볼륨 잠금·이동불가 파일 때문일 수 있습니다). " +
-            "더 큰 목표 크기로 다시 시도하십시오.");
+            "더 큰 목표 크기로 다시 시도하십시오.",
+            "The partition was not shrunk (possibly due to the shrink limit, a volume lock, or unmovable files). " +
+            "Try again with a larger target size."));
     }
 
     private async Task<PartitionInfo?> FindPartitionAsync(int diskNumber, int partitionNumber, CancellationToken ct)
@@ -152,7 +161,8 @@ public sealed class VhdxShrinker(IDiskService diskService, ILogger? logger = nul
             };
 
             using var p = Process.Start(psi)
-                ?? throw new InvalidOperationException("diskpart를 시작하지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    "diskpart를 시작하지 못했습니다.", "Failed to start diskpart."));
             string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
             p.WaitForExit(180_000);
 

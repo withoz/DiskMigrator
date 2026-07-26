@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -35,11 +36,13 @@ public sealed class PartitionExtender(IDiskService diskService, ILogger? logger 
         var disks = await diskService.EnumerateDisksAsync(ct);
         var disk = disks.FirstOrDefault(d => d.DeviceNumber == diskNumber);
         if (disk is null)
-            return new(true, false, "대상 디스크를 다시 찾지 못해 파티션을 확장하지 못했습니다.");
+            return new(true, false, L.T(
+                "대상 디스크를 다시 찾지 못해 파티션을 확장하지 못했습니다.",
+                "Could not find the target disk again, so the partition was not extended."));
 
         var last = disk.Partitions.OrderByDescending(p => p.StartingOffset).FirstOrDefault();
         if (last is null)
-            return new(true, false, "확장할 파티션이 없습니다.");
+            return new(true, false, L.T("확장할 파티션이 없습니다.", "There is no partition to extend."));
 
         return await TryExpandPartitionAsync(diskNumber, last.Number, ct);
     }
@@ -57,11 +60,15 @@ public sealed class PartitionExtender(IDiskService diskService, ILogger? logger 
         var disks = await diskService.EnumerateDisksAsync(ct);
         var disk = disks.FirstOrDefault(d => d.DeviceNumber == diskNumber);
         if (disk is null)
-            return new(true, false, "대상 디스크를 다시 찾지 못해 파티션을 확장하지 못했습니다.");
+            return new(true, false, L.T(
+                "대상 디스크를 다시 찾지 못해 파티션을 확장하지 못했습니다.",
+                "Could not find the target disk again, so the partition was not extended."));
 
         var part = disk.Partitions.FirstOrDefault(p => p.Number == partitionNumber);
         if (part is null)
-            return new(true, false, $"파티션 {partitionNumber}을(를) 찾지 못했습니다.");
+            return new(true, false, L.T(
+                $"파티션 {partitionNumber}을(를) 찾지 못했습니다.",
+                $"Partition {partitionNumber} was not found."));
 
         long beforeLen = part.LengthBytes;
 
@@ -82,15 +89,18 @@ public sealed class PartitionExtender(IDiskService diskService, ILogger? logger 
             _logger.LogInformation(
                 "파티션 {Num} 확장: {Before} → {After}.",
                 partitionNumber, SizeFormatter.Format(beforeLen), SizeFormatter.Format(afterLen));
-            return new(true, true,
-                $"파티션 {partitionNumber}을(를) {SizeFormatter.Format(beforeLen)} → {SizeFormatter.Format(afterLen)}로 확장했습니다.");
+            return new(true, true, L.T(
+                $"파티션 {partitionNumber}을(를) {SizeFormatter.Format(beforeLen)} → {SizeFormatter.Format(afterLen)}로 확장했습니다.",
+                $"Extended partition {partitionNumber} from {SizeFormatter.Format(beforeLen)} to {SizeFormatter.Format(afterLen)}."));
         }
 
         _logger.LogWarning("파티션 {Num}이(가) 확장되지 않았습니다({Before}).",
             partitionNumber, SizeFormatter.Format(beforeLen));
-        return new(true, false,
+        return new(true, false, L.T(
             "파티션을 자동 확장하지 못했습니다(대상이 접근 가능한 상태여야 합니다). " +
-            "남는 미할당 공간은 그대로 있으니, 대상을 단독 연결한 뒤 디스크 관리의 '볼륨 확장'으로 마무리하세요.");
+            "남는 미할당 공간은 그대로 있으니, 대상을 단독 연결한 뒤 디스크 관리의 '볼륨 확장'으로 마무리하세요.",
+            "Automatic partition extension failed (the target must be accessible). " +
+            "The unallocated space is still there — connect the target on its own and finish with 'Extend Volume' in Disk Management."));
     }
 
     private void RunDiskpart(string script)
@@ -111,7 +121,8 @@ public sealed class PartitionExtender(IDiskService diskService, ILogger? logger 
             };
 
             using var p = Process.Start(psi)
-                ?? throw new InvalidOperationException("diskpart를 시작하지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    "diskpart를 시작하지 못했습니다.", "Failed to start diskpart."));
             string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
             p.WaitForExit(120_000);
 

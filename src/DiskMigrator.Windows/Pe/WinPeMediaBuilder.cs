@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
+using DiskMigrator.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -50,9 +51,13 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(ingredients);
         if (!ingredients.AllFound)
-            return new(false, null, 0, "재료가 부족해 미디어를 만들 수 없습니다 (--pe-check 참조).");
+            return new(false, null, 0, L.T(
+                "재료가 부족해 미디어를 만들 수 없습니다 (--pe-check 참조).",
+                "Missing ingredients — cannot build the media (see --pe-check)."));
         if (!File.Exists(appExePath))
-            return new(false, null, 0, $"주입할 앱 실행 파일이 없습니다: {appExePath}");
+            return new(false, null, 0, L.T(
+                $"주입할 앱 실행 파일이 없습니다: {appExePath}",
+                $"The app executable to inject was not found: {appExePath}"));
 
         string media = Path.Combine(workRoot, "media");
         string mount = Path.Combine(workRoot, "mount");
@@ -61,7 +66,7 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         try
         {
             // --- 0) 작업 폴더 준비 ---------------------------------------------
-            Report("작업 폴더 준비");
+            Report(L.T("작업 폴더 준비", "Preparing work folder"));
             if (Directory.Exists(workRoot)) TryCleanup(workRoot, mount);
             Directory.CreateDirectory(Path.Combine(media, "sources"));
             Directory.CreateDirectory(Path.Combine(media, "boot"));
@@ -70,7 +75,8 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             Directory.CreateDirectory(mount);
 
             // --- 1) 재료 복사 ---------------------------------------------------
-            Report("복구 환경 이미지 복사 (수백 MB — 잠시 걸립니다)");
+            Report(L.T("복구 환경 이미지 복사 (수백 MB — 잠시 걸립니다)",
+                       "Copying recovery image (hundreds of MB — this takes a moment)"));
             await Task.Run(() => CopyFile(ingredients.WinreWimPath!, bootWim), ct);
             // Winre.wim은 원본 위치에서 읽기 전용 속성이 있을 수 있어, 사본은 수정 가능하게 풉니다.
             File.SetAttributes(bootWim, FileAttributes.Normal);
@@ -79,14 +85,14 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             CopyFile(ingredients.BootMgfwEfiPath!, Path.Combine(media, @"EFI\Boot", "bootx64.efi"));
 
             // --- 2) 앱 주입 (DISM 마운트) --------------------------------------
-            Report("이미지 열기 (DISM 마운트)");
+            Report(L.T("이미지 열기 (DISM 마운트)", "Opening image (DISM mount)"));
             RunOrThrow(ingredients.DismPath!,
                 $"/Mount-Wim /WimFile:\"{bootWim}\" /Index:1 /MountDir:\"{mount}\"", ct);
 
             bool committed = false;
             try
             {
-                Report("DiskMigrator 앱 넣기");
+                Report(L.T("DiskMigrator 앱 넣기", "Injecting the DiskMigrator app"));
                 string appDir = Path.Combine(mount, "DiskMigrator");
                 Directory.CreateDirectory(appDir);
                 CopyFile(appExePath, Path.Combine(appDir, "DiskMigrator.exe"));
@@ -101,7 +107,8 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
                     "cmd.exe\r\n",
                     new UTF8Encoding(false));
 
-                Report("이미지 저장 (DISM 커밋 — 잠시 걸립니다)");
+                Report(L.T("이미지 저장 (DISM 커밋 — 잠시 걸립니다)",
+                           "Saving image (DISM commit — this takes a moment)"));
                 RunOrThrow(ingredients.DismPath!, $"/Unmount-Wim /MountDir:\"{mount}\" /Commit", ct);
                 committed = true;
             }
@@ -115,13 +122,14 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             }
 
             // --- 3) 부팅 구성(BCD) 생성 ----------------------------------------
-            Report("부팅 구성(BCD) 만들기");
+            Report(L.T("부팅 구성(BCD) 만들기", "Creating boot configuration (BCD)"));
             BuildBcd(ingredients.BcdeditPath!, Path.Combine(media, @"EFI\Microsoft\Boot", "BCD"), ct);
 
             long wimBytes = new FileInfo(bootWim).Length;
             _logger.LogInformation("부팅 미디어 완성: {Media} (boot.wim {Bytes:N0}바이트)", media, wimBytes);
-            return new(true, media, wimBytes,
-                $"부팅 미디어가 준비됐습니다. boot.wim {wimBytes / 1048576.0:F0} MB.");
+            return new(true, media, wimBytes, L.T(
+                $"부팅 미디어가 준비됐습니다. boot.wim {wimBytes / 1048576.0:F0} MB.",
+                $"The boot media is ready. boot.wim {wimBytes / 1048576.0:F0} MB."));
         }
         catch (OperationCanceledException)
         {
@@ -130,7 +138,9 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         catch (Exception ex)
         {
             _logger.LogError(ex, "부팅 미디어 빌드 실패.");
-            return new(false, null, 0, $"부팅 미디어 빌드에 실패했습니다: {ex.Message}");
+            return new(false, null, 0, L.T(
+                $"부팅 미디어 빌드에 실패했습니다: {ex.Message}",
+                $"Building the boot media failed: {ex.Message}"));
         }
     }
 
@@ -156,7 +166,9 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         Run(bcdedit, $"{s} /create /d \"DiskMigrator 부팅 도구\" /application osloader", ct, out string createOut);
         var m = Regex.Match(createOut, @"\{[0-9a-fA-F-]{36}\}");
         if (!m.Success)
-            throw new InvalidOperationException($"bcdedit가 새 항목 GUID를 돌려주지 않았습니다: {createOut.Trim()}");
+            throw new InvalidOperationException(L.T(
+                $"bcdedit가 새 항목 GUID를 돌려주지 않았습니다: {createOut.Trim()}",
+                $"bcdedit did not return a new entry GUID: {createOut.Trim()}"));
         string guid = m.Value;
 
         RunOrThrow(bcdedit, $"{s} /set {guid} device ramdisk=[boot]\\sources\\boot.wim,{{ramdiskoptions}}", ct);
@@ -208,8 +220,9 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
         int code = Run(exe, args, ct, out string output);
         if (code != 0)
         {
-            throw new InvalidOperationException(
-                $"{Path.GetFileName(exe)} {args} 실패 (종료코드 {code}): {Truncate(output)}");
+            throw new InvalidOperationException(L.T(
+                $"{Path.GetFileName(exe)} {args} 실패 (종료코드 {code}): {Truncate(output)}",
+                $"{Path.GetFileName(exe)} {args} failed (exit code {code}): {Truncate(output)}"));
         }
     }
 
@@ -224,7 +237,8 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             CreateNoWindow = true,
         };
         using var p = Process.Start(psi)
-            ?? throw new InvalidOperationException($"{exe}를 시작하지 못했습니다.");
+            ?? throw new InvalidOperationException(L.T(
+                $"{exe}를 시작하지 못했습니다.", $"Failed to start {exe}."));
         output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
         // DISM 커밋은 수 분 걸릴 수 있습니다. 취소 요청이 오면 프로세스를 죽입니다.
         while (!p.WaitForExit(500))

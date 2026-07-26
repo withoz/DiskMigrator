@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Util;
@@ -79,10 +80,13 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
             long targetLength = AlignDown(targetDevice.Length, targetDevice.SectorSize);
             if (targetLength < imageLength)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     $"대상 디스크가 이미지보다 작아 복원할 수 없습니다. " +
                     $"이미지 {imageLength:N0}바이트, 대상 {targetLength:N0}바이트. " +
-                    "이미지 전체가 들어가는 크기 이상의 디스크에 복원하십시오.");
+                    "이미지 전체가 들어가는 크기 이상의 디스크에 복원하십시오.",
+                    $"The target disk is smaller than the image, so it cannot be restored. " +
+                    $"Image {imageLength:N0} bytes, target {targetLength:N0} bytes. " +
+                    "Restore to a disk at least as large as the whole image."));
             }
 
             // 스마트 복원: VHDX의 BAT를 읽어 할당된 블록(백업이 실제로 기록한 사용 영역 + 파티션
@@ -100,7 +104,7 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                         SourceOffset = r.Offset,
                         TargetOffset = r.Offset,
                         Length = r.Length,
-                        Description = "이미지(할당 블록)",
+                        Description = L.T("이미지(할당 블록)", "Image (allocated blocks)"),
                     })
                     .ToList();
 
@@ -116,7 +120,7 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                     new CopyRegion
                     {
                         Source = source, SourceOffset = 0, TargetOffset = 0,
-                        Length = imageLength, Description = "전체 이미지",
+                        Length = imageLength, Description = L.T("전체 이미지", "Whole image"),
                     },
                 ];
             }
@@ -144,9 +148,11 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "GPT 백업 헤더 보정 실패.");
-                    gptRepair = new GptRepairResult(false,
+                    gptRepair = new GptRepairResult(false, L.T(
                         $"데이터 복원은 정상이지만 GPT 백업 헤더 보정에 실패했습니다: {ex.Message} " +
-                        "Windows 디스크 관리에서 자동 복구를 제안할 수 있습니다.");
+                        "Windows 디스크 관리에서 자동 복구를 제안할 수 있습니다.",
+                        $"The data was restored fine, but fixing the GPT backup header failed: {ex.Message} " +
+                        "Windows Disk Management may offer an automatic repair."));
                 }
             }
         }
@@ -170,8 +176,9 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Universal Restore 적용 중 오류. 복원 데이터는 정상입니다.");
-                ur = new UniversalRestoreReport(false, null, [],
-                    $"하드웨어 독립화 실패: {ex.Message}. 복원 데이터 자체는 정상입니다.");
+                ur = new UniversalRestoreReport(false, null, [], L.T(
+                    $"하드웨어 독립화 실패: {ex.Message}. 복원 데이터 자체는 정상입니다.",
+                    $"Hardware independence failed: {ex.Message}. The restored data itself is fine."));
             }
         }
 
@@ -211,12 +218,16 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
         {
             var disks = await diskService.EnumerateDisksAsync(ct);
             var imgDisk = disks.FirstOrDefault(d => d.DeviceNumber == img.DiskNumber)
-                ?? throw new InvalidOperationException("부착한 이미지를 디스크 목록에서 찾지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    "부착한 이미지를 디스크 목록에서 찾지 못했습니다.",
+                    "The attached image was not found in the disk list."));
             originalPartitions = imgDisk.Partitions.OrderBy(p => p.StartingOffset).ToList();
             sectorSize = imgDisk.LogicalSectorSize;
         }
         if (originalPartitions.Count == 0)
-            throw new InvalidOperationException("이미지에 파티션이 없어 축소 복원할 수 없습니다.");
+            throw new InvalidOperationException(L.T(
+                "이미지에 파티션이 없어 축소 복원할 수 없습니다.",
+                "The image has no partitions, so a shrink restore is not possible."));
 
         // ② 차등 자식에서 파티션 축소(원본 이미지 보존).
         string childPath = imagePath + ".shrink-child.vhdx";
@@ -228,7 +239,9 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
         if (!shrink.Success)
         {
             TryDelete(childPath);
-            throw new InvalidOperationException($"이미지 파티션 축소에 실패해 복원을 중단했습니다: {shrink.Message}");
+            throw new InvalidOperationException(L.T(
+                $"이미지 파티션 축소에 실패해 복원을 중단했습니다: {shrink.Message}",
+                $"Shrinking the image partition failed, so the restore was stopped: {shrink.Message}"));
         }
 
         try
@@ -297,9 +310,11 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                     catch (Exception ex)
                     {
                         logger.LogError(ex, "축소 복원 GPT 재작성 실패 — 파티션 배치가 깨졌습니다.");
-                        gptRepair = new GptRepairResult(false,
+                        gptRepair = new GptRepairResult(false, L.T(
                             $"데이터는 복사됐지만 파티션 배치를 반영한 GPT 재작성에 실패했습니다({ex.Message}). " +
-                            "파티션 테이블이 옛 위치를 가리켜 이 디스크는 부팅·사용할 수 없습니다.");
+                            "파티션 테이블이 옛 위치를 가리켜 이 디스크는 부팅·사용할 수 없습니다.",
+                            $"The data was copied, but rewriting the GPT for the new layout failed ({ex.Message}). " +
+                            "The partition table points at the old locations, so this disk cannot boot or be used."));
                     }
                 }
             }

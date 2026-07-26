@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Util;
@@ -56,9 +57,15 @@ public sealed class ShrinkCloneService(
 
         // 두 단계가 각각 0~100%를 보고하므로, 단계 이름에 순서를 붙여 전체 흐름이 보이게 합니다.
         IProgress<CloneProgress>? backupProgress = progress is null ? null
-            : new Progress<CloneProgress>(p => progress.Report(p with { Phase = $"[1/2 백업] {p.Phase}" }));
+            : new Progress<CloneProgress>(p => progress.Report(p with
+            {
+                Phase = L.T($"[1/2 백업] {p.Phase}", $"[1/2 Backup] {p.Phase}"),
+            }));
         IProgress<CloneProgress>? restoreProgress = progress is null ? null
-            : new Progress<CloneProgress>(p => progress.Report(p with { Phase = $"[2/2 복원] {p.Phase}" }));
+            : new Progress<CloneProgress>(p => progress.Report(p with
+            {
+                Phase = L.T($"[2/2 복원] {p.Phase}", $"[2/2 Restore] {p.Phase}"),
+            }));
 
         try
         {
@@ -83,9 +90,11 @@ public sealed class ShrinkCloneService(
             if (backupResult.Outcome is not (CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors) ||
                 backupResult.VerificationPassed == false)
             {
-                throw new InvalidOperationException(
+                throw new InvalidOperationException(L.T(
                     $"축소 클론의 백업 단계가 실패해 중단했습니다({backupResult.Outcome}). " +
-                    "대상에는 아무것도 쓰지 않았습니다.");
+                    "대상에는 아무것도 쓰지 않았습니다.",
+                    $"The backup stage of the shrink clone failed, so it was stopped ({backupResult.Outcome}). " +
+                    "Nothing was written to the target."));
             }
 
             // --- 2/2: 임시 이미지 → 대상 (차등 자식 축소 + 압축 복원 + GPT 재작성 + UR) ---

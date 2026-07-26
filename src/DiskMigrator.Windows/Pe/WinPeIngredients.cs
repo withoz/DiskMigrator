@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -69,7 +70,8 @@ public sealed class WinPeIngredients(IDiskService diskService, ILogger? logger =
             if (TryFile(candidate, out _))
             {
                 winre = candidate;
-                notes.Add($"Winre.wim: 복구 환경 등록 위치에서 발견 ({reagentDir})");
+                notes.Add(L.T($"Winre.wim: 복구 환경 등록 위치에서 발견 ({reagentDir})",
+                              $"Winre.wim: found at the registered recovery location ({reagentDir})"));
             }
         }
 
@@ -86,14 +88,16 @@ public sealed class WinPeIngredients(IDiskService diskService, ILogger? logger =
                     if (TryFile(candidate, out _))
                     {
                         winre = candidate;
-                        notes.Add($"Winre.wim: 복구 파티션에서 발견 (파티션 {p.Number})");
+                        notes.Add(L.T($"Winre.wim: 복구 파티션에서 발견 (파티션 {p.Number})",
+                                      $"Winre.wim: found on the recovery partition (partition {p.Number})"));
                         break;
                     }
                 }
             }
             catch (Exception ex)
             {
-                notes.Add($"복구 파티션 탐색 실패: {ex.Message}");
+                notes.Add(L.T($"복구 파티션 탐색 실패: {ex.Message}",
+                              $"Failed to scan recovery partitions: {ex.Message}"));
             }
         }
 
@@ -104,13 +108,16 @@ public sealed class WinPeIngredients(IDiskService diskService, ILogger? logger =
             if (TryFile(candidate, out _))
             {
                 winre = candidate;
-                notes.Add("Winre.wim: Windows 폴더에서 발견 (복구 환경 비활성 상태)");
+                notes.Add(L.T("Winre.wim: Windows 폴더에서 발견 (복구 환경 비활성 상태)",
+                              "Winre.wim: found in the Windows folder (recovery environment disabled)"));
             }
         }
 
         long winreBytes = 0;
         if (winre is not null) TryFile(winre, out winreBytes);
-        else notes.Add("Winre.wim을 찾지 못했습니다 — 관리자 권한인지, 복구 환경(reagentc /info)이 있는지 확인하세요.");
+        else notes.Add(L.T(
+            "Winre.wim을 찾지 못했습니다 — 관리자 권한인지, 복구 환경(reagentc /info)이 있는지 확인하세요.",
+            "Winre.wim was not found — check administrator rights and whether the recovery environment exists (reagentc /info)."));
 
         // --- 2) boot.sdi --------------------------------------------------------
         string? bootSdi = null;
@@ -122,18 +129,19 @@ public sealed class WinPeIngredients(IDiskService diskService, ILogger? logger =
         bootSdi ??= FirstExisting(
             Path.Combine(windir, @"Boot\DVD\EFI\boot.sdi"),
             Path.Combine(windir, @"Boot\DVD\PCAT\boot.sdi"));
-        if (bootSdi is null) notes.Add("boot.sdi를 찾지 못했습니다.");
+        if (bootSdi is null) notes.Add(L.T("boot.sdi를 찾지 못했습니다.", "boot.sdi was not found."));
 
         // --- 3) UEFI 부트로더 ----------------------------------------------------
         string? bootmgfw = FirstExisting(Path.Combine(windir, @"Boot\EFI\bootmgfw.efi"));
-        if (bootmgfw is null) notes.Add("bootmgfw.efi(UEFI 부트로더)를 찾지 못했습니다.");
+        if (bootmgfw is null) notes.Add(L.T("bootmgfw.efi(UEFI 부트로더)를 찾지 못했습니다.",
+                                            "bootmgfw.efi (UEFI boot loader) was not found."));
 
         // --- 4) 도구 ------------------------------------------------------------
         string sys32 = Path.Combine(windir, "System32");
         string? dism = FirstExisting(Path.Combine(sys32, "Dism.exe"));
         string? bcdedit = FirstExisting(Path.Combine(sys32, "bcdedit.exe"));
-        if (dism is null) notes.Add("DISM을 찾지 못했습니다.");
-        if (bcdedit is null) notes.Add("bcdedit를 찾지 못했습니다.");
+        if (dism is null) notes.Add(L.T("DISM을 찾지 못했습니다.", "DISM was not found."));
+        if (bcdedit is null) notes.Add(L.T("bcdedit를 찾지 못했습니다.", "bcdedit was not found."));
 
         var report = new WinPeIngredientsReport(winre, winreBytes, bootSdi, bootmgfw, dism, bcdedit, notes);
         _logger.LogInformation(
@@ -169,7 +177,8 @@ public sealed class WinPeIngredients(IDiskService diskService, ILogger? logger =
         }
         catch (Exception ex)
         {
-            notes.Add($"reagentc 조회 실패(무해 — 다른 경로로 계속): {ex.Message}");
+            notes.Add(L.T($"reagentc 조회 실패(무해 — 다른 경로로 계속): {ex.Message}",
+                          $"reagentc query failed (harmless — continuing via other paths): {ex.Message}"));
             return null;
         }
     }
