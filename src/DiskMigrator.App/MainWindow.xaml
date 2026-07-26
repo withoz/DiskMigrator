@@ -256,7 +256,9 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Padding" Value="12,9" />
-            <Setter Property="MinWidth" Value="150" />
+            <!-- 각 탭이 그리드 셀을 꽉 채워야 탭 줄 양 끝이 아래 패널(760px)과 정확히 맞습니다. -->
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="MinWidth" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -382,9 +384,21 @@
                       Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Selecting}">
         <StackPanel Margin="40,14,40,16">
 
-            <!-- ===== 모드 선택: 각 탭이 독립된 카드 테두리, 적당한 폭으로 가운데 정렬 ===== -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                <Button Margin="0,0,12,0" Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
+            <!-- ===== 모드 선택: 독립 카드 탭 5개가 아래 패널(760px)과 양 끝이 정확히 일치 =====
+                 Width는 고정이어야 합니다 — MaxWidth+Center는 내용 크기로 줄어들어 별(*) 열이 안 펼쳐집니다. -->
+            <Grid Width="760" HorizontalAlignment="Center" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone" Content="{loc:Loc ModeClone}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -397,7 +411,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Margin="0,0,12,0" Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
+                <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup" Content="{loc:Loc ModeBackup}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -410,7 +424,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Margin="0,0,12,0" Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
+                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore" Content="{loc:Loc ModeRestore}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -423,7 +437,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Margin="0,0,12,0" Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
+                <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot" Content="{loc:Loc ModeFixBoot}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -436,7 +450,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
+                <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
@@ -449,7 +463,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-            </StackPanel>
+            </Grid>
 
             <!-- ===== 클론 모드 ===== -->
             <Grid Visibility="{Binding IsCloneMode, Converter={StaticResource BoolToVisibility}}">
