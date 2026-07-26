@@ -426,6 +426,18 @@
                             </Style>
                         </Button.Style>
                     </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="BootUsb" Content="{loc:Loc ModeBootUsb}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </StackPanel>
             </Border>
 
@@ -1045,6 +1057,68 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </StackPanel>
+            </StackPanel>
+
+            <!-- ===== 부팅 USB 모드 (WinPE 응급 USB 만들기) ===== -->
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+                        Visibility="{Binding IsBootUsbMode, Converter={StaticResource BoolToVisibility}}">
+
+                <TextBlock Text="{loc:Loc BootUsbHint}" Style="{StaticResource Caption}"
+                           TextWrapping="Wrap" Margin="0,4,0,10" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                    <TextBlock Text="{loc:Loc BootUsbTargetLabel}" Style="{StaticResource SubHeading}"
+                               FontWeight="Bold" Foreground="{StaticResource Danger}" VerticalAlignment="Center" />
+                    <Button Command="{Binding RefreshDisksCommand}" Padding="8,3" MinWidth="0" Margin="12,0,0,0"
+                            VerticalAlignment="Center" BorderBrush="{StaticResource Success}">
+                        <TextBlock Text="{loc:Loc Refresh}" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Success}" />
+                    </Button>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
+                         Style="{StaticResource DiskListStyle}" Height="200" />
+
+                <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
+                        CornerRadius="10" Padding="14,10" Margin="0,14,0,0">
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right" Content="{loc:Loc BootUsbStartBtn}" Command="{Binding BuildBootUsbCommand}"
+                                Style="{StaticResource DangerButton}" MinWidth="140" Padding="20,9"
+                                Margin="14,0,0,0" VerticalAlignment="Center" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
+                                       Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,7" />
+                            <TextBox Text="{Binding ConfirmationText, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="9,7" FontSize="13" FontFamily="Consolas, D2Coding"
+                                     VerticalContentAlignment="Center" Margin="0,0,0,7" />
+                            <TextBlock Text="{loc:Loc BootUsbWarn}" Style="{StaticResource Micro}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- 진행 중: 단계 문구 + 취소 -->
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                            Visibility="{Binding IsPeBuilding, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding PeStatus}" Style="{StaticResource Caption}" TextWrapping="Wrap"
+                               MaxWidth="560" VerticalAlignment="Center" />
+                    <Button Content="{loc:Loc BootUsbCancelBtn}" Command="{Binding CancelBootUsbCommand}"
+                            Margin="14,0,0,0" Padding="12,5" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- 완료: 결과 메시지 -->
+                <TextBlock Text="{Binding PeStatus}" TextWrapping="Wrap" Margin="0,12,0,0"
+                           Visibility="{Binding PeRan, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
+                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PeSuccess}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <TextBlock Text="{loc:Loc BootUsbAfterHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,12,0,0" />
             </StackPanel>
 
         </StackPanel>

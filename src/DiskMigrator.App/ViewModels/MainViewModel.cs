@@ -14,6 +14,7 @@ using DiskMigrator.Core.Safety;
 using DiskMigrator.Core.Util;
 using DiskMigrator.Windows.Devices;
 using DiskMigrator.Windows.Jobs;
+using DiskMigrator.Windows.Pe;
 using DiskMigrator.Windows.Snapshots;
 using Microsoft.Extensions.Logging;
 
@@ -38,6 +39,8 @@ public enum AppMode
     Restore,
     /// <summary>클론/복원해 둔 디스크의 부팅 구성 검사·복구(독립 도구 — 복제 없이).</summary>
     FixBoot,
+    /// <summary>부팅 USB(WinPE) 만들기 — 안 켜지는 PC를 구조하는 응급 도구.</summary>
+    BootUsb,
 }
 
 [SupportedOSPlatform("windows")]
@@ -84,6 +87,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsBackupMode))]
     [NotifyPropertyChangedFor(nameof(IsRestoreMode))]
     [NotifyPropertyChangedFor(nameof(IsFixBootMode))]
+    [NotifyPropertyChangedFor(nameof(IsBootUsbMode))]
     [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
     private AppMode _mode = AppMode.Clone;
 
@@ -91,6 +95,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsBackupMode => Mode == AppMode.Backup;
     public bool IsRestoreMode => Mode == AppMode.Restore;
     public bool IsFixBootMode => Mode == AppMode.FixBoot;
+    public bool IsBootUsbMode => Mode == AppMode.BootUsb;
 
     /// <summary>
     /// 완료 화면의 부팅 관련 후속 작업(부팅 검사·복구 등)을 보일지. 클론·복원 성공 시 보이고
@@ -110,9 +115,13 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (!Enum.TryParse<AppMode>(mode, out var m) || m == Mode) return;
         Mode = m;
-        // 부팅 복구 도구의 검사 결과는 그 모드의 화면 내용이므로, 모드를 떠나면 지웁니다
+        // 부팅 복구·부팅 USB의 결과는 그 모드의 화면 내용이므로, 모드를 떠나면 지웁니다
         // (다른 디스크로 돌아왔을 때 이전 결과가 남아 있으면 오해를 부릅니다).
         ResetBootCheck();
+        PeRan = false;
+        PeStatus = "";
+        OnPropertyChanged(nameof(BootUsbBlockedReason));
+        BuildBootUsbCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>백업 저장 위치를 고릅니다(.vhdx).</summary>
@@ -637,6 +646,8 @@ public sealed partial class MainViewModel : ObservableObject
         // 대상이 바뀌면 이전 확인은 무효입니다. 사용자가 새 디스크를 다시 확인해야 합니다.
         ConfirmationText = "";
         OnPropertyChanged(nameof(ConfirmationPrompt));
+        OnPropertyChanged(nameof(BootUsbBlockedReason));
+        BuildBootUsbCommand.NotifyCanExecuteChanged();
         UpdateSafety();
     }
 
@@ -1076,6 +1087,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanStart));
         StartCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(BootUsbBlockedReason));
+        BuildBootUsbCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -2046,6 +2059,132 @@ public sealed partial class MainViewModel : ObservableObject
         return Path.Combine($"{best.DriveLetter}:\\",
             $"DiskMigrator-shrink-clone-{DateTime.Now:yyyyMMdd-HHmmss}.vhdx");
     }
+
+    // --- 부팅 USB (WinPE) 만들기 -------------------------------------------
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BuildBootUsbCommand))]
+    private bool _isPeBuilding;
+
+    /// <summary>완료(성공/실패) 후 결과 표시 여부.</summary>
+    [ObservableProperty] private bool _peRan;
+    [ObservableProperty] private bool _peSuccess;
+
+    /// <summary>진행 단계·결과 메시지(한 줄).</summary>
+    [ObservableProperty] private string _peStatus = "";
+
+    private CancellationTokenSource? _peCts;
+
+    /// <summary>부팅 USB 시작 버튼이 비활성인 이유. 쓸 수 있으면 빈 문자열.</summary>
+    public string BootUsbBlockedReason
+    {
+        get
+        {
+            if (SelectedTarget is null) return Strings.Get("BootUsbNoTarget");
+            var t = SelectedTarget.Disk;
+            if (t.IsSystemDisk || t.IsBootDisk || t.HasPageFile ||
+                (t.BusType != DiskBusType.Usb && !t.IsRemovable))
+            {
+                return Strings.Get("BootUsbNotUsb");
+            }
+            if (t.SizeBytes < (2L << 30)) return Strings.Get("BootUsbTooSmall");
+            if (!SafetyGuard.IsConfirmationValid(t, ConfirmationText))
+                return Strings.Get("BlockConfirmIncomplete");
+            return "";
+        }
+    }
+
+    public bool CanBuildBootUsb =>
+        Stage == AppStage.Selecting && IsElevated && !IsPeBuilding &&
+        BootUsbBlockedReason.Length == 0;
+
+    /// <summary>
+    /// 부팅 USB를 만듭니다: 재료 탐지 → 미디어 조립(앱 주입) → USB 포맷·복사.
+    /// USB의 기존 내용은 모두 지워집니다(모델명 확인 후에만 실행 가능).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanBuildBootUsb))]
+    private async Task BuildBootUsbAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        IsPeBuilding = true;
+        PeRan = false;
+        PeSuccess = false;
+        PeStatus = Strings.Get("PeStatusPreparing");
+        _peCts = new CancellationTokenSource();
+        string workRoot = Path.Combine(Path.GetTempPath(), "DiskMigrator-pe-work");
+
+        try
+        {
+            // 쓰기 직전 최종 관문 — 확인한 그 USB가 지금도 같은 물리 디스크인지.
+            var target = await ResolveCurrentTargetAsync();
+            if (target is null)
+            {
+                PeStatus = Strings.Get("TargetNotFoundAgain");
+                return;
+            }
+            SafetyGuard.AssertTargetUnchanged(SelectedTarget.Disk, target);
+
+            var ingredients = await new WinPeIngredients(_diskService, _loggerFactory.CreateLogger("WinPe"))
+                .LocateAsync(_peCts.Token);
+            if (!ingredients.AllFound)
+            {
+                PeStatus = Strings.Get("PeNoIngredients") + "\n" +
+                           string.Join("\n", ingredients.Notes.Select(n => "· " + n));
+                return;
+            }
+
+            // 주입할 실행 파일 = 지금 실행 중인 이 앱(자체 포함 단일 exe 배포본).
+            string appExe = Environment.ProcessPath
+                ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
+
+            var builder = new WinPeMediaBuilder(_loggerFactory.CreateLogger<WinPeMediaBuilder>());
+            builder.Progress += step => PeStatus = step;
+            // DISM 실행이 스레드를 붙잡으므로 UI가 굳지 않게 백그라운드에서 돌립니다.
+            var build = await Task.Run(() => builder.BuildAsync(ingredients, appExe, workRoot, _peCts.Token));
+            if (!build.Success)
+            {
+                PeStatus = build.Message;
+                return;
+            }
+
+            var writer = new UsbBootWriter(_loggerFactory.CreateLogger<UsbBootWriter>());
+            writer.Progress += step => PeStatus = step;
+            var write = await writer.WriteAsync(target, build.MediaRoot!, _peCts.Token);
+
+            PeSuccess = write.Success;
+            PeStatus = write.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            PeStatus = Strings.Get("PeCancelled");
+        }
+        catch (SafetyViolationException ex)
+        {
+            _logger.LogError(ex, "부팅 USB 안전 검사 실패.");
+            PeStatus = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "부팅 USB 만들기 실패.");
+            PeStatus = ex.Message;
+        }
+        finally
+        {
+            try { if (Directory.Exists(workRoot)) Directory.Delete(workRoot, recursive: true); }
+            catch { /* 임시 폴더 정리 실패는 무해 */ }
+
+            PeRan = true;
+            IsPeBuilding = false;
+            _peCts?.Dispose();
+            _peCts = null;
+            ConfirmationText = "";
+            await RefreshDisksAsync();   // USB가 새로 포맷됐으니 목록을 갱신합니다.
+        }
+    }
+
+    [RelayCommand]
+    private void CancelBootUsb() => _peCts?.Cancel();
 
     /// <summary>MSR(Microsoft 예약) 파티션 GPT 타입 GUID.</summary>
     private static readonly Guid MsrPartitionType = new("e3c9e316-0b5c-4db8-817d-f92df00215ae");

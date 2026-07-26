@@ -88,6 +88,19 @@
   <data name="ModeBackup" xml:space="preserve"><value>Back up to image</value></data>
   <data name="ModeRestore" xml:space="preserve"><value>Restore image</value></data>
   <data name="ModeFixBoot" xml:space="preserve"><value>Boot repair</value></data>
+  <data name="ModeBootUsb" xml:space="preserve"><value>Boot USB</value></data>
+  <data name="BootUsbHint" xml:space="preserve"><value>Creates a rescue USB for a PC that won't start Windows at all. Boot from this USB and DiskMigrator launches right away for backup, restore, and boot repair. Built from this PC's built-in recovery environment — no downloads (takes a few minutes).</value></data>
+  <data name="BootUsbTargetLabel" xml:space="preserve"><value>Choose USB (will be erased)</value></data>
+  <data name="BootUsbStartBtn" xml:space="preserve"><value>Create boot USB</value></data>
+  <data name="BootUsbWarn" xml:space="preserve"><value>Everything on this USB will be erased. At least 2 GB and a USB (removable) disk are required.</value></data>
+  <data name="BootUsbCancelBtn" xml:space="preserve"><value>Cancel</value></data>
+  <data name="BootUsbNoTarget" xml:space="preserve"><value>Choose the USB disk to turn into a boot USB.</value></data>
+  <data name="BootUsbNotUsb" xml:space="preserve"><value>For safety, only USB (removable) disks can be used.</value></data>
+  <data name="BootUsbTooSmall" xml:space="preserve"><value>The USB is too small — at least 2 GB is required.</value></data>
+  <data name="BootUsbAfterHint" xml:space="preserve"><value>How to use: plug the USB into the PC to rescue, power it on, and pick the USB (UEFI) entry in the boot menu (usually F12/F11/F8). DiskMigrator starts automatically.</value></data>
+  <data name="PeStatusPreparing" xml:space="preserve"><value>Preparing…</value></data>
+  <data name="PeNoIngredients" xml:space="preserve"><value>Could not find the boot-USB ingredients (recovery environment) on this PC.</value></data>
+  <data name="PeCancelled" xml:space="preserve"><value>Cancelled. The USB may be incomplete — please create it again.</value></data>
   <data name="FixBootHint" xml:space="preserve"><value>Use this when a cloned or restored disk won't boot. Connect that disk to this PC (e.g. via USB) and inspect it — no copying involved, only the boot configuration is checked and repaired.</value></data>
   <data name="FixBootTargetLabel" xml:space="preserve"><value>Disk to inspect</value></data>
   <data name="FixBootReadOnlyNote" xml:space="preserve"><value>The check is read-only and safe. If a problem is found, a repair button appears.</value></data>

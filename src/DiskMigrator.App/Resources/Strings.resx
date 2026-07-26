@@ -88,6 +88,19 @@
   <data name="ModeBackup" xml:space="preserve"><value>이미지 백업</value></data>
   <data name="ModeRestore" xml:space="preserve"><value>이미지 복원</value></data>
   <data name="ModeFixBoot" xml:space="preserve"><value>부팅 복구</value></data>
+  <data name="ModeBootUsb" xml:space="preserve"><value>부팅 USB</value></data>
+  <data name="BootUsbHint" xml:space="preserve"><value>윈도우가 아예 켜지지 않는 컴퓨터를 구조하는 응급 USB를 만듭니다. 이 USB로 부팅하면 DiskMigrator가 바로 실행되어 백업·복원·부팅 복구를 할 수 있습니다. 별도 다운로드 없이 이 컴퓨터에 내장된 복구 환경으로 만듭니다(몇 분 걸립니다).</value></data>
+  <data name="BootUsbTargetLabel" xml:space="preserve"><value>USB 선택 (지워짐)</value></data>
+  <data name="BootUsbStartBtn" xml:space="preserve"><value>부팅 USB 만들기</value></data>
+  <data name="BootUsbWarn" xml:space="preserve"><value>이 USB의 모든 내용이 지워집니다. 최소 2GB, USB(이동식) 디스크만 가능합니다.</value></data>
+  <data name="BootUsbCancelBtn" xml:space="preserve"><value>취소</value></data>
+  <data name="BootUsbNoTarget" xml:space="preserve"><value>부팅 USB로 만들 USB 디스크를 선택하세요.</value></data>
+  <data name="BootUsbNotUsb" xml:space="preserve"><value>안전을 위해 USB(이동식) 디스크에만 만들 수 있습니다.</value></data>
+  <data name="BootUsbTooSmall" xml:space="preserve"><value>USB가 너무 작습니다 — 최소 2GB가 필요합니다.</value></data>
+  <data name="BootUsbAfterHint" xml:space="preserve"><value>사용법: 구조할 컴퓨터에 USB를 꽂고 켠 뒤, 부팅 메뉴(보통 F12·F11·F8)에서 USB(UEFI)를 선택하세요. DiskMigrator가 자동으로 실행됩니다.</value></data>
+  <data name="PeStatusPreparing" xml:space="preserve"><value>준비 중…</value></data>
+  <data name="PeNoIngredients" xml:space="preserve"><value>이 컴퓨터에서 부팅 USB 재료(복구 환경)를 찾지 못했습니다.</value></data>
+  <data name="PeCancelled" xml:space="preserve"><value>취소되었습니다. USB는 미완성 상태일 수 있으니 다시 만들어 주세요.</value></data>
   <data name="FixBootHint" xml:space="preserve"><value>클론·복원해 둔 디스크가 부팅되지 않을 때 쓰는 도구입니다. 그 디스크를 USB 등으로 이 컴퓨터에 연결하고 검사하세요 — 복제 없이 부팅 구성만 검사·복구합니다.</value></data>
   <data name="FixBootTargetLabel" xml:space="preserve"><value>검사할 디스크</value></data>
   <data name="FixBootReadOnlyNote" xml:space="preserve"><value>검사는 읽기만 하므로 안전합니다. 문제가 발견되면 복구 버튼이 나타납니다.</value></data>

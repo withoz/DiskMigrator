@@ -105,7 +105,12 @@ public partial class App : Application
 
         // 데이터를 지울 수 있는 도구라, 위험을 고지하고 동의를 받은 뒤에만 실행합니다.
         // 동의는 사용자별·버전별로 한 번만 받습니다(EulaAcceptance). 미동의면 창을 열지 않고 종료.
-        if (!EulaAcceptance.IsAccepted())
+        //
+        // 부팅 USB(WinPE) 안에서는 묻지 않습니다 — 그 USB는 이 앱으로 동의를 마친 사용자가
+        // 직접 만든 것이고, 램디스크라 동의를 기록해도 부팅마다 사라져 같은 질문만 반복됩니다.
+        bool inWinPe = Microsoft.Win32.Registry.LocalMachine
+            .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\MiniNT") is not null;
+        if (!inWinPe && !EulaAcceptance.IsAccepted())
         {
             var eulaWindow = new EulaWindow();
             if (eulaWindow.ShowDialog() != true)
