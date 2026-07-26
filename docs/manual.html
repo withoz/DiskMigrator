@@ -77,18 +77,19 @@
 <header>
   <div class="logo">DM</div>
   <div>
-    <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.0</span></h1>
+    <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.1</span></h1>
     <p>윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 — 컴퓨터 초보자용 안내</p>
   </div>
 </header>
 
 <nav class="toc">
   <a href="#before">시작 전에</a>
-  <a href="#modes">네 가지 모드</a>
+  <a href="#modes">다섯 가지 모드</a>
   <a href="#clone">① 클론</a>
   <a href="#backup">② 백업</a>
   <a href="#restore">③ 복원</a>
   <a href="#fixboot">④ 부팅 복구</a>
+  <a href="#bootusb">⑤ 부팅 USB</a>
   <a href="#faq">FAQ</a>
   <a href="#terms">용어 설명</a>
 </nav>
@@ -109,12 +110,13 @@
   <p>• 데이터 양에 따라 30분~수 시간 걸립니다. 도중에 컴퓨터를 끄지 마세요.</p>
 </div>
 
-<h2 id="modes">네 가지 모드 — 화면 위쪽에서 선택</h2>
+<h2 id="modes">다섯 가지 모드 — 화면 위쪽에서 선택</h2>
 <div class="modes">
   <div class="mode"><span class="ico">💽</span><b>디스크 클론</b><p>디스크 → 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
   <div class="mode"><span class="ico">📦</span><b>이미지 백업</b><p>디스크 → 파일(.vhdx)로 보관.<br>고장 대비 보험용.</p></div>
   <div class="mode"><span class="ico">♻️</span><b>이미지 복원</b><p>보관한 파일 → 디스크로 복구.<br>백업해 둔 시스템 되살리기.</p></div>
   <div class="mode"><span class="ico">🛠️</span><b>부팅 복구</b><p>복사해 둔 디스크가 안 켜질 때.<br>복제 없이 검사하고 고칩니다.</p></div>
+  <div class="mode"><span class="ico">🚑</span><b>부팅 USB</b><p>윈도우가 아예 안 켜질 때 대비.<br>USB로 부팅해 이 앱을 씁니다.</p></div>
 </div>
 
 <h2 id="clone">① 디스크 클론 — 따라하기</h2>
@@ -156,6 +158,22 @@
 </ol>
 <div class="note">지금 컴퓨터가 부팅에 쓰고 있는 디스크는 고칠 필요가 없어 복구가 적용되지 않습니다. 검사 결과에 "부팅 준비됨"이 나오면 디스크를 다시 장착해 부팅해 보세요.</div>
 
+<h2 id="bootusb">⑤ 부팅 USB — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">윈도우가 아예 켜지지 않는 컴퓨터를 구조하기 위한 <b>비상용 USB</b>를 미리 만들어 둡니다.
+별도 프로그램 설치 없이, 지금 윈도우에 들어 있는 재료만으로 만듭니다.</p>
+<div class="warn"><b>⚠ USB 메모리는 완전히 지워집니다.</b> 8GB 이상의 빈 USB 메모리를 준비하세요.</div>
+<ol class="steps">
+  <li>USB 메모리를 꽂고 <b>부팅 USB</b> 탭에서 그 USB 선택</li>
+  <li>빨간 칸에 <b>USB의 모델명을 그대로 입력</b> (실수 방지 장치입니다)</li>
+  <li><b>부팅 USB 만들기</b> → 몇 분 뒤 완료됩니다</li>
+</ol>
+<div class="card">
+  <p><b>쓰는 방법:</b> 컴퓨터가 안 켜질 때 이 USB를 꽂고 켜면 <b>DiskMigrator가 자동으로 실행</b>됩니다.
+  거기서 백업해 둔 이미지 복원, 디스크 클론, 부팅 복구를 그대로 쓸 수 있습니다.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• USB로 부팅이 안 되면 컴퓨터를 켤 때 부팅 메뉴 키(제조사마다 F12·F8·ESC 등)를 눌러 USB를 선택하세요.<br>
+  • 미리 만들어 두는 것이 핵심입니다 — 고장 난 뒤에는 다른 컴퓨터에서 만들어야 합니다.</p>
+</div>
+
 <h2>복사한 디스크로 부팅하기</h2>
 <div class="card">
   <p>① 컴퓨터를 끄고 → ② 복사한 디스크를 <b>컴퓨터 내부에 장착</b>하고 → ③ 켭니다. 끝.</p>
@@ -168,6 +186,7 @@
   위의 <b>④ 부팅 복구 — 따라하기</b> 순서대로 하면 대부분 해결됩니다.</p>
   <p>• 클론/복원이 끝난 직후라면 완료 화면에도 같은 버튼이 있습니다. (완료 시 자동으로 한 번 실행됩니다.)</p>
   <p>• 옛날 방식(BIOS)으로 설치된 윈도우가 요즘 컴퓨터에서 안 켜지면 완료 화면의 <b>UEFI로 변환</b>이 필요합니다.</p>
+  <p>• 컴퓨터가 아예 안 켜져 이 앱조차 실행할 수 없다면, 미리 만들어 둔 <b>⑤ 부팅 USB</b>로 부팅해 같은 작업을 할 수 있습니다.</p>
 </div>
 
 <h2 id="faq">자주 묻는 질문</h2>
