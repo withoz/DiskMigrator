@@ -1,3 +1,4 @@
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 
 namespace DiskMigrator.Core.Partitioning;
@@ -47,41 +48,48 @@ public static class ShrinkRestorePlanner
         ArgumentNullException.ThrowIfNull(sourcePartitions);
         ArgumentNullException.ThrowIfNull(layout);
         if (sourcePartitions.Count == 0)
-            throw new ArgumentException("원본에 파티션이 없습니다.", nameof(sourcePartitions));
+            throw new ArgumentException(L.T("원본에 파티션이 없습니다.", "The source has no partitions."),
+                nameof(sourcePartitions));
         if (sectorSize <= 0)
-            throw new ArgumentOutOfRangeException(nameof(sectorSize), "섹터 크기는 0보다 커야 합니다.");
+            throw new ArgumentOutOfRangeException(nameof(sectorSize),
+                L.T("섹터 크기는 0보다 커야 합니다.", "The sector size must be greater than 0."));
 
         var orderedSource = sourcePartitions.OrderBy(p => p.StartingOffset).ToList();
         long firstStart = orderedSource[0].StartingOffset;
         if (firstStart <= 0)
         {
-            throw new InvalidOperationException(
-                "첫 파티션이 디스크 맨 앞에서 시작해 주 GPT 영역을 복사할 공간이 없습니다.");
+            throw new InvalidOperationException(L.T(
+                "첫 파티션이 디스크 맨 앞에서 시작해 주 GPT 영역을 복사할 공간이 없습니다.",
+                "The first partition starts at the very beginning of the disk, leaving no room to copy the primary GPT area."));
         }
 
         // 보호 MBR + 주 GPT(헤더 + 엔트리 배열)는 첫 파티션 앞에 있습니다. 그대로 복사하면
         // 파티션 GUID·타입이 온전하고, 이후 GptRewriter가 위치만 remap대로 고칩니다.
         var regions = new List<CopyRegionSpec>
         {
-            new(0, 0, firstStart, "GPT 영역(주)"),
+            new(0, 0, firstStart, L.T("GPT 영역(주)", "GPT area (primary)")),
         };
         var remaps = new List<PartitionRemap>();
 
         foreach (var tp in layout.Partitions.OrderBy(p => p.StartingOffset))
         {
             var src = orderedSource.FirstOrDefault(p => p.Number == tp.SourceNumber)
-                ?? throw new InvalidOperationException(
-                    $"배치의 파티션 {tp.SourceNumber}에 대응하는 원본 파티션을 찾지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    $"배치의 파티션 {tp.SourceNumber}에 대응하는 원본 파티션을 찾지 못했습니다.",
+                    $"No source partition matches layout partition {tp.SourceNumber}."));
 
             long len = tp.LengthBytes;
             if (len <= 0)
-                throw new InvalidOperationException($"파티션 {tp.SourceNumber}의 복사 길이가 0 이하입니다.");
+                throw new InvalidOperationException(L.T(
+                    $"파티션 {tp.SourceNumber}의 복사 길이가 0 이하입니다.",
+                    $"Partition {tp.SourceNumber} has a copy length of zero or less."));
 
-            string tag = tp.Shrunk ? "(축소)"
-                : tp.StartingOffset != src.StartingOffset ? "(이동)"
+            string tag = tp.Shrunk ? L.T("(축소)", " (shrunk)")
+                : tp.StartingOffset != src.StartingOffset ? L.T("(이동)", " (moved)")
                 : "";
             regions.Add(new CopyRegionSpec(
-                src.StartingOffset, tp.StartingOffset, len, $"파티션 {tp.SourceNumber}{tag}"));
+                src.StartingOffset, tp.StartingOffset, len,
+                L.T($"파티션 {tp.SourceNumber}{tag}", $"Partition {tp.SourceNumber}{tag}")));
 
             remaps.Add(new PartitionRemap(
                 OldStartLba: src.StartingOffset / sectorSize,

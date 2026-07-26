@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Devices;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Partitioning;
 using DiskMigrator.Core.Safety;
@@ -204,7 +205,9 @@ public sealed class CloneSessionFactory(
         if (!report.CanProceed)
         {
             string reasons = string.Join("; ", report.Blockers.Select(b => b.Message));
-            throw new SafetyViolationException($"안전 검사에 실패해 작업을 시작하지 않습니다: {reasons}");
+            throw new SafetyViolationException(L.T(
+                $"안전 검사에 실패해 작업을 시작하지 않습니다: {reasons}",
+                $"Safety checks failed, so the operation was not started: {reasons}"));
         }
     }
 
@@ -258,7 +261,7 @@ public sealed class CloneSessionFactory(
             SourceOffset = 0,
             TargetOffset = 0,
             Length = AlignDown(sourceDevice.Length, sourceDevice.SectorSize),
-            Description = $"디스크 전체 ({source.Model})",
+            Description = L.T($"디스크 전체 ({source.Model})", $"Whole disk ({source.Model})"),
         },
     ];
 
@@ -294,7 +297,9 @@ public sealed class CloneSessionFactory(
             if (partition.StartingOffset > cursor)
             {
                 regions.Add(RawRegion(sourceDevice, cursor, partition.StartingOffset - cursor,
-                    cursor == 0 ? "파티션 테이블 및 부트 영역" : $"파티션 {partition.Number} 앞 간격"));
+                    cursor == 0
+                        ? L.T("파티션 테이블 및 부트 영역", "Partition table and boot area")
+                        : L.T($"파티션 {partition.Number} 앞 간격", $"Gap before partition {partition.Number}")));
             }
 
             long partitionEnd = Math.Min(partition.EndOffset, diskLength);
@@ -312,7 +317,7 @@ public sealed class CloneSessionFactory(
             {
                 unsnapshotted.Add(Describe(partition));
                 regions.Add(RawRegion(sourceDevice, partition.StartingOffset, partitionLength,
-                    $"{Describe(partition)} — 원시 복사"));
+                    L.T($"{Describe(partition)} — 원시 복사", $"{Describe(partition)} — raw copy")));
             }
             else
             {
@@ -395,7 +400,7 @@ public sealed class CloneSessionFactory(
         if (firstStart > 0)
         {
             regions.Add(Segment(sourceDevice, 0, 0, firstStart,
-                "파티션 테이블 및 부트 영역", stableForVerification: false));
+                L.T("파티션 테이블 및 부트 영역", "Partition table and boot area"), stableForVerification: false));
         }
 
         foreach (var partition in ordered)
@@ -417,7 +422,8 @@ public sealed class CloneSessionFactory(
                 // 스냅샷 없음(오프라인이거나 VSS 불가 파일시스템) → 원본에서 통째로 새 오프셋에 복사.
                 if (snapshots is not null) unsnapshotted.Add(Describe(partition));
                 regions.Add(Segment(sourceDevice, partition.StartingOffset, newStart, partitionLength,
-                    $"{Describe(partition)} — 원시 복사", stableForVerification: snapshots is null));
+                    L.T($"{Describe(partition)} — 원시 복사", $"{Describe(partition)} — raw copy"),
+                    stableForVerification: snapshots is null));
             }
             else
             {
@@ -504,7 +510,8 @@ public sealed class CloneSessionFactory(
                             SourceOffset = run.OffsetBytes,
                             TargetOffset = targetBaseOffset + run.OffsetBytes,
                             Length = run.LengthBytes,
-                            Description = $"{Describe(partition)} — 스냅샷(사용 블록)",
+                            Description = L.T($"{Describe(partition)} — 스냅샷(사용 블록)",
+                                              $"{Describe(partition)} — snapshot (used blocks)"),
                         });
                     }
                     return;
@@ -529,7 +536,7 @@ public sealed class CloneSessionFactory(
             SourceOffset = 0,
             TargetOffset = targetBaseOffset,
             Length = fromSnapshot,
-            Description = $"{Describe(partition)} — 스냅샷",
+            Description = L.T($"{Describe(partition)} — 스냅샷", $"{Describe(partition)} — snapshot"),
         });
     }
 
@@ -590,7 +597,7 @@ public sealed class CloneSessionFactory(
     {
         string letter = partition.DriveLetter is null ? "" : $" ({partition.DriveLetter}:)";
         string fs = partition.IsEfiSystemPartition ? " [EFI]" : "";
-        return $"파티션 {partition.Number}{letter}{fs}";
+        return L.T($"파티션 {partition.Number}{letter}{fs}", $"Partition {partition.Number}{letter}{fs}");
     }
 
     private static long AlignDown(long value, int alignment) => value - (value % alignment);
