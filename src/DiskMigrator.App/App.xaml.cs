@@ -32,6 +32,11 @@ public partial class App : Application
     }
 
     /// <summary>이번 실행에 쓸 언어 코드("ko"/"en")를 우선순위에 따라 정합니다.</summary>
+    /// <remarks>
+    /// 저장된 선택·DM_LANG이 없으면 <b>영어가 기본</b>입니다(전 세계 배포 기준). 예전에는 OS
+    /// 언어를 따랐지만, 제품 기본을 영어로 정하면서 명시적 선택만 한국어를 씁니다 — 헤더의
+    /// 한국어·English 토글로 바꾸면 그 선택이 저장되어 유지됩니다.
+    /// </remarks>
     private static string ResolveLanguage()
     {
         if (LanguagePreference.Load() is { } pref) return pref;
@@ -40,7 +45,7 @@ public partial class App : Application
         if (!string.IsNullOrWhiteSpace(env))
             return env.Trim().StartsWith("ko", StringComparison.OrdinalIgnoreCase) ? "ko" : "en";
 
-        return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko" ? "ko" : "en";
+        return "en";
     }
 
     /// <summary>
