@@ -78,7 +78,15 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackupCommand))]
     [NotifyCanExecuteChangedFor(nameof(RestoreImageCommand))]
+    [NotifyPropertyChangedFor(nameof(CanSwitchLanguage))]
     private AppStage _stage = AppStage.Selecting;
+
+    /// <summary>
+    /// 언어 전환 가능 여부. 전환은 창을 새로 만들어 다시 그리는 방식이라, 작업(클론·백업·복원·
+    /// 부팅 USB 제작) 중에 하면 진행 화면이 사라지고 작업이 화면 없이 고아로 남습니다 —
+    /// 그래서 작업 중에는 토글을 비활성화합니다.
+    /// </summary>
+    public bool CanSwitchLanguage => Stage != AppStage.Running && !IsPeBuilding;
 
     /// <summary>현재 작업 종류(클론/백업/복원). 시작 화면 상단에서 전환합니다.</summary>
     [ObservableProperty]
@@ -2060,6 +2068,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BuildBootUsbCommand))]
+    [NotifyPropertyChangedFor(nameof(CanSwitchLanguage))]
     private bool _isPeBuilding;
 
     /// <summary>완료(성공/실패) 후 결과 표시 여부.</summary>

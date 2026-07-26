@@ -50,11 +50,16 @@ public partial class MainWindow : Window
     // 헤더의 "한국어 · English"를 누르면 선택을 저장하고(App.SwitchLanguage) 창을 새 언어로
     // 다시 그립니다. XAML 문자열은 로드 시점에 언어가 잡히므로 창을 새로 만들어야 합니다.
 
-    private void LangKo_Click(object sender, MouseButtonEventArgs e) =>
-        (Application.Current as App)?.SwitchLanguage("ko");
+    private void LangKo_Click(object sender, MouseButtonEventArgs e) => SwitchLanguageIfIdle("ko");
 
-    private void LangEn_Click(object sender, MouseButtonEventArgs e) =>
-        (Application.Current as App)?.SwitchLanguage("en");
+    private void LangEn_Click(object sender, MouseButtonEventArgs e) => SwitchLanguageIfIdle("en");
+
+    /// <summary>토글 비활성화(XAML)와 별개의 이중 방어 — 작업 중엔 창을 재생성하지 않습니다.</summary>
+    private void SwitchLanguageIfIdle(string lang)
+    {
+        if (DataContext is MainViewModel { CanSwitchLanguage: false }) return;
+        (Application.Current as App)?.SwitchLanguage(lang);
+    }
 
     /// <summary>현재 언어를 굵게·진하게, 나머지는 흐리게 표시합니다.</summary>
     private void UpdateLanguageToggle()
@@ -76,7 +81,9 @@ public partial class MainWindow : Window
     /// </summary>
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (DataContext is MainViewModel { Stage: AppStage.Running })
+        // 부팅 USB 제작(IsPeBuilding)도 같은 확인을 받습니다 — 도중에 닫으면 USB가 반쯤
+        // 쓰인 채 남습니다(Stage는 Selecting이라 아래 검사만으로는 걸러지지 않음).
+        if (DataContext is MainViewModel vm && (vm.Stage == AppStage.Running || vm.IsPeBuilding))
         {
             var answer = MessageBox.Show(
                 Strings.Get("CloseRunningMsg1") + "\n\n" +
