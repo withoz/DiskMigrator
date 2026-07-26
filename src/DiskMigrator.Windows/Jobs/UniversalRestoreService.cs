@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Registry;
 using DiskMigrator.Windows.Interop;
@@ -59,8 +60,9 @@ public sealed class UniversalRestoreService(
 
         if (fresh is null)
         {
-            return new UniversalRestoreReport(false, null, [],
-                "클론 후 대상 디스크를 다시 찾지 못해 하드웨어 독립화를 건너뜁니다.");
+            return new UniversalRestoreReport(false, null, [], L.T(
+                "클론 후 대상 디스크를 다시 찾지 못해 하드웨어 독립화를 건너뜁니다.",
+                "Could not find the target disk again after cloning — skipping hardware independence."));
         }
 
         // 대상 파티션 중 Windows가 설치된 것을 찾습니다. 드라이브 문자가 없으면(재서명 충돌 등으로
@@ -96,14 +98,23 @@ public sealed class UniversalRestoreService(
                     bool hiberfilDeleted = TryDeleteHiberfil(letter);
 
                     string driverMsg = result.Enabled.Count > 0
-                        ? $"{letter}: 의 저장소 드라이버 {result.Enabled.Count}개를 부팅 시작으로 설정했습니다. " +
-                          "이제 다른 하드웨어(대개 AHCI/NVMe)에서도 부팅이 가능합니다. " +
-                          "대상 PC가 Intel VMD/RAID 모드라면 BIOS에서 AHCI로 바꾸십시오 " +
-                          "(해당 드라이버가 원본에 없으면 레지스트리만으로는 안 됩니다)."
-                        : $"{letter}: 의 저장소 드라이버가 이미 부팅 시작으로 설정돼 있습니다.";
+                        ? L.T(
+                            $"{letter}: 의 저장소 드라이버 {result.Enabled.Count}개를 부팅 시작으로 설정했습니다. " +
+                            "이제 다른 하드웨어(대개 AHCI/NVMe)에서도 부팅이 가능합니다. " +
+                            "대상 PC가 Intel VMD/RAID 모드라면 BIOS에서 AHCI로 바꾸십시오 " +
+                            "(해당 드라이버가 원본에 없으면 레지스트리만으로는 안 됩니다).",
+                            $"Set {result.Enabled.Count} storage driver(s) on {letter}: to boot-start. " +
+                            "It can now boot on different hardware (typically AHCI/NVMe). " +
+                            "If the target PC uses Intel VMD/RAID mode, switch it to AHCI in the BIOS " +
+                            "(if the source lacks that driver, the registry alone cannot help).")
+                        : L.T(
+                            $"{letter}: 의 저장소 드라이버가 이미 부팅 시작으로 설정돼 있습니다.",
+                            $"The storage drivers on {letter}: are already set to boot-start.");
 
                     string hiberMsg = (result.HibernationDisabled || hiberfilDeleted)
-                        ? " 또한 최대 절전/빠른 시작을 끄고 최대 절전 이미지를 제거해, 다른 PC에서 세션 복원으로 멈추지 않습니다."
+                        ? L.T(
+                            " 또한 최대 절전/빠른 시작을 끄고 최대 절전 이미지를 제거해, 다른 PC에서 세션 복원으로 멈추지 않습니다.",
+                            " Hibernation/Fast Startup was also disabled and the hibernation image removed, so it won't hang resuming a session on another PC.")
                         : "";
 
                     return new UniversalRestoreReport(true, $"{letter}:", result.Enabled, driverMsg + hiberMsg);
@@ -111,13 +122,15 @@ public sealed class UniversalRestoreService(
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "{Letter}: 의 하이브 편집에 실패했습니다.", letter);
-                    return new UniversalRestoreReport(false, $"{letter}:", [],
-                        $"하이브 편집 실패: {ex.Message}. 클론 데이터는 정상입니다.");
+                    return new UniversalRestoreReport(false, $"{letter}:", [], L.T(
+                        $"하이브 편집 실패: {ex.Message}. 클론 데이터는 정상입니다.",
+                        $"Editing the registry hive failed: {ex.Message}. The cloned data itself is fine."));
                 }
             }
 
-            return new UniversalRestoreReport(false, null, [],
-                "대상에서 Windows 설치 파티션을 찾지 못했습니다 (Windows 시스템 디스크가 아닐 수 있음).");
+            return new UniversalRestoreReport(false, null, [], L.T(
+                "대상에서 Windows 설치 파티션을 찾지 못했습니다 (Windows 시스템 디스크가 아닐 수 있음).",
+                "No Windows installation partition was found on the target (it may not be a Windows system disk)."));
         }
         finally
         {

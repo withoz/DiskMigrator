@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
@@ -53,28 +54,37 @@ public sealed class BootRepair(ILogger? logger = null)
         {
             return new(false,
                 uefi
-                    ? "EFI 시스템 파티션(ESP)의 볼륨 경로를 알 수 없습니다."
-                    : "부팅 파일이 있는 활성 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).",
+                    ? L.T("EFI 시스템 파티션(ESP)의 볼륨 경로를 알 수 없습니다.",
+                          "The EFI System Partition (ESP) has no known volume path.")
+                    : L.T("부팅 파일이 있는 활성 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).",
+                          "No active partition with boot files was found (the volume must be mounted)."),
                 steps);
         }
 
         var windows = FindWindowsPartition(disk);
         if (windows is null)
-            return new(false, "\\Windows가 있는 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).", steps);
+            return new(false, L.T(
+                "\\Windows가 있는 파티션을 찾지 못했습니다 (볼륨이 마운트되어야 합니다).",
+                "No partition containing \\Windows was found (the volume must be mounted)."), steps);
 
         char? espTemp = null, winTemp = null;
         try
         {
             // ESP는 보통 드라이브 문자가 없으므로 임시 부여. bcdedit의 partition= 값은 문자만 받습니다.
             char espLetter = system.DriveLetter is { } el ? el[0] : (espTemp = AssignTempLetter(system.VolumeGuidPath!))
-                ?? throw new InvalidOperationException("부팅 파티션에 임시 드라이브 문자를 부여하지 못했습니다.");
+                ?? throw new InvalidOperationException(L.T(
+                    "부팅 파티션에 임시 드라이브 문자를 부여하지 못했습니다.",
+                    "Failed to assign a temporary drive letter to the boot partition."));
             steps.Add($"{(uefi ? "ESP" : "활성 파티션")} → {espLetter}: ({(espTemp is null ? "기존" : "임시")})");
 
             char winLetter;
             if (windows.DriveLetter is { } wl) winLetter = wl[0];
             else if (windows.VolumeGuidPath is { } wv)
-                winLetter = (winTemp = AssignTempLetter(wv)) ?? throw new InvalidOperationException("Windows 파티션에 임시 문자를 부여하지 못했습니다.");
-            else return new(false, "Windows 파티션의 볼륨 경로를 알 수 없습니다.", steps);
+                winLetter = (winTemp = AssignTempLetter(wv)) ?? throw new InvalidOperationException(L.T(
+                    "Windows 파티션에 임시 문자를 부여하지 못했습니다.",
+                    "Failed to assign a temporary drive letter to the Windows partition."));
+            else return new(false, L.T("Windows 파티션의 볼륨 경로를 알 수 없습니다.",
+                                       "The Windows partition has no known volume path."), steps);
             steps.Add($"Windows → {winLetter}: ({(winTemp is null ? "기존" : "임시")})");
 
             // UEFI는 ESP 안의 EFI\Microsoft\Boot\, BIOS는 활성 파티션 루트의 Boot\.
@@ -82,7 +92,7 @@ public sealed class BootRepair(ILogger? logger = null)
                 ? $@"{espLetter}:\EFI\Microsoft\Boot\BCD"
                 : $@"{espLetter}:\Boot\BCD";
             if (!File.Exists(bcd))
-                return new(false, $"BCD를 찾지 못했습니다: {bcd}", steps);
+                return new(false, L.T($"BCD를 찾지 못했습니다: {bcd}", $"BCD was not found: {bcd}"), steps);
 
             // 재개(하이버네이트) 개체 GUID를 bcdedit 출력에서 얻습니다(있으면).
             string? resume = ReadResumeObject(bcd);
@@ -104,20 +114,23 @@ public sealed class BootRepair(ILogger? logger = null)
                 var (code, output) = RunBcdedit("/store", bcd, "/set", id, element, value);
                 steps.Add($"set {id} {element} {value} → {(code == 0 ? "OK" : $"실패({code}): {output.Trim()}")}");
                 if (code != 0)
-                    return new(false, $"bcdedit 설정 실패: {id} {element}. {output.Trim()}", steps);
+                    return new(false, L.T($"bcdedit 설정 실패: {id} {element}. {output.Trim()}",
+                                          $"bcdedit set failed: {id} {element}. {output.Trim()}"), steps);
             }
 
             string hibernation = DisableResume(bcd, winLetter, steps);
 
-            return new(true,
+            return new(true, L.T(
                 $"BCD 장치 참조를 이 디스크({(uefi ? "ESP" : "활성 파티션")} {espLetter}:, " +
                 $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.{hibernation}",
+                $"Repaired the BCD device references to this disk ({(uefi ? "ESP" : "active partition")} {espLetter}:, " +
+                $"Windows {winLetter}:). This resolves 0xc000000e.{hibernation}"),
                 steps);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "부팅 복구 중 오류.");
-            return new(false, $"복구 중 오류: {ex.Message}", steps);
+            return new(false, L.T($"복구 중 오류: {ex.Message}", $"Error during repair: {ex.Message}"), steps);
         }
 
         finally
@@ -193,7 +206,7 @@ public sealed class BootRepair(ILogger? logger = null)
             if (!File.Exists(hiberfil))
             {
                 steps.Add("hiberfil.sys 없음");
-                return " 재개(빠른 시작)도 껐습니다.";
+                return L.T(" 재개(빠른 시작)도 껐습니다.", " Resume (Fast Startup) was also disabled.");
             }
 
             // 시스템·숨김 속성과 소유권 때문에 그냥은 지워지지 않습니다.
@@ -203,7 +216,8 @@ public sealed class BootRepair(ILogger? logger = null)
             File.Delete(hiberfil);
 
             steps.Add("hiberfil.sys 삭제");
-            return " 재개(빠른 시작)를 끄고 최대 절전 이미지를 지웠습니다.";
+            return L.T(" 재개(빠른 시작)를 끄고 최대 절전 이미지를 지웠습니다.",
+                       " Resume (Fast Startup) was disabled and the hibernation image deleted.");
         }
         catch (Exception ex)
         {
