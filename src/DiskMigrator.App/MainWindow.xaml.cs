@@ -17,11 +17,16 @@ public partial class MainWindow : Window
         FitToScreen();
     }
 
+    /// <summary>화면이 이보다 좁으면 UI를 비율 축소합니다 — 설계 기준 창 크기.</summary>
+    private const double DesignWidth = 1180;
+    private const double DesignHeight = 840;
+
     /// <summary>
     /// 화면(작업 영역)보다 큰 창은 잘립니다 — 특히 부팅 USB(WinPE)는 그래픽 드라이버가 없어
-    /// 1024×768 같은 낮은 해상도로 뜨는데, 기본 창(1180×840)이 그보다 커서 가장자리가 화면
-    /// 밖으로 나갔습니다(실기에서 확인). 시작 시 창·최소 크기를 작업 영역에 맞게 줄이고,
-    /// 화면이 기본 창보다 작으면 아예 최대화해 쓸 수 있는 공간을 전부 씁니다.
+    /// 1024×768 같은 낮은 해상도로 뜹니다. 창 크기만 줄이면 내용은 여전히 설계 폭을 요구해
+    /// 스크롤·잘림이 남았습니다(실기에서 확인). 그래서 창을 최대화하고 <b>UI 전체를
+    /// LayoutTransform으로 비율 축소</b>해, 어떤 해상도에서도 모든 내용이 화면 안에 들어가게
+    /// 합니다.
     /// </summary>
     private void FitToScreen()
     {
@@ -32,9 +37,11 @@ public partial class MainWindow : Window
         if (Width > wa.Width) Width = wa.Width;
         if (Height > wa.Height) Height = wa.Height;
 
-        if (wa.Width < 1180 || wa.Height < 840)
+        double scale = Math.Min(1.0, Math.Min(wa.Width / DesignWidth, wa.Height / DesignHeight));
+        if (scale < 1.0)
         {
             WindowState = WindowState.Maximized;
+            RootLayout.LayoutTransform = new ScaleTransform(scale, scale);
         }
     }
 

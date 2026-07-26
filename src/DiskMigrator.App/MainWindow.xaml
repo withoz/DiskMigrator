@@ -271,7 +271,9 @@
 
     </Window.Resources>
 
-    <Grid>
+    <!-- RootLayout: 작은 화면(부팅 USB의 WinPE 등)에서는 코드비하인드가 LayoutTransform으로
+         전체 UI를 비율 축소해, 스크롤·잘림 없이 화면 안에 다 들어가게 합니다. -->
+    <Grid x:Name="RootLayout">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
