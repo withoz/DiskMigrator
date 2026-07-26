@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Util;
 using Microsoft.Extensions.Logging;
@@ -141,8 +142,9 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                 StartedUtc = startedUtc,
                 FinishedUtc = DateTime.UtcNow,
                 BadSectors = badSectors,
-                ErrorMessage = "사용자가 작업을 취소했습니다. 대상 디스크는 불완전한 상태이므로 부팅하거나 " +
-                               "사용하지 마십시오.",
+                ErrorMessage = L.T(
+                    "사용자가 작업을 취소했습니다. 대상 디스크는 불완전한 상태이므로 부팅하거나 사용하지 마십시오.",
+                    "The operation was cancelled. The target disk is incomplete — do not boot or use it."),
             };
         }
         catch (Exception ex)
@@ -224,12 +226,12 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                     sinceLastFlush = 0;
                 }
 
-                reporter.Report("복제", region.Description, totalCopied,
+                reporter.Report(L.T("복제", "Copying"), region.Description, totalCopied,
                     region.TargetOffset + position, badSectors.Count);
             }
         }
 
-        reporter.ReportFinal("복제", plan.Regions[^1].Description, totalCopied,
+        reporter.ReportFinal(L.T("복제", "Copying"), plan.Regions[^1].Description, totalCopied,
             plan.Target.Length, badSectors.Count);
 
         return totalCopied;
@@ -338,9 +340,11 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
                 if (badSectors.Count > options.MaxBadSectors)
                 {
-                    throw new IOException(
+                    throw new IOException(L.T(
                         $"불량 섹터가 {options.MaxBadSectors}개를 넘었습니다. 원본 디스크가 심각하게 " +
-                        "손상된 것으로 보입니다. 작업을 중단합니다.");
+                        "손상된 것으로 보입니다. 작업을 중단합니다.",
+                        $"Bad sectors exceeded {options.MaxBadSectors}. The source disk appears to be " +
+                        "seriously damaged. Stopping the operation."));
                 }
             }
         }

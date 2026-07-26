@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Win32.SafeHandles;
 
@@ -93,7 +94,8 @@ public sealed class RawDiskDevice : IBlockDevice
                 NativeMethods.ERROR_DEV_NOT_EXIST or 2 => new IOException(
                     $"{devicePath} 장치가 존재하지 않습니다. 연결이 끊겼을 수 있습니다."),
 
-                _ => new Win32Exception(error, $"{devicePath} 을(를) 열지 못했습니다."),
+                _ => new Win32Exception(error, L.T($"{devicePath} 을(를) 열지 못했습니다.",
+                                                   $"Failed to open {devicePath}.")),
             };
         }
 
@@ -160,7 +162,8 @@ public sealed class RawDiskDevice : IBlockDevice
 
             if (length is null or <= 0)
             {
-                throw new IOException($"{devicePath}: 장치 크기를 알아내지 못했습니다.");
+                throw new IOException(L.T($"{devicePath}: 장치 크기를 알아내지 못했습니다.",
+                                          $"{devicePath}: failed to determine the device size."));
             }
 
             return (length.Value, sectorSize.Value);
@@ -208,7 +211,8 @@ public sealed class RawDiskDevice : IBlockDevice
     {
         if (!CanWrite)
         {
-            throw new InvalidOperationException($"{Id} 은(는) 읽기 전용으로 열렸습니다.");
+            throw new InvalidOperationException(L.T($"{Id} 은(는) 읽기 전용으로 열렸습니다.",
+                                                    $"{Id} was opened read-only."));
         }
 
         ValidateAlignment(offset, buffer.Length);

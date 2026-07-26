@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Util;
 
 namespace DiskMigrator.Core.Engine;
@@ -84,10 +85,12 @@ public static class Verifier
             }
 
             processed += block.Length;
-            reporter.Report("검증", "대상 무결성 확인", processed, block.TargetOffset + block.Length, 0);
+            reporter.Report(L.T("검증", "Verifying"), L.T("대상 무결성 확인", "Checking target integrity"),
+                processed, block.TargetOffset + block.Length, 0);
         }
 
-        reporter.ReportFinal("검증", "대상 무결성 확인", processed, plan.Target.Length, 0);
+        reporter.ReportFinal(L.T("검증", "Verifying"), L.T("대상 무결성 확인", "Checking target integrity"),
+            processed, plan.Target.Length, 0);
 
         return new VerificationOutcome(mismatches.Count == 0, mismatches, verified, 0);
     }
@@ -121,7 +124,9 @@ public static class Verifier
             {
                 skipped += region.Length;
                 processed += region.Length;
-                reporter.Report("검증", $"{region.Description} (검증 제외 — 라이브 소스)",
+                reporter.Report(L.T("검증", "Verifying"),
+                    L.T($"{region.Description} (검증 제외 — 라이브 소스)",
+                        $"{region.Description} (skipped — live source)"),
                     processed, region.TargetOffset + region.Length, badSectors.Count);
                 continue;
             }
@@ -151,7 +156,7 @@ public static class Verifier
                     skipped += chunk;
                     position += chunk;
                     processed += chunk;
-                    reporter.Report("검증", region.Description, processed, targetOffset, badSectors.Count);
+                    reporter.Report(L.T("검증", "Verifying"), region.Description, processed, targetOffset, badSectors.Count);
                     continue;
                 }
 
@@ -174,11 +179,11 @@ public static class Verifier
                 position += comparable;
                 processed += comparable;
 
-                reporter.Report("검증", region.Description, processed, targetOffset, badSectors.Count);
+                reporter.Report(L.T("검증", "Verifying"), region.Description, processed, targetOffset, badSectors.Count);
             }
         }
 
-        reporter.ReportFinal("검증", plan.Regions[^1].Description, processed, plan.Target.Length, badSectors.Count);
+        reporter.ReportFinal(L.T("검증", "Verifying"), plan.Regions[^1].Description, processed, plan.Target.Length, badSectors.Count);
 
         return new VerificationOutcome(mismatches.Count == 0, mismatches, verified, skipped);
     }

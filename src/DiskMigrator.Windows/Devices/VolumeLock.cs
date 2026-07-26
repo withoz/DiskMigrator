@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
@@ -108,7 +109,8 @@ public sealed class VolumeLock : IDisposable
         {
             int error = Marshal.GetLastWin32Error();
             handle.Dispose();
-            throw new Win32Exception(error, $"볼륨 {volumePath} 을(를) 열지 못했습니다.");
+            throw new Win32Exception(error, L.T($"볼륨 {volumePath} 을(를) 열지 못했습니다.",
+                                                $"Failed to open volume {volumePath}."));
         }
 
         try
@@ -124,10 +126,13 @@ public sealed class VolumeLock : IDisposable
 
                 if (attempt >= retryCount)
                 {
-                    throw new IOException(
+                    throw new IOException(L.T(
                         $"볼륨 {volumePath} 을(를) 잠그지 못했습니다 (Win32 오류 {error}). " +
                         "이 볼륨의 파일을 열어 둔 프로그램이 있습니다. 탐색기 창, 백신 검사, " +
-                        "열려 있는 문서를 모두 닫고 다시 시도하십시오.");
+                        "열려 있는 문서를 모두 닫고 다시 시도하십시오.",
+                        $"Failed to lock volume {volumePath} (Win32 error {error}). " +
+                        "Some program has files open on this volume. Close Explorer windows, antivirus scans, " +
+                        "and open documents, then try again."));
                 }
 
                 log.LogDebug(
