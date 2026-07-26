@@ -124,19 +124,13 @@ public sealed partial class MainViewModel : ObservableObject
         BuildBootUsbCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>백업 저장 위치를 고릅니다(.vhdx).</summary>
+    /// <summary>백업 저장 위치를 고릅니다(.vhdx). WinPE에서는 자체 파일 창으로 대체됩니다.</summary>
     [RelayCommand]
     private void BrowseImageSave()
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title = Strings.Get("BackupChoosePath"),
-            Filter = Strings.Get("VhdxFilter"),
-            DefaultExt = ".vhdx",
-            FileName = "backup.vhdx",
-            OverwritePrompt = true,
-        };
-        if (dlg.ShowDialog() == true) ImagePath = dlg.FileName;
+        var path = Views.FileDialogs.PickSave(
+            Strings.Get("BackupChoosePath"), Strings.Get("VhdxFilter"), ".vhdx", "backup.vhdx");
+        if (path is not null) ImagePath = path;
     }
 
     [ObservableProperty] private bool _isLoading;
@@ -2211,17 +2205,13 @@ public sealed partial class MainViewModel : ObservableObject
     public string RestoreConfirmPrompt =>
         SelectedTarget is null ? "" : Strings.Format("ConfirmPromptFmt", SelectedTarget.Model);
 
-    /// <summary>복원할 이미지(.vhdx)를 고릅니다.</summary>
+    /// <summary>복원할 이미지(.vhdx)를 고릅니다. WinPE에서는 자체 파일 창으로 대체됩니다.</summary>
     [RelayCommand]
     private void BrowseImageOpen()
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = Strings.Get("RestoreChoosePath"),
-            Filter = Strings.Get("VhdxFilter"),
-            CheckFileExists = true,
-        };
-        if (dlg.ShowDialog() == true) ImagePath = dlg.FileName;
+        var path = Views.FileDialogs.PickOpen(
+            Strings.Get("RestoreChoosePath"), Strings.Get("VhdxFilter"), ".vhdx");
+        if (path is not null) ImagePath = path;
     }
 
     /// <summary>
