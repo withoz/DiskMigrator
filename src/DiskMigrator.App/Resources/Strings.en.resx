@@ -84,9 +84,9 @@
   <data name="NewHwDesc" xml:space="preserve"><value>Enables storage drivers so it still boots on a different PC</value></data>
   <data name="AutoUefiTitle" xml:space="preserve"><value>Auto-convert BIOS source to UEFI</value></data>
   <data name="AutoUefiDesc" xml:space="preserve"><value>When the source is BIOS/MBR, converts the clone to GPT/UEFI after cloning so it boots on NVMe / UEFI-only PCs. Irreversible (changes the target only; source untouched). No effect on GPT sources.</value></data>
-  <data name="ModeClone" xml:space="preserve"><value>Clone disk</value></data>
-  <data name="ModeBackup" xml:space="preserve"><value>Back up to image</value></data>
-  <data name="ModeRestore" xml:space="preserve"><value>Restore image</value></data>
+  <data name="ModeClone" xml:space="preserve"><value>Clone</value></data>
+  <data name="ModeBackup" xml:space="preserve"><value>Backup</value></data>
+  <data name="ModeRestore" xml:space="preserve"><value>Restore</value></data>
   <data name="ModeFixBoot" xml:space="preserve"><value>Boot repair</value></data>
   <data name="ModeBootUsb" xml:space="preserve"><value>Boot USB</value></data>
   <data name="BootUsbHint" xml:space="preserve"><value>Creates a rescue USB for a PC that won't start Windows at all. Boot from this USB and DiskMigrator launches right away for backup, restore, and boot repair. Built from this PC's built-in recovery environment — no downloads (takes a few minutes).</value></data>
@@ -117,7 +117,7 @@
   <data name="BackupDoneMsgFmt" xml:space="preserve"><value>Image saved: {0}</value></data>
   <data name="BackupImageSizeFmt" xml:space="preserve"><value>Image file size: {0}</value></data>
   <data name="BackupCancelledMsg" xml:space="preserve"><value>Backup cancelled. The image file being created may be incomplete.</value></data>
-  <data name="RestoreComingSoon" xml:space="preserve"><value>The restore screen is coming in a future update. For now you can restore with the command-line tool (--restore).</value></data>
+  <data name="VhdxFilter" xml:space="preserve"><value>VHDX image (*.vhdx)|*.vhdx</value></data>
   <data name="RestoreImageLabel" xml:space="preserve"><value>Image to restore (.vhdx)</value></data>
   <data name="RestoreTargetLabel" xml:space="preserve"><value>Restore target (overwrite)</value></data>
   <data name="RestoreStartBtn" xml:space="preserve"><value>Start restore</value></data>

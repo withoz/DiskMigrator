@@ -117,7 +117,7 @@
   <data name="BackupDoneMsgFmt" xml:space="preserve"><value>이미지를 저장했습니다: {0}</value></data>
   <data name="BackupImageSizeFmt" xml:space="preserve"><value>이미지 파일 크기: {0}</value></data>
   <data name="BackupCancelledMsg" xml:space="preserve"><value>사용자가 백업을 취소했습니다. 만들던 이미지 파일은 불완전할 수 있습니다.</value></data>
-  <data name="RestoreComingSoon" xml:space="preserve"><value>이미지 복원 화면은 다음 업데이트에서 제공됩니다. 지금은 명령줄 도구(--restore)로 복원할 수 있습니다.</value></data>
+  <data name="VhdxFilter" xml:space="preserve"><value>VHDX 이미지 (*.vhdx)|*.vhdx</value></data>
   <data name="RestoreImageLabel" xml:space="preserve"><value>복원할 이미지 (.vhdx)</value></data>
   <data name="RestoreTargetLabel" xml:space="preserve"><value>복원 대상 (덮어씀)</value></data>
   <data name="RestoreStartBtn" xml:space="preserve"><value>복원 시작</value></data>

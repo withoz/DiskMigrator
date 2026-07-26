@@ -131,7 +131,7 @@ public sealed partial class MainViewModel : ObservableObject
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
             Title = Strings.Get("BackupChoosePath"),
-            Filter = "VHDX 이미지 (*.vhdx)|*.vhdx",
+            Filter = Strings.Get("VhdxFilter"),
             DefaultExt = ".vhdx",
             FileName = "backup.vhdx",
             OverwritePrompt = true,
@@ -481,7 +481,8 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(BootCheckCommand))]
     private bool _isBootChecking;
 
-    public bool CanBootCheck => !IsBootChecking;
+    // 대상이 없으면 버튼을 눌러도 조용히 아무 일도 안 하게 되므로(초보자 혼란) 비활성으로 막습니다.
+    public bool CanBootCheck => !IsBootChecking && SelectedTarget is not null;
 
     /// <summary>검사를 한 번이라도 실행해 결과 패널을 보여줄지.</summary>
     [ObservableProperty] private bool _bootCheckRan;
@@ -648,6 +649,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ConfirmationPrompt));
         OnPropertyChanged(nameof(BootUsbBlockedReason));
         BuildBootUsbCommand.NotifyCanExecuteChanged();
+        BootCheckCommand.NotifyCanExecuteChanged();
         UpdateSafety();
     }
 
@@ -2216,7 +2218,7 @@ public sealed partial class MainViewModel : ObservableObject
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Title = Strings.Get("RestoreChoosePath"),
-            Filter = "VHDX 이미지 (*.vhdx)|*.vhdx",
+            Filter = Strings.Get("VhdxFilter"),
             CheckFileExists = true,
         };
         if (dlg.ShowDialog() == true) ImagePath = dlg.FileName;
