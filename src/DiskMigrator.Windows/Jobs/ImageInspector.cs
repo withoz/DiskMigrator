@@ -1,0 +1,260 @@
+using System.Diagnostics;
+using System.Runtime.Versioning;
+using System.Text;
+using DiskMigrator.Core.Abstractions;
+using DiskMigrator.Core.Localization;
+using DiskMigrator.Core.Models;
+using DiskMigrator.Windows.Devices;
+using DiskMigrator.Windows.Interop;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace DiskMigrator.Windows.Jobs;
+
+/// <summary>이미지 무결성 검사의 개별 항목.</summary>
+public sealed record ImageCheckItem(string Name, bool Passed, string Detail);
+
+/// <summary>복원 전 이미지 무결성 검사 결과.</summary>
+public sealed record ImageInspectionReport(bool Ok, IReadOnlyList<ImageCheckItem> Items)
+{
+    /// <summary>사람이 읽을 한 줄 요약(실패 시 실패 항목들).</summary>
+    public string Summary => Ok
+        ? L.T("이미지 무결성 검사를 통과했습니다.", "The image passed the integrity check.")
+        : string.Join("\n", Items.Where(i => !i.Passed).Select(i => $"• {i.Name}: {i.Detail}"));
+}
+
+/// <summary>
+/// 복원을 시작하기 전, 백업 이미지(.vhdx)가 온전한지 검사합니다 — <b>대상을 지우기 전에</b>.
+/// </summary>
+/// <remarks>
+/// 손상된 이미지로 복원을 시작하면 대상 디스크만 지워지고 복원은 도중에 실패합니다 —
+/// 사용자는 원본도 대상도 잃습니다. 그래서 파괴적인 쓰기 전에 값싸게 확인합니다:
+/// <list type="number">
+/// <item>VHDX 부착(읽기 전용) — 컨테이너 구조(헤더·BAT·메타데이터)는 Windows virtdisk가
+///   부착 시점에 검증합니다. 손상되면 여기서 실패합니다.</item>
+/// <item>파티션 테이블 — 부착된 디스크에서 파티션이 하나 이상 인식되는지.</item>
+/// <item>NTFS 파일시스템 — 각 NTFS 볼륨에 <c>chkdsk</c>(읽기 전용)를 돌려 구조 손상을
+///   확인합니다. 직접 만든 검사기가 아니라 Windows의 검증된 검사기를 씁니다(축소 때
+///   Windows 축소기를 쓰는 것과 같은 원칙).</item>
+/// </list>
+/// 이미지는 읽기 전용으로 부착하므로 절대 수정되지 않습니다. 검사가 끝나면 분리합니다.
+/// </remarks>
+[SupportedOSPlatform("windows")]
+public sealed class ImageInspector(IDiskService diskService, ILogger? logger = null)
+{
+    private readonly ILogger _logger = logger ?? NullLogger.Instance;
+
+    public async Task<ImageInspectionReport> InspectAsync(string imagePath, CancellationToken ct = default)
+    {
+        var items = new List<ImageCheckItem>();
+
+        // 1) 파일 존재·크기 — VHDX 헤더 영역(1MB)조차 안 되면 이미지일 수 없습니다.
+        var info = new FileInfo(imagePath);
+        if (!info.Exists || info.Length < (1L << 20))
+        {
+            items.Add(new(L.T("이미지 파일", "Image file"), false,
+                info.Exists
+                    ? L.T($"파일이 너무 작습니다({info.Length:N0}바이트) — VHDX가 아닙니다.",
+                          $"The file is too small ({info.Length:N0} bytes) — not a VHDX.")
+                    : L.T("파일을 찾을 수 없습니다.", "The file was not found.")));
+            return new(false, items);
+        }
+        items.Add(new(L.T("이미지 파일", "Image file"), true,
+            L.T($"{info.Length / 1073741824.0:F1} GB", $"{info.Length / 1073741824.0:F1} GB")));
+
+        return await Task.Run(() => InspectCore(imagePath, items, ct), ct);
+    }
+
+    private ImageInspectionReport InspectCore(string imagePath, List<ImageCheckItem> items, CancellationToken ct)
+    {
+        // 2) 부착 — VHDX 컨테이너 구조 검증(virtdisk가 헤더·메타데이터를 읽어야 성공).
+        VirtualDisk vhd;
+        try
+        {
+            vhd = VirtualDisk.OpenAndAttach(imagePath, readOnly: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "이미지 부착 실패: {Path}", imagePath);
+            items.Add(new(L.T("VHDX 구조", "VHDX structure"), false, L.T(
+                $"이미지를 부착하지 못했습니다 — 파일이 손상되었을 수 있습니다. ({ex.Message})",
+                $"The image could not be attached — the file may be corrupted. ({ex.Message})")));
+            return new(false, items);
+        }
+
+        using (vhd)
+        {
+            items.Add(new(L.T("VHDX 구조", "VHDX structure"), true,
+                L.T("부착 성공 (읽기 전용).", "Attached successfully (read-only).")));
+
+            // 3) 파티션 테이블 — 부착 직후엔 볼륨 연결이 늦을 수 있어 몇 번 다시 열거합니다.
+            DiskInfo? disk = null;
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                ct.ThrowIfCancellationRequested();
+                Thread.Sleep(700);
+                var disks = diskService.EnumerateDisksAsync(ct).GetAwaiter().GetResult();
+                disk = disks.FirstOrDefault(d => d.DeviceNumber == vhd.DiskNumber);
+                if (disk is not null && disk.Partitions.Count > 0 &&
+                    disk.Partitions.Any(p => p.FileSystem is not null))
+                    break;
+            }
+
+            if (disk is null || disk.Partitions.Count == 0)
+            {
+                items.Add(new(L.T("파티션 테이블", "Partition table"), false, L.T(
+                    "부착된 이미지에서 파티션을 인식하지 못했습니다 — 파티션 테이블이 손상되었을 수 있습니다.",
+                    "No partitions were recognized on the attached image — the partition table may be corrupted.")));
+                return new(false, items);
+            }
+            items.Add(new(L.T("파티션 테이블", "Partition table"), true, L.T(
+                $"{disk.PartitionStyle}, 파티션 {disk.Partitions.Count}개.",
+                $"{disk.PartitionStyle}, {disk.Partitions.Count} partition(s).")));
+
+            // 4) 파일시스템 — Windows 파일시스템(NTFS/FAT/exFAT) 볼륨마다 chkdsk(읽기 전용).
+            //
+            // 어떤 파티션을 검사할지는 열거된 FileSystem 문자열이 아니라 <b>부트 섹터 서명</b>으로
+            // 정합니다. 손상된 NTFS는 Windows가 마운트를 거부해 FileSystem이 null로 열거되는데,
+            // 그 문자열로 걸렀더니 심하게 손상된 볼륨일수록 검사를 건너뛰었습니다(실기에서 발견).
+            // 부트 섹터는 마운트와 무관하게 읽을 수 있고, chkdsk도 스스로 부트 섹터로 판별합니다.
+            bool ok = true;
+            foreach (var p in disk.Partitions)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (p.VolumeGuidPath is null && p.DriveLetter is null)
+                    continue; // 볼륨이 없는 파티션(MSR 등)은 검사 대상이 아닙니다.
+
+                string? fsName = SniffWindowsFileSystem(vhd.PhysicalPath, p.StartingOffset);
+                string name = L.T($"파일시스템 (파티션 {p.Number}, {fsName ?? "?"})",
+                                  $"File system (partition {p.Number}, {fsName ?? "?"})");
+
+                if (fsName is null)
+                {
+                    // Windows 파일시스템 서명이 없으면 판단하지 않습니다 — 다른 OS의 파티션일 수
+                    // 있고, 복원 자체는 섹터 단위라 볼륨 접근이 필요 없습니다.
+                    items.Add(new(name, true, L.T(
+                        "Windows 파일시스템이 아니어서 검사를 건너뜀 (구조·파티션 검사는 통과).",
+                        "Not a Windows file system — check skipped (structure and partition checks passed).")));
+                    continue;
+                }
+
+                var (passed, detail) = RunChkdskReadOnly(p, ct);
+                items.Add(new(name, passed, detail));
+                ok &= passed;
+            }
+
+            return new(ok, items);
+        }
+    }
+
+    /// <summary>
+    /// NTFS 볼륨에 chkdsk(읽기 전용)를 돌립니다. 드라이브 문자가 없으면 임시 문자를 부여합니다
+    /// (chkdsk는 문자·마운트 폴더만 받으므로). 읽기 전용 볼륨이라 이미지는 수정되지 않습니다.
+    /// </summary>
+    private (bool Passed, string Detail) RunChkdskReadOnly(PartitionInfo p, CancellationToken ct)
+    {
+        char? temp = null;
+        try
+        {
+            char letter;
+            if (p.DriveLetter is { } dl) letter = dl[0];
+            else
+            {
+                temp = AssignTempLetter(p.VolumeGuidPath!);
+                if (temp is null)
+                    return (true, L.T(
+                        "임시 드라이브 문자를 부여하지 못해 파일시스템 검사를 건너뜀.",
+                        "Could not assign a temporary drive letter — file-system check skipped."));
+                letter = temp.Value;
+            }
+
+            var psi = new ProcessStartInfo("chkdsk.exe", $"{letter}:")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.Default,
+            };
+            using var proc = Process.Start(psi)
+                ?? throw new InvalidOperationException(L.T("chkdsk를 시작하지 못했습니다.", "Failed to start chkdsk."));
+
+            // 출력은 기다리는 동안 비동기로 소비해야 합니다 — 종료 후 읽으면 chkdsk의 진행률
+            // 출력이 파이프 버퍼(4KB)를 채우는 순간 서로 기다리는 교착이 됩니다(실기에서 발견).
+            var stdout = new StringBuilder();
+            proc.OutputDataReceived += (_, e) => { if (e.Data is not null) lock (stdout) stdout.AppendLine(e.Data); };
+            proc.ErrorDataReceived += (_, e) => { if (e.Data is not null) lock (stdout) stdout.AppendLine(e.Data); };
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+
+            while (!proc.WaitForExit(500))
+            {
+                if (ct.IsCancellationRequested)
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    ct.ThrowIfCancellationRequested();
+                }
+            }
+            proc.WaitForExit(); // 비동기 출력 핸들러가 끝까지 비워지도록 한 번 더.
+            string output;
+            lock (stdout) output = stdout.ToString();
+            _logger.LogInformation("chkdsk {Letter}: 종료코드 {Code}", letter, proc.ExitCode);
+
+            if (proc.ExitCode == 0)
+                return (true, L.T("chkdsk에서 문제가 발견되지 않았습니다.", "chkdsk found no problems."));
+
+            string tail = string.Join(" ", output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .TakeLast(3).Select(s => s.Trim()));
+            _logger.LogWarning("chkdsk 문제 보고: {Tail}", tail);
+            return (false, L.T(
+                $"chkdsk가 파일시스템 손상을 보고했습니다(코드 {proc.ExitCode}). 이 이미지로 복원한 사본도 같은 손상을 갖게 됩니다.",
+                $"chkdsk reported file-system corruption (code {proc.ExitCode}). A copy restored from this image would carry the same corruption."));
+        }
+        finally
+        {
+            if (temp is { } t)
+            {
+                if (!NativeMethods.DeleteVolumeMountPoint($"{t}:\\"))
+                    _logger.LogWarning("임시 드라이브 문자 {Letter}: 제거 실패.", t);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 파티션의 부트 섹터를 직접 읽어 Windows 파일시스템 서명을 확인합니다.
+    /// 마운트 성공 여부와 무관하므로, 손상돼 마운트가 거부된 볼륨도 원래 무엇이었는지 알 수 있습니다.
+    /// </summary>
+    private string? SniffWindowsFileSystem(string physicalPath, long partitionOffset)
+    {
+        try
+        {
+            using var dev = RawDiskDevice.OpenRead(physicalPath);
+            Span<byte> boot = stackalloc byte[512];
+            if (dev.Read(partitionOffset, boot) < 512) return null;
+
+            // OEM ID(오프셋 3~10): NTFS·exFAT. FAT은 BPB의 형식 문자열로 판별합니다.
+            if (boot.Slice(3, 8).SequenceEqual("NTFS    "u8)) return "NTFS";
+            if (boot.Slice(3, 8).SequenceEqual("EXFAT   "u8)) return "exFAT";
+            if (boot.Slice(82, 8).StartsWith("FAT32"u8)) return "FAT32";
+            if (boot.Slice(54, 8).StartsWith("FAT"u8)) return "FAT";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "부트 섹터 판별 실패 (오프셋 {Offset}).", partitionOffset);
+            return null;
+        }
+    }
+
+    private char? AssignTempLetter(string volumeGuidPath)
+    {
+        string vol = volumeGuidPath.EndsWith('\\') ? volumeGuidPath : volumeGuidPath + "\\";
+        var used = DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0])).ToHashSet();
+        foreach (char c in "TUVWYZRQPNM")
+        {
+            if (used.Contains(c)) continue;
+            if (NativeMethods.SetVolumeMountPoint($"{c}:\\", vol)) return c;
+        }
+        return null;
+    }
+}

@@ -964,6 +964,21 @@
                     <TextBox Text="{Binding ImagePath}" IsReadOnly="True" VerticalContentAlignment="Center"
                              Padding="9,7" FontFamily="Consolas, D2Coding" />
                 </DockPanel>
+                <!-- 이미지 빠른 확인: 선택 즉시 부착해 구조를 읽은 결과. 복원 시작 시 chkdsk 포함
+                     심층 검사가 한 번 더 돕니다. -->
+                <TextBlock Text="{Binding ImageCheckStatus}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           Visibility="{Binding ImageCheckStatus, Converter={StaticResource NullToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ImageCheckOk}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,7">
                     <TextBlock Text="{loc:Loc RestoreTargetLabel}" Style="{StaticResource SubHeading}"

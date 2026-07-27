@@ -1981,12 +1981,19 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>복원할 이미지가 바뀌면 그 안의 파티션 배치를 다시 읽습니다.</summary>
     partial void OnImagePathChanged(string value) => _ = LoadImagePartitionsAsync();
 
+    /// <summary>이미지 선택 직후의 빠른 확인 결과 문구(빈 문자열=숨김). 색은 <see cref="ImageCheckOk"/>가 정합니다.</summary>
+    [ObservableProperty] private string _imageCheckStatus = "";
+
+    /// <summary>빠른 확인이 통과였는지(true=초록, false=빨강).</summary>
+    [ObservableProperty] private bool _imageCheckOk;
+
     /// <summary>고른 이미지를 잠깐 부착해 파티션 배치(차지한 끝 + NTFS 후보)를 읽습니다(볼륨 수정 없음).</summary>
     private async Task LoadImagePartitionsAsync()
     {
         ShrinkPartitions.Clear();
         _imageOccupiedEnd = 0;
         _imageInfoLoaded = false;
+        ImageCheckStatus = "";
         RefreshShrinkAuto();
 
         if (!IsRestoreMode || string.IsNullOrWhiteSpace(ImagePath) || !File.Exists(ImagePath)) return;
@@ -1996,6 +2003,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var found = new List<ShrinkPartitionChoice>();
             long occupiedEnd = 0;
+            int partitionCount = 0;
             await Task.Run(() =>
             {
                 using var img = VirtualDisk.OpenAndAttach(path, readOnly: true);
@@ -2011,7 +2019,10 @@ public sealed partial class MainViewModel : ObservableObject
                     if (d is null) continue;
 
                     if (d.Partitions.Count > 0)
+                    {
                         occupiedEnd = d.Partitions.Max(p => p.EndOffset);
+                        partitionCount = d.Partitions.Count;
+                    }
 
                     var candidates = d.Partitions
                         .Where(IsShrinkCandidate)
@@ -2032,10 +2043,23 @@ public sealed partial class MainViewModel : ObservableObject
 
             foreach (var c in found) ShrinkPartitions.Add(c);
             _imageOccupiedEnd = occupiedEnd;
+
+            // 빠른 확인 결과 — 부착이 됐고 파티션이 인식되면 구조는 온전합니다.
+            // (파일시스템까지 보는 심층 검사는 복원 시작 시 자동으로 한 번 더 돕니다.)
+            ImageCheckOk = partitionCount > 0;
+            ImageCheckStatus = partitionCount > 0
+                ? Strings.Format("ImageQuickOkFmt", partitionCount)
+                : Strings.Get("ImageQuickBad");
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "복원용 이미지 파티션 배치를 읽지 못했습니다.");
+            if (path == ImagePath)
+            {
+                // 부착 실패 = VHDX 구조를 읽지 못함 — 손상 가능성을 바로 알립니다.
+                ImageCheckOk = false;
+                ImageCheckStatus = Strings.Get("ImageQuickBad");
+            }
         }
         finally
         {
@@ -2294,6 +2318,23 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
             SafetyGuard.AssertTargetUnchanged(SelectedTarget.Disk, target);
+
+            // 대상을 지우기 전에 이미지 무결성을 검사합니다 — 손상된 이미지로 시작하면 복원은
+            // 도중에 실패하고 대상만 잃습니다. 구조(부착)·파티션 테이블·NTFS(chkdsk 읽기 전용).
+            ProgressPhase = Strings.Get("ProgImageCheck");
+            ProgressRegion = "";
+            var inspection = await new ImageInspector(
+                    _diskService, _loggerFactory.CreateLogger<ImageInspector>())
+                .InspectAsync(imagePath, _cts.Token);
+            foreach (var item in inspection.Items)
+                _logger.LogInformation("이미지 검사 [{Result}] {Name}: {Detail}",
+                    item.Passed ? "통과" : "실패", item.Name, item.Detail);
+            if (!inspection.Ok)
+            {
+                ShowFailure(Strings.Get("FailImageCheckTitle"), inspection.Summary,
+                    Strings.Get("FailNothingWritten"));
+                return;
+            }
 
             var options = new CloneOptions
             {

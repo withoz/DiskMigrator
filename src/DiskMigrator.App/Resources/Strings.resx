@@ -121,6 +121,10 @@
   <data name="RestoreImageLabel" xml:space="preserve"><value>복원할 이미지 (.vhdx)</value></data>
   <data name="RestoreTargetLabel" xml:space="preserve"><value>복원 대상 (덮어씀)</value></data>
   <data name="RestoreStartBtn" xml:space="preserve"><value>복원 시작</value></data>
+  <data name="ImageQuickOkFmt" xml:space="preserve"><value>이미지 확인: 파티션 {0}개 인식 — 구조 정상입니다. 복원 시작 시 심층 검사(chkdsk)가 한 번 더 실행됩니다.</value></data>
+  <data name="ImageQuickBad" xml:space="preserve"><value>이미지를 읽지 못했습니다 — 파일이 손상되었거나 올바른 VHDX가 아닐 수 있습니다.</value></data>
+  <data name="ProgImageCheck" xml:space="preserve"><value>이미지 무결성 검사</value></data>
+  <data name="FailImageCheckTitle" xml:space="preserve"><value>이미지 무결성 검사 실패</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>복원할 이미지 선택</value></data>
   <data name="RestoreHint" xml:space="preserve"><value>선택한 .vhdx 이미지를 대상 디스크에 통째로 되돌립니다. 대상이 이미지보다 크면 남는 공간을 쓸 수 있게 맞춰 주고, 작으면 자동으로 줄여서 맞춥니다. '새 하드웨어 대비'를 켜면 다른 PC에서도 부팅되게 만듭니다.</value></data>
   <data name="ResShrinkFmt" xml:space="preserve"><value>축소: {0}</value></data>
