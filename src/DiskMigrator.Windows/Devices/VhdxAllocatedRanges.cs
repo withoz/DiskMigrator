@@ -33,7 +33,7 @@ public static class VhdxAllocatedRanges
     private static readonly Guid FileParametersGuid = new("caa16737-fa36-4d43-b3b6-33f0aa44e76b");
     private static readonly Guid VirtualDiskSizeGuid = new("2fa54224-cd1b-4876-b211-5dbed83bf4b8");
     private static readonly Guid LogicalSectorSizeGuid = new("8141bf1d-a96f-4709-ba47-f233a8faab5f");
-    private static readonly Guid ParentLocatorGuid = new("a8d35f2d-b04b-4b9a-96c8-4dfa1cf7fbfc");
+    private static readonly Guid ParentLocatorGuid = new("a8d35f2d-b30b-454d-abf7-d3d84834ab0c");
     private static readonly Guid VhdxParentLocatorType = new("b04aefb7-d19e-4a81-b789-25b8e9445913");
 
     private const uint PayloadBlockFullyPresent = 6;
