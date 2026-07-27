@@ -491,29 +491,17 @@ public sealed partial class MainViewModel : ObservableObject
     public bool CanBootCheck => !IsBootChecking && SelectedTarget is not null;
 
     /// <summary>검사를 한 번이라도 실행해 결과 패널을 보여줄지.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowNothingToRepair))]
-    private bool _bootCheckRan;
+    [ObservableProperty] private bool _bootCheckRan;
 
     [ObservableProperty] private string _bootCheckVerdict = "";
 
     /// <summary>판정이 긍정(부팅 준비/가능)이면 true — 색 구분용.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowNothingToRepair))]
-    private bool _bootCheckVerdictIsGood;
-
-    /// <summary>
-    /// 검사 결과가 정상이고 복구할 것도 없을 때 "이 디스크는 그대로 쓰면 됩니다" 안내를 보여줄지.
-    /// 안내가 없으면 검사가 끝난 것인지 알 수 없다는 실사용 피드백에서 나왔습니다.
-    /// </summary>
-    public bool ShowNothingToRepair => BootCheckRan && BootCheckVerdictIsGood && !BootRepairAvailable;
+    [ObservableProperty] private bool _bootCheckVerdictIsGood;
 
     // --- 부팅 복구 (BCD 장치 참조 수정) ------------------------------------
 
     /// <summary>검사에서 BCD 장치 참조 문제가 잡혀 복구 버튼을 보여줄지.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowNothingToRepair))]
-    private bool _bootRepairAvailable;
+    [ObservableProperty] private bool _bootRepairAvailable;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RepairBootCommand))]
