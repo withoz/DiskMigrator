@@ -347,8 +347,8 @@
                                     </Style>
                                 </StackPanel.Resources>
                                 <TextBlock Text="by " FontSize="10.5" Foreground="{StaticResource Muted}" />
-                                <TextBlock Text="AixxiA.kr" Style="{StaticResource SiteLink}"
-                                           Tag="https://aixxia.kr" MouseLeftButtonUp="CompanyLink_Click" />
+                                <!-- AixxiA.kr는 준비 중 — 사이트가 열리면 SiteLink 스타일+Tag로 활성화 -->
+                                <TextBlock Text="AixxiA.kr" FontSize="10.5" Foreground="{StaticResource Muted}" />
                                 <TextBlock Text=" / " FontSize="10.5" Foreground="{StaticResource Muted}" />
                                 <TextBlock Text="AiDesign.co.kr" Style="{StaticResource SiteLink}"
                                            Tag="http://aidesign.co.kr" MouseLeftButtonUp="CompanyLink_Click" />
