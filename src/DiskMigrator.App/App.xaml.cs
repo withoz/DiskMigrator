@@ -13,6 +13,11 @@ public partial class App : Application
 {
     private ILoggerFactory? _loggerFactory;
 
+    // 수동 스플래시 — 최소 노출 시간을 보장하기 위해 빌드 액션 대신 직접 띄우고 닫습니다.
+    private SplashScreen? _splash;
+    private DateTime _splashShownAt;
+    private static readonly TimeSpan MinimumSplashTime = TimeSpan.FromSeconds(1.5);
+
     /// <summary>이번 실행의 로그 파일 경로. 결과 화면에서 사용자에게 보여줍니다.</summary>
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -84,6 +89,11 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // 스플래시를 가능한 한 일찍 — 메인 창이 뜬 뒤에도 최소 노출 시간을 채우고 사라집니다.
+        _splash = new SplashScreen("Resources/splash.png");
+        _splash.Show(autoClose: false, topMost: true);
+        _splashShownAt = DateTime.UtcNow;
+
         ApplyCulture();
 
         Directory.CreateDirectory(LogDirectory);
@@ -117,6 +127,8 @@ public partial class App : Application
             .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\MiniNT") is not null;
         if (!inWinPe && !EulaAcceptance.IsAccepted())
         {
+            // 스플래시가 topMost라 동의 창을 가리므로 먼저 닫습니다(첫 실행 한정).
+            CloseSplash(TimeSpan.Zero);
             var eulaWindow = new EulaWindow();
             if (eulaWindow.ShowDialog() != true)
             {
@@ -135,8 +147,42 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
 
+        CloseSplashAfterMinimum();
+
         _ = viewModel.RefreshDisksAsync();
         _ = viewModel.CheckForUpdatesAsync();
+    }
+
+    /// <summary>스플래시를 즉시 또는 페이드로 닫습니다(없으면 무시).</summary>
+    private void CloseSplash(TimeSpan fade)
+    {
+        var splash = _splash;
+        _splash = null;
+        splash?.Close(fade);
+    }
+
+    /// <summary>
+    /// 메인 창이 뜬 뒤에도 스플래시를 최소 노출 시간까지 유지했다가 부드럽게 닫습니다 —
+    /// 빠른 PC에서 스플래시가 한 순간에 지나가 버리는 것을 막습니다.
+    /// </summary>
+    private void CloseSplashAfterMinimum()
+    {
+        if (_splash is null) return;
+
+        var remaining = MinimumSplashTime - (DateTime.UtcNow - _splashShownAt);
+        if (remaining <= TimeSpan.Zero)
+        {
+            CloseSplash(TimeSpan.FromMilliseconds(400));
+            return;
+        }
+
+        var timer = new DispatcherTimer { Interval = remaining };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            CloseSplash(TimeSpan.FromMilliseconds(400));
+        };
+        timer.Start();
     }
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

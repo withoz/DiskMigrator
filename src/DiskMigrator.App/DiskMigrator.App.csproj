@@ -65,7 +65,9 @@
        Strings.resx / Strings.en.resx 는 SDK가 자동으로 포함·위성 어셈블리로 만듭니다. -->
   <!-- 시작 화면: 앱이 로드되는 동안 다크 로고를 즉시 띄웁니다(WPF 기본 스플래시). -->
   <ItemGroup>
-    <SplashScreen Include="Resources\splash.png" />
+    <!-- 스플래시는 SplashScreen 빌드 액션이 아니라 Resource + 수동 표시(App.xaml.cs)입니다 —
+         빌드 액션 방식은 첫 창이 뜨는 즉시 닫혀 최소 노출 시간을 제어할 수 없습니다. -->
+    <Resource Include="Resources\splash.png" />
   </ItemGroup>
 
   <ItemGroup>
