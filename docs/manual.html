@@ -77,7 +77,7 @@
 <header>
   <div class="logo">DM</div>
   <div>
-    <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.1</span></h1>
+    <h1>DISKMIGRATOR 사용설명서 <span class="badge">v1.3</span></h1>
     <p>윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 — 컴퓨터 초보자용 안내</p>
   </div>
 </header>
@@ -222,11 +222,13 @@
   <div><dt>MBR / GPT</dt><dd>디스크의 칸 나눔(파티션) 정보를 적는 방식. MBR은 옛 방식(BIOS 짝), GPT가 요즘 방식(UEFI 짝)입니다.</dd></div>
   <div><dt>M.2 / NVMe / SSD</dt><dd>요즘 쓰는 빠르고 작은 저장장치. M.2는 껌처럼 생긴 모양, NVMe는 빠른 연결 방식, SSD는 반도체 저장장치라는 뜻입니다.</dd></div>
   <div><dt>부팅 복구</dt><dd>복사한 디스크의 부팅 설정(BCD)이 어긋났을 때 자동으로 바로잡는 기능. 이 프로그램이 완료 후 자동 실행합니다.</dd></div>
+  <div><dt>증분 백업</dt><dd>지난 백업 이후 <b>바뀐 부분만</b> 작은 새 파일에 저장하는 백업. 기존 백업 파일을 저장 위치로 다시 고르면 자동으로 진행됩니다. 파일들은 같은 폴더에 함께 보관하세요.</dd></div>
+  <div><dt>이미지 무결성 검사</dt><dd>복원을 시작하기 전에 백업 파일이 온전한지 자동으로 확인하는 안전장치. 손상된 백업이면 대상 디스크를 건드리지 않고 멈춥니다.</dd></div>
 </dl>
 </div>
 
 <footer>
-  DiskMigrator v1.1 · 다운로드: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator v1.3 · 다운로드: github.com/withoz/DiskMigrator/releases ·
   문제가 생기면 <code>C:\Users\사용자\AppData\Local\DiskMigrator\logs</code> 폴더의 로그 파일과 함께 문의하세요.
 </footer>
 

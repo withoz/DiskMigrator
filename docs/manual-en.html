@@ -77,7 +77,7 @@
 <header>
   <div class="logo">DM</div>
   <div>
-    <h1>DISKMIGRATOR USER MANUAL <span class="badge">v1.1</span></h1>
+    <h1>DISKMIGRATOR USER MANUAL <span class="badge">v1.3</span></h1>
     <p>Copy, back up, and restore an entire Windows disk — a beginner-friendly guide</p>
   </div>
 </header>
@@ -222,11 +222,13 @@ Nothing extra to install — it is built entirely from materials already inside 
   <div><dt>MBR / GPT</dt><dd>The scheme used to record how a disk is partitioned. MBR is the old one (paired with BIOS); GPT is the modern one (paired with UEFI).</dd></div>
   <div><dt>M.2 / NVMe / SSD</dt><dd>Today's fast, small storage. M.2 is the stick-of-gum shape, NVMe is the fast connection, SSD means solid-state storage.</dd></div>
   <div><dt>Fix Boot</dt><dd>Automatically corrects the boot configuration (BCD) of a copied disk when it is out of line. The program runs it automatically after completion.</dd></div>
+  <div><dt>Incremental backup</dt><dd>A backup that saves <b>only what changed</b> since the last one, into a small new file. It happens automatically when you pick your existing backup file as the save location. Keep the files together in the same folder.</dd></div>
+  <div><dt>Image integrity check</dt><dd>A safeguard that automatically verifies your backup file is intact before a restore begins. If the backup is corrupted, the target disk is left untouched.</dd></div>
 </dl>
 </div>
 
 <footer>
-  DiskMigrator v1.1 · Download: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator v1.3 · Download: github.com/withoz/DiskMigrator/releases ·
   If something goes wrong, send us the log files in <code>C:\Users\&lt;you&gt;\AppData\Local\DiskMigrator\logs</code>.
 </footer>
 
