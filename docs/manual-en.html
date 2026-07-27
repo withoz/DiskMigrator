@@ -141,6 +141,10 @@
   <li>Click <b>Start Backup</b> → a single <code>.vhdx</code> file is created (it only takes up as much space as your actual data)</li>
 </ol>
 <div class="note">You can also double-click the .vhdx file in File Explorer to browse its contents.</div>
+<div class="tip"><b>✓ The second time is much faster (incremental backup).</b> On your next backup,
+  <b>pick the previous backup file</b> as the save location — only what changed is saved to a small new file
+  (<code>backup-01.vhdx</code>, and so on). Existing files are never modified; to restore, just pick the
+  <b>most recent file</b>. Keep the files together in the same folder.</div>
 
 <h2 id="restore">③ Image Restore — step by step</h2>
 <ol class="steps">
