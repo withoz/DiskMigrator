@@ -186,7 +186,17 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
         long totalCopied = 0;
         long sinceLastFlush = 0;
         long skippedIdentical = 0;
+        long skippedResume = 0;
 
+        if (options.ResumeFromBytes > 0)
+        {
+            _logger.LogInformation(
+                "이어하기: {Resume:N0}바이트 지점까지는 기록을 건너뜁니다(검증 해시는 전체 기록).",
+                options.ResumeFromBytes);
+        }
+
+        try
+        {
         foreach (var region in plan.Regions)
         {
             long position = 0;
@@ -211,17 +221,23 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
                 long targetOffset = region.TargetOffset + position;
 
+                // 이어하기: 저널이 보증하는 지점 이전은 이미 대상에 기록돼 있으므로 쓰기를
+                // 건너뜁니다. 원본 읽기·해시 기록은 그대로 하므로 검증 범위는 줄지 않습니다.
+                // (청크가 경계에 걸치면 그 청크는 통째로 다시 씁니다 — 덮어쓰기는 무해합니다.)
+                bool alreadyWritten = totalCopied + read <= options.ResumeFromBytes;
+
                 // 증분 모드: 대상(차등 자식이면 부모의 병합 뷰)을 먼저 읽어, 같은 내용이면 쓰기를
                 // 건너뜁니다 — 차등 자식에는 쓴 블록만 파일에 남으므로 변경분만 저장됩니다.
                 bool identical = false;
-                if (compareBuffer is not null)
+                if (!alreadyWritten && compareBuffer is not null)
                 {
                     var existing = compareBuffer.SpanOf(read);
                     identical = plan.Target.Read(targetOffset, existing) == read &&
                                 existing.SequenceEqual(span[..read]);
                 }
 
-                if (identical) skippedIdentical += read;
+                if (alreadyWritten) skippedResume += read;
+                else if (identical) skippedIdentical += read;
                 else plan.Target.Write(targetOffset, span[..read]);
 
                 // 검증용: 방금 대상에 쓴 데이터의 해시를 기록해 둡니다. 검증 때 원본(드리프트
@@ -239,11 +255,26 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                 {
                     plan.Target.Flush();
                     sinceLastFlush = 0;
+                    // 플러시 후에만 체크포인트 — 이 지점까지는 디스크에 실제로 기록됐습니다.
+                    plan.FlushCheckpoint?.Invoke(totalCopied);
                 }
 
                 reporter.Report(L.T("복제", "Copying"), region.Description, totalCopied,
                     region.TargetOffset + position, badSectors.Count);
             }
+        }
+        }
+        catch
+        {
+            // 취소·오류로 멈출 때도 여기까지의 기록을 디스크에 확정하고 체크포인트를 남깁니다 —
+            // 다음 실행이 이 지점부터 이어할 수 있습니다(플러시 실패는 저널만 못 남길 뿐 무해).
+            try
+            {
+                plan.Target.Flush();
+                plan.FlushCheckpoint?.Invoke(totalCopied);
+            }
+            catch { /* 이어하기 기회를 잃을 뿐, 원래 예외를 그대로 전달한다 */ }
+            throw;
         }
 
         reporter.ReportFinal(L.T("복제", "Copying"), plan.Regions[^1].Description, totalCopied,
@@ -254,6 +285,12 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
             _logger.LogInformation(
                 "증분 쓰기: 처리 {Total:N0}바이트 중 변경 {Changed:N0}바이트만 기록 (동일 {Same:N0}바이트 건너뜀).",
                 totalCopied, totalCopied - skippedIdentical, skippedIdentical);
+        }
+        if (skippedResume > 0)
+        {
+            _logger.LogInformation(
+                "이어하기 완료: 앞부분 {Resume:N0}바이트는 쓰기 생략(이미 기록됨), 새로 기록 {New:N0}바이트.",
+                skippedResume, totalCopied - skippedResume - skippedIdentical);
         }
 
         return totalCopied;

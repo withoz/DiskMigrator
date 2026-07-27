@@ -127,6 +127,8 @@
   <data name="ImageQuickBad" xml:space="preserve"><value>The image could not be read — the file may be corrupted or not a valid VHDX.</value></data>
   <data name="ProgImageCheck" xml:space="preserve"><value>Checking image integrity</value></data>
   <data name="FailImageCheckTitle" xml:space="preserve"><value>Image integrity check failed</value></data>
+  <data name="RestoreResumedFmt" xml:space="preserve"><value>Resumed: continued the previously interrupted restore from the {0} mark (verification covered the full range).</value></data>
+  <data name="RestoreResumeHint" xml:space="preserve"><value>Start the restore again with the same image and target, and it will automatically resume from where it stopped.</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>Choose image to restore</value></data>
   <data name="RestoreHint" xml:space="preserve"><value>Writes the selected .vhdx image onto the target disk in full. If the target is larger than the image, the extra space is made usable; if it is smaller, the image is shrunk automatically to fit. 'Prepare for new hardware' makes it boot on a different PC.</value></data>
   <data name="ResShrinkFmt" xml:space="preserve"><value>Shrink: {0}</value></data>
