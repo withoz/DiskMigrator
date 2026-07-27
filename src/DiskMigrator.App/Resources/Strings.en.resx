@@ -109,6 +109,8 @@
   <data name="BackupSourceLabel" xml:space="preserve"><value>Source to back up (read)</value></data>
   <data name="BackupPathLabel" xml:space="preserve"><value>Save location (.vhdx)</value></data>
   <data name="BackupStartBtn" xml:space="preserve"><value>Start backup</value></data>
+  <data name="BackupIncNoticeFmt" xml:space="preserve"><value>Existing backup found — this will be an incremental backup: only what changed since {0} is saved to the new file {1}. Existing files are never modified. When restoring, pick the most recent file, and keep the files together in the same folder.</value></data>
+  <data name="BackupChainBroken" xml:space="preserve"><value>The base backup (first file of the chain) could not be found, so an incremental backup is not possible. Do a full backup under a new file name.</value></data>
   <data name="BackupChoosePath" xml:space="preserve"><value>Save backup image as</value></data>
   <data name="BackupHint" xml:space="preserve"><value>Saves the selected disk as a single .vhdx image — smart clone stores only used areas, VSS keeps it consistent. Restore it later with 'Restore image'.</value></data>
   <data name="BackupRecommendTitle" xml:space="preserve"><value>Save your current PC (C:\) whole into a single file (recommended)</value></data>

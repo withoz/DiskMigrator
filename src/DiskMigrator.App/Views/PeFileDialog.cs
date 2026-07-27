@@ -26,6 +26,7 @@ public sealed class PeFileDialog : Window
 
     private readonly Mode _mode;
     private readonly string _ext;                 // ".vhdx" — 목록에 보여줄 파일 확장자
+    private readonly bool _overwritePrompt;       // 저장 모드: 기존 파일 선택 시 덮어쓰기 확인 여부
     private string? _currentDir;                  // null = 드라이브 목록
     private readonly TextBlock _pathText = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly ListView _list = new();
@@ -37,24 +38,27 @@ public sealed class PeFileDialog : Window
 
     /// <summary>열기(기존 .vhdx 선택) 대화상자를 띄웁니다. 취소하면 null.</summary>
     public static string? ShowOpen(Window? owner, string title, string ext)
-        => Show(owner, title, ext, Mode.Open, null);
+        => Show(owner, title, ext, Mode.Open, null, overwritePrompt: false);
 
     /// <summary>저장(폴더 이동 + 파일명 입력) 대화상자를 띄웁니다. 취소하면 null.</summary>
-    public static string? ShowSave(Window? owner, string title, string ext, string defaultName)
-        => Show(owner, title, ext, Mode.Save, defaultName);
+    public static string? ShowSave(Window? owner, string title, string ext, string defaultName,
+        bool overwritePrompt = true)
+        => Show(owner, title, ext, Mode.Save, defaultName, overwritePrompt);
 
-    private static string? Show(Window? owner, string title, string ext, Mode mode, string? defaultName)
+    private static string? Show(Window? owner, string title, string ext, Mode mode, string? defaultName,
+        bool overwritePrompt)
     {
-        var dlg = new PeFileDialog(title, ext, mode, defaultName);
+        var dlg = new PeFileDialog(title, ext, mode, defaultName, overwritePrompt);
         if (owner is not null) { dlg.Owner = owner; dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
         else dlg.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         return dlg.ShowDialog() == true ? dlg.SelectedPath : null;
     }
 
-    private PeFileDialog(string title, string ext, Mode mode, string? defaultName)
+    private PeFileDialog(string title, string ext, Mode mode, string? defaultName, bool overwritePrompt)
     {
         _mode = mode;
         _ext = ext;
+        _overwritePrompt = overwritePrompt;
         Title = title;
         Width = 620; Height = 460; MinWidth = 480; MinHeight = 340;
         FontSize = 13;
@@ -250,7 +254,7 @@ public sealed class PeFileDialog : Window
         string full = Path.Combine(_currentDir, name);
 
         // 표준 SaveFileDialog의 OverwritePrompt에 해당하는 확인.
-        if (File.Exists(full))
+        if (_overwritePrompt && File.Exists(full))
         {
             var answer = MessageBox.Show(this,
                 L.T($"{name} 파일이 이미 있습니다. 덮어쓸까요?",
@@ -297,8 +301,13 @@ public static class FileDialogs
         return PeFileDialog.ShowOpen(Application.Current?.MainWindow, title, ext);
     }
 
-    /// <summary>저장 위치·이름 선택(덮어쓰기 확인 포함). 취소하면 null.</summary>
-    public static string? PickSave(string title, string filter, string ext, string defaultName)
+    /// <summary>
+    /// 저장 위치·이름 선택. 취소하면 null.
+    /// <paramref name="overwritePrompt"/>를 끄면 기존 파일 선택 시 덮어쓰기 확인을 띄우지
+    /// 않습니다 — 호출자가 덮어쓰지 않을 때(증분 백업으로 이어 쓰기) 사용합니다.
+    /// </summary>
+    public static string? PickSave(string title, string filter, string ext, string defaultName,
+        bool overwritePrompt = true)
     {
         if (!IsWinPe)
         {
@@ -307,12 +316,12 @@ public static class FileDialogs
                 var dlg = new Microsoft.Win32.SaveFileDialog
                 {
                     Title = title, Filter = filter, DefaultExt = ext,
-                    FileName = defaultName, OverwritePrompt = true,
+                    FileName = defaultName, OverwritePrompt = overwritePrompt,
                 };
                 return dlg.ShowDialog() == true ? dlg.FileName : null;
             }
             catch (COMException) { /* 셸 구성요소 없음 → 자체 창으로 폴백 */ }
         }
-        return PeFileDialog.ShowSave(Application.Current?.MainWindow, title, ext, defaultName);
+        return PeFileDialog.ShowSave(Application.Current?.MainWindow, title, ext, defaultName, overwritePrompt);
     }
 }

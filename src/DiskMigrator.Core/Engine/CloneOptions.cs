@@ -61,6 +61,18 @@ public sealed class CloneOptions
     public bool SkipUnusedBlocks { get; init; }
 
     /// <summary>
+    /// 대상에서 같은 내용의 블록은 쓰지 않고 건너뛸지(증분 백업용).
+    /// </summary>
+    /// <remarks>
+    /// 켜면 블록마다 대상을 먼저 읽어 원본과 비교하고, <b>다른 블록만</b> 씁니다. 차등 VHDX
+    /// 자식을 대상으로 하면 자식의 병합 뷰(=부모 내용)와 비교되므로, 부모 백업 이후 바뀐
+    /// 블록만 자식 파일에 기록됩니다 — 이것이 증분 백업의 원리입니다. 읽기량은 원본+대상
+    /// 두 배가 되지만 쓰기(=자식 파일 크기)가 변경분만큼으로 줄어듭니다.
+    /// 대상 장치가 읽기를 지원해야 합니다.
+    /// </remarks>
+    public bool WriteOnlyChangedBlocks { get; init; }
+
+    /// <summary>
     /// 대상에 남는 공간을 어떻게 할지. <see cref="GrowRequest"/>와 짝을 이룹니다.
     /// </summary>
     /// <remarks>

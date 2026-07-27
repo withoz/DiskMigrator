@@ -180,10 +180,12 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
     {
         using var buffer = new AlignedBuffer(options.BufferSize);
         using var sectorBuffer = new AlignedBuffer(MaxSectorBufferSize(plan));
+        using var compareBuffer = options.WriteOnlyChangedBlocks ? new AlignedBuffer(options.BufferSize) : null;
 
         var reporter = new ProgressReporter(progress, options.ProgressInterval, stopwatch, plan.TotalBytes);
         long totalCopied = 0;
         long sinceLastFlush = 0;
+        long skippedIdentical = 0;
 
         foreach (var region in plan.Regions)
         {
@@ -208,7 +210,19 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
                 }
 
                 long targetOffset = region.TargetOffset + position;
-                plan.Target.Write(targetOffset, span[..read]);
+
+                // 증분 모드: 대상(차등 자식이면 부모의 병합 뷰)을 먼저 읽어, 같은 내용이면 쓰기를
+                // 건너뜁니다 — 차등 자식에는 쓴 블록만 파일에 남으므로 변경분만 저장됩니다.
+                bool identical = false;
+                if (compareBuffer is not null)
+                {
+                    var existing = compareBuffer.SpanOf(read);
+                    identical = plan.Target.Read(targetOffset, existing) == read &&
+                                existing.SequenceEqual(span[..read]);
+                }
+
+                if (identical) skippedIdentical += read;
+                else plan.Target.Write(targetOffset, span[..read]);
 
                 // 검증용: 방금 대상에 쓴 데이터의 해시를 기록해 둡니다. 검증 때 원본(드리프트
                 // 가능한 스냅샷)을 다시 읽는 대신 이 해시와 대상을 비교합니다.
@@ -234,6 +248,13 @@ public sealed class CloneEngine(ILogger<CloneEngine>? logger = null)
 
         reporter.ReportFinal(L.T("복제", "Copying"), plan.Regions[^1].Description, totalCopied,
             plan.Target.Length, badSectors.Count);
+
+        if (options.WriteOnlyChangedBlocks)
+        {
+            _logger.LogInformation(
+                "증분 쓰기: 처리 {Total:N0}바이트 중 변경 {Changed:N0}바이트만 기록 (동일 {Same:N0}바이트 건너뜀).",
+                totalCopied, totalCopied - skippedIdentical, skippedIdentical);
+        }
 
         return totalCopied;
     }

@@ -132,12 +132,16 @@ public sealed partial class MainViewModel : ObservableObject
         BuildBootUsbCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>백업 저장 위치를 고릅니다(.vhdx). WinPE에서는 자체 파일 창으로 대체됩니다.</summary>
+    /// <summary>
+    /// 백업 저장 위치를 고릅니다(.vhdx). WinPE에서는 자체 파일 창으로 대체됩니다.
+    /// 기존 파일을 골라도 덮어쓰지 않고 증분 백업으로 이어지므로, 덮어쓰기 확인은 띄우지 않습니다.
+    /// </summary>
     [RelayCommand]
     private void BrowseImageSave()
     {
         var path = Views.FileDialogs.PickSave(
-            Strings.Get("BackupChoosePath"), Strings.Get("VhdxFilter"), ".vhdx", "backup.vhdx");
+            Strings.Get("BackupChoosePath"), Strings.Get("VhdxFilter"), ".vhdx", "backup.vhdx",
+            overwritePrompt: false);
         if (path is not null) ImagePath = path;
     }
 
@@ -1795,6 +1799,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         var source = SelectedSource.Disk;
         string imagePath = ImagePath;
+        // 실제로 "이번에 새로 만드는" 파일 — 전체 백업이면 고른 경로, 증분이면 새 자식 파일.
+        // 서비스 호출 직전에 채워지며, 실패 정리는 이 파일만 지웁니다(기존 백업 보호).
+        string producedPath = "";
 
         _cts = new CancellationTokenSource();
         _pause = new PauseController();
@@ -1813,9 +1820,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            // SaveFileDialog에서 덮어쓰기 확인을 받았으므로, 기존 파일이 있으면 지우고 새로 만듭니다.
-            if (File.Exists(imagePath)) File.Delete(imagePath);
-
             var options = new CloneOptions
             {
                 BadSectorPolicy = ZeroFillBadSectors
@@ -1825,20 +1829,41 @@ public sealed partial class MainViewModel : ObservableObject
             };
 
             var svc = new ImageBackupService(_diskService, _snapshotProvider, _loggerFactory);
-            var result = await svc.BackupAsync(
-                source, imagePath, UseSnapshot, SkipUnusedBlocks, options, progress, _pause, _cts.Token);
+            CloneResult result;
 
-            ShowBackupResult(result, imagePath);
+            if (File.Exists(imagePath))
+            {
+                // 기존 백업 파일 → 증분 백업. 기존 파일은 절대 수정·삭제하지 않고, 그 이후
+                // 바뀐 블록만 새 자식 파일(base-NN.vhdx)에 저장합니다.
+                var chain = BackupChain.Resolve(imagePath)
+                    ?? throw new InvalidOperationException(Strings.Get("BackupChainBroken"));
+                producedPath = chain.ChildPath;
+                _logger.LogInformation("증분 백업 라우팅: 부모 {Parent} → 자식 {Child}",
+                    chain.ParentPath, chain.ChildPath);
+
+                result = await svc.BackupIncrementalAsync(
+                    source, chain.ParentPath, chain.ChildPath,
+                    UseSnapshot, SkipUnusedBlocks, options, progress, _pause, _cts.Token);
+            }
+            else
+            {
+                producedPath = imagePath;
+                result = await svc.BackupAsync(
+                    source, imagePath, UseSnapshot, SkipUnusedBlocks, options, progress, _pause, _cts.Token);
+            }
+
+            ShowBackupResult(result, producedPath);
         }
         catch (OperationCanceledException)
         {
             // 취소된 백업은 불완전한 .vhdx를 남기므로 지웁니다(서비스가 이미 VHDX를 detach함).
-            TryDeletePartialImage(imagePath);
+            // 증분이면 자식 파일만 지웁니다 — 부모(기존 백업)는 건드리지 않았으므로 그대로 유효합니다.
+            if (producedPath.Length > 0) TryDeletePartialImage(producedPath);
             ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("BackupCancelledMsg"), "");
         }
         catch (Exception ex)
         {
-            TryDeletePartialImage(imagePath);
+            if (producedPath.Length > 0) TryDeletePartialImage(producedPath);
             _logger.LogError(ex, "이미지 백업에 실패했습니다.");
             ShowFailure(Strings.Get("ResTitleFailed"), ex.Message, Strings.Get("FailSeeLog"));
         }
@@ -1979,7 +2004,28 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>복원할 이미지가 바뀌면 그 안의 파티션 배치를 다시 읽습니다.</summary>
-    partial void OnImagePathChanged(string value) => _ = LoadImagePartitionsAsync();
+    partial void OnImagePathChanged(string value)
+    {
+        OnPropertyChanged(nameof(BackupChainNotice));
+        _ = LoadImagePartitionsAsync();
+    }
+
+    /// <summary>
+    /// 백업 저장 경로가 <b>기존 파일</b>이면 증분 백업 예고 문구(빈 문자열=숨김).
+    /// 기존 백업은 덮어쓰지 않고, 바뀐 블록만 새 자식 파일에 저장한다는 것을 시작 전에 알립니다.
+    /// </summary>
+    public string BackupChainNotice
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(ImagePath) || !File.Exists(ImagePath)) return "";
+            var chain = BackupChain.Resolve(ImagePath);
+            return chain is null
+                ? Strings.Get("BackupChainBroken")
+                : Strings.Format("BackupIncNoticeFmt",
+                    Path.GetFileName(chain.ParentPath), Path.GetFileName(chain.ChildPath));
+        }
+    }
 
     /// <summary>이미지 선택 직후의 빠른 확인 결과 문구(빈 문자열=숨김). 색은 <see cref="ImageCheckOk"/>가 정합니다.</summary>
     [ObservableProperty] private string _imageCheckStatus = "";

@@ -109,6 +109,8 @@
   <data name="BackupSourceLabel" xml:space="preserve"><value>백업할 원본 (읽기)</value></data>
   <data name="BackupPathLabel" xml:space="preserve"><value>저장 위치 (.vhdx)</value></data>
   <data name="BackupStartBtn" xml:space="preserve"><value>백업 시작</value></data>
+  <data name="BackupIncNoticeFmt" xml:space="preserve"><value>기존 백업 발견 — 증분 백업으로 진행합니다: {0} 이후 바뀐 내용만 새 파일 {1}에 저장됩니다. 기존 파일은 수정되지 않습니다. 복원할 때는 가장 최근 파일을 고르고, 파일들은 같은 폴더에 함께 보관하세요.</value></data>
+  <data name="BackupChainBroken" xml:space="preserve"><value>이 파일의 기본 백업(사슬의 첫 파일)을 찾지 못해 증분 백업을 할 수 없습니다. 새 파일 이름으로 전체 백업을 하세요.</value></data>
   <data name="BackupChoosePath" xml:space="preserve"><value>백업 이미지 저장 위치</value></data>
   <data name="BackupHint" xml:space="preserve"><value>선택한 디스크를 통째로 .vhdx 이미지 파일로 저장합니다. 스마트 클론으로 사용 영역만, VSS 스냅샷으로 일관되게 담습니다. 나중에 '이미지 복원'으로 되돌릴 수 있습니다.</value></data>
   <data name="BackupRecommendTitle" xml:space="preserve"><value>지금 컴퓨터(C:\)를 통째로 파일 하나에 저장해 두세요 (권장)</value></data>

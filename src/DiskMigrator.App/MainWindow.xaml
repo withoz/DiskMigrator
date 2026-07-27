@@ -937,6 +937,11 @@
                     <TextBox Text="{Binding ImagePath}" IsReadOnly="True" VerticalContentAlignment="Center"
                              Padding="9,7" FontFamily="Consolas, D2Coding" />
                 </DockPanel>
+                <!-- 기존 백업 파일을 고르면 증분 백업으로 이어짐을 시작 전에 예고합니다. -->
+                <Border Background="{StaticResource SelectionSoft}" CornerRadius="8" Padding="10,8" Margin="0,6,0,0"
+                        Visibility="{Binding BackupChainNotice, Converter={StaticResource NullToVisibility}}">
+                    <TextBlock Text="{Binding BackupChainNotice}" TextWrapping="Wrap" Style="{StaticResource Caption}" />
+                </Border>
 
                 <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                     <CheckBox IsChecked="{Binding UseSnapshot}" IsEnabled="{Binding IsSnapshotAvailable}"

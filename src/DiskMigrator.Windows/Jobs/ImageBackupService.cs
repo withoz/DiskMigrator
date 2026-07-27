@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Engine;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Windows.Devices;
 using Microsoft.Extensions.Logging;
@@ -80,6 +81,89 @@ public sealed class ImageBackupService(
 
         target.Flush();
         logger.LogInformation("이미지 백업 종료: {Outcome}", result.Outcome);
+        return result;
+    }
+
+    /// <summary>
+    /// <b>증분 백업</b>: 기존 백업(<paramref name="parentImagePath"/>)의 차등 자식
+    /// (<paramref name="childImagePath"/>)을 만들어, 그 이후 <b>바뀐 블록만</b> 저장합니다.
+    /// </summary>
+    /// <remarks>
+    /// 자식을 쓰기 가능으로 부착하면 병합 뷰(부모 내용)가 보입니다. 전체 백업과 같은 복사
+    /// 계획을 돌리되 <see cref="CloneOptions.WriteOnlyChangedBlocks"/>로 병합 뷰와 비교해
+    /// 다른 블록만 쓰므로, 자식 파일에는 변경분만 할당됩니다. <b>부모는 절대 수정되지
+    /// 않습니다</b>(쓰기는 전부 자식으로). 완성된 자식 = 현재 디스크 상태의 완전한 이미지라,
+    /// 복원은 자식 파일을 고르면 기존 경로 그대로 동작합니다(부모 파일들이 같은 폴더에
+    /// 원래 이름으로 있어야 함). 검증(VerifyAfterClone)도 병합 뷰 전체를 대조하므로
+    /// 건너뛴 블록까지 포함해 확인됩니다.
+    /// </remarks>
+    public async Task<CloneResult> BackupIncrementalAsync(
+        DiskInfo source, string parentImagePath, string childImagePath,
+        bool useSnapshot, bool skipUnusedBlocks,
+        CloneOptions options, IProgress<CloneProgress>? progress = null,
+        PauseController? pause = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(parentImagePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(childImagePath);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var logger = _loggerFactory.CreateLogger<ImageBackupService>();
+
+        var factory = new CloneSessionFactory(
+            diskService, snapshotProvider, _loggerFactory.CreateLogger<CloneSessionFactory>());
+        using var preview = await factory.PreviewAsync(source, useSnapshot, skipUnusedBlocks, resizeLayout: null, ct);
+
+        logger.LogInformation(
+            "증분 백업 시작 — 원본 [{Num}] {Model} → {Child} (부모 {Parent}, 구간 {Regions}개, 처리 {Copy:N0} 바이트)",
+            source.DeviceNumber, source.Model, Path.GetFileName(childImagePath),
+            Path.GetFileName(parentImagePath), preview.Regions.Count, preview.TotalBytes);
+
+        // 부모의 차등 자식을 만들어 부착 — 크기·섹터는 부모에서 상속됩니다.
+        using var vhd = VirtualDisk.CreateDifferencingAndAttach(childImagePath, parentImagePath);
+        logger.LogInformation("차등 VHDX 부착: {Phys} (디스크 {Num})", vhd.PhysicalPath, vhd.DiskNumber);
+
+        using var offline = DiskOfflineScope.Take(vhd.PhysicalPath, vhd.DiskNumber, logger);
+        using var target = RawDiskDevice.OpenWrite(vhd.PhysicalPath);
+
+        // 부모가 이 디스크의 백업이 맞는지 최소 확인 — 크기가 다르면 다른 디스크의 이미지입니다.
+        if (target.Length != source.SizeBytes)
+        {
+            throw new InvalidOperationException(L.T(
+                $"선택한 백업({Path.GetFileName(parentImagePath)})의 크기({target.Length:N0}바이트)가 " +
+                $"원본 디스크({source.SizeBytes:N0}바이트)와 다릅니다 — 다른 디스크의 백업입니다. " +
+                "증분 백업은 같은 디스크의 기존 백업에만 이어 쓸 수 있습니다.",
+                $"The selected backup ({Path.GetFileName(parentImagePath)}) has a different size " +
+                $"({target.Length:N0} bytes) than the source disk ({source.SizeBytes:N0} bytes) — " +
+                "it is a backup of a different disk. Incremental backup can only continue an existing " +
+                "backup of the same disk."));
+        }
+
+        var plan = new ClonePlan
+        {
+            Name = $"증분 백업 → {Path.GetFileName(childImagePath)}",
+            Target = target,
+            Regions = preview.Regions,
+        };
+
+        var incrementalOptions = new CloneOptions
+        {
+            BufferSize = options.BufferSize,
+            ReadRetryCount = options.ReadRetryCount,
+            RetryDelay = options.RetryDelay,
+            BadSectorPolicy = options.BadSectorPolicy,
+            MaxBadSectors = options.MaxBadSectors,
+            VerifyAfterClone = options.VerifyAfterClone,
+            ProgressInterval = options.ProgressInterval,
+            FlushInterval = options.FlushInterval,
+            WriteOnlyChangedBlocks = true,
+        };
+
+        var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
+        var result = await engine.RunAsync(plan, incrementalOptions, progress, pause, ct);
+
+        target.Flush();
+        logger.LogInformation("증분 백업 종료: {Outcome}", result.Outcome);
         return result;
     }
 }
