@@ -148,29 +148,27 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
     }
 
     /// <summary>
-    /// Windows FS 볼륨에 chkdsk(읽기 전용)를 돌립니다. 드라이브 문자가 없으면 <b>임시 폴더에
-    /// 마운트</b>합니다 — 임시 드라이브 문자는 탐색기 자동 실행이 반응해 문자 제거 후
-    /// "위치를 사용할 수 없습니다" 팝업을 띄웁니다(실기에서 발견). 폴더 마운트는 조용합니다.
-    /// 읽기 전용 볼륨이라 이미지는 수정되지 않습니다.
+    /// NTFS 볼륨에 chkdsk(읽기 전용)를 돌립니다. 드라이브 문자가 없으면 임시 문자를 부여합니다
+    /// (chkdsk는 문자·마운트 폴더만 받으므로). 읽기 전용 볼륨이라 이미지는 수정되지 않습니다.
     /// </summary>
     private (bool Passed, string Detail) RunChkdskReadOnly(PartitionInfo p, CancellationToken ct)
     {
-        string? mountDir = null;
+        char? temp = null;
         try
         {
-            string chkTarget;
-            if (p.DriveLetter is { } dl) chkTarget = dl[0] + ":";
+            char letter;
+            if (p.DriveLetter is { } dl) letter = dl[0];
             else
             {
-                mountDir = MountToTempFolder(p.VolumeGuidPath!);
-                if (mountDir is null)
+                temp = AssignTempLetter(p.VolumeGuidPath!);
+                if (temp is null)
                     return (true, L.T(
-                        "볼륨을 임시 폴더에 마운트하지 못해 파일시스템 검사를 건너뜀.",
-                        "Could not mount the volume to a temporary folder — file-system check skipped."));
-                chkTarget = mountDir;
+                        "임시 드라이브 문자를 부여하지 못해 파일시스템 검사를 건너뜀.",
+                        "Could not assign a temporary drive letter — file-system check skipped."));
+                letter = temp.Value;
             }
 
-            var psi = new ProcessStartInfo("chkdsk.exe", $"\"{chkTarget}\"")
+            var psi = new ProcessStartInfo("chkdsk.exe", $"{letter}:")
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -200,7 +198,7 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
             proc.WaitForExit(); // 비동기 출력 핸들러가 끝까지 비워지도록 한 번 더.
             string output;
             lock (stdout) output = stdout.ToString();
-            _logger.LogInformation("chkdsk {Target}: 종료코드 {Code}", chkTarget, proc.ExitCode);
+            _logger.LogInformation("chkdsk {Letter}: 종료코드 {Code}", letter, proc.ExitCode);
 
             if (proc.ExitCode == 0)
                 return (true, L.T("chkdsk에서 문제가 발견되지 않았습니다.", "chkdsk found no problems."));
@@ -214,31 +212,11 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
         }
         finally
         {
-            if (mountDir is not null)
+            if (temp is { } t)
             {
-                if (!NativeMethods.DeleteVolumeMountPoint(mountDir + "\\"))
-                    _logger.LogWarning("임시 마운트 폴더 {Dir} 해제 실패.", mountDir);
-                try { Directory.Delete(mountDir); } catch { }
+                if (!NativeMethods.DeleteVolumeMountPoint($"{t}:\\"))
+                    _logger.LogWarning("임시 드라이브 문자 {Letter}: 제거 실패.", t);
             }
-        }
-    }
-
-    /// <summary>볼륨을 빈 임시 폴더에 마운트하고 그 경로를 돌려줍니다(실패 시 null).</summary>
-    private string? MountToTempFolder(string volumeGuidPath)
-    {
-        try
-        {
-            string vol = volumeGuidPath.EndsWith('\\') ? volumeGuidPath : volumeGuidPath + "\\";
-            string dir = Path.Combine(Path.GetTempPath(), "dm-chk-" + Guid.NewGuid().ToString("N")[..8]);
-            Directory.CreateDirectory(dir);
-            if (NativeMethods.SetVolumeMountPoint(dir + "\\", vol)) return dir;
-            Directory.Delete(dir);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "임시 폴더 마운트 실패.");
-            return null;
         }
     }
 
@@ -268,4 +246,15 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
         }
     }
 
+    private char? AssignTempLetter(string volumeGuidPath)
+    {
+        string vol = volumeGuidPath.EndsWith('\\') ? volumeGuidPath : volumeGuidPath + "\\";
+        var used = DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0])).ToHashSet();
+        foreach (char c in "TUVWYZRQPNM")
+        {
+            if (used.Contains(c)) continue;
+            if (NativeMethods.SetVolumeMountPoint($"{c}:\\", vol)) return c;
+        }
+        return null;
+    }
 }
