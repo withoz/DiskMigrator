@@ -155,6 +155,7 @@
   <data name="RepairDoneTitle" xml:space="preserve"><value>✔ Boot repair complete</value></data>
   <data name="RepairFailedTitle" xml:space="preserve"><value>❌ Boot repair failed</value></data>
   <data name="RepairDoneNext" xml:space="preserve"><value>Next step: put this disk back in its computer and boot. It should keep booting normally even after a full shutdown and restart.</value></data>
+  <data name="BootCheckNothingToDo" xml:space="preserve"><value>✔ Check complete — no problems were found, so there is nothing to repair. This disk is ready to boot as-is.</value></data>
   <data name="RepairBootBtn" xml:space="preserve"><value>Repair boot</value></data>
   <data name="RepairBootTip" xml:space="preserve"><value>Repoints the BCD device references to this disk’s partitions to fix error 0xc000000e.</value></data>
   <data name="Repairing" xml:space="preserve"><value>Repairing…</value></data>
