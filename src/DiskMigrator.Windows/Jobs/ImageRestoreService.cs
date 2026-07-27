@@ -136,9 +136,12 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
             string resumeDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DiskMigrator", "resume");
+            // 지문에는 복원이 바꾸지 않는 값만 넣습니다 — DiskGuid·MBR 서명은 첫 실행이 파티션
+            // 테이블을 쓰는 순간 바뀌어(RAW→GPT), 재시작 때 지문이 어긋나 이어하기가 무산됩니다
+            // (실기에서 발견). 모델·시리얼·크기면 물리 디스크를 특정하기에 충분합니다.
             string fingerprint = ResumeJournal.MakeFingerprint(
                 "restore", Path.GetFullPath(imagePath), imgInfo.Length, imgInfo.LastWriteTimeUtc.Ticks,
-                target.Model, target.SerialNumber, target.SizeBytes, target.DiskGuid, target.MbrSignature);
+                target.Model, target.SerialNumber, target.SizeBytes);
             long planTotal = regions.Sum(r => r.Length);
             resumedFromBytes = ResumeJournal.TryLoad(resumeDir, fingerprint, planTotal);
             if (resumedFromBytes > 0)
