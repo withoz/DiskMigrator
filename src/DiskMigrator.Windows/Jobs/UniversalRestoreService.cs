@@ -4,7 +4,6 @@ using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Models;
 using DiskMigrator.Core.Registry;
-using DiskMigrator.Windows.Devices;
 using DiskMigrator.Windows.Interop;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,13 +94,8 @@ public sealed class UniversalRestoreService(
                     var result = UniversalRestore.Apply(hivePath, _logger);
 
                     // 최대 절전 이미지를 지웁니다 — 다른 하드웨어에서 세션 복원(로고 동그라미 멈춤) 예방.
+                    // 하이브의 빠른시작/최대절전 값은 UniversalRestore.Apply가 이미 껐습니다(재생성 방지).
                     bool hiberfilDeleted = TryDeleteHiberfil(letter);
-
-                    // 빠른시작/최대절전 값 강제 끔 — UniversalRestore.Apply(자체 편집기)는 값이
-                    // 원본에 이미 있을 때만 덮어씁니다. 값이 없던 시스템에서는 조용히 건너뛰어
-                    // "종료할 때마다 재개 이미지가 재생성 → 다음 부팅 멈춤" 루프가 실기에서
-                    // 확인됐습니다. reg.exe는 값이 없으면 만들어 주므로 확실하게 끕니다.
-                    bool hibernationForcedOff = OfflineHibernationDisabler.Apply(hivePath, _logger);
 
                     string driverMsg = result.Enabled.Count > 0
                         ? L.T(
@@ -117,7 +111,7 @@ public sealed class UniversalRestoreService(
                             $"{letter}: 의 저장소 드라이버가 이미 부팅 시작으로 설정돼 있습니다.",
                             $"The storage drivers on {letter}: are already set to boot-start.");
 
-                    string hiberMsg = (result.HibernationDisabled || hiberfilDeleted || hibernationForcedOff)
+                    string hiberMsg = (result.HibernationDisabled || hiberfilDeleted)
                         ? L.T(
                             " 또한 최대 절전/빠른 시작을 끄고 최대 절전 이미지를 제거해, 다른 PC에서 세션 복원으로 멈추지 않습니다.",
                             " Hibernation/Fast Startup was also disabled and the hibernation image removed, so it won't hang resuming a session on another PC.")

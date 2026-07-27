@@ -120,19 +120,6 @@ public sealed class BootRepair(ILogger? logger = null)
 
             string hibernation = DisableResume(bcd, winLetter, steps);
 
-            // 재개 이미지의 "재생성"까지 막습니다 — 대상 레지스트리에서 최대 절전·빠른 시작을
-            // 강제로 끕니다(값이 없으면 생성). BCD·hiberfil만 정리하면 다음 종료 때 이미지가
-            // 다시 생겨 같은 멈춤이 반복된다는 것이 실기에서 확인됐습니다.
-            string sysHive = $@"{winLetter}:\Windows\System32\config\SYSTEM";
-            bool hibernationOff = OfflineHibernationDisabler.Apply(sysHive, _logger);
-            steps.Add($"registry hibernation off → {(hibernationOff ? "OK" : "no-op")}");
-            if (hibernationOff)
-            {
-                hibernation += L.T(
-                    " 최대 절전·빠른 시작 설정도 레지스트리에서 껐습니다(재개 이미지 재생성 방지).",
-                    " Hibernation and Fast Startup were also disabled in the registry (prevents the resume image from regenerating).");
-            }
-
             return new(true, L.T(
                 $"BCD 장치 참조를 이 디스크({(uefi ? "ESP" : "활성 파티션")} {espLetter}:, " +
                 $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.{hibernation}",
