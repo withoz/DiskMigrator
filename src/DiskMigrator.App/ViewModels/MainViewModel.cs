@@ -2418,9 +2418,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            // 복원은 이어하기가 지원됩니다 — 같은 이미지·대상으로 다시 시작하면 중단 지점부터.
-            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("RestoreCancelledMsg"),
-                Strings.Get("RestoreResumeHint"));
+            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("RestoreCancelledMsg"), "");
         }
         catch (Exception ex)
         {
@@ -2487,8 +2485,6 @@ public sealed partial class MainViewModel : ObservableObject
             null => Strings.Get("ResVerifyNone"),
         });
 
-        if (report.ResumedFromBytes > 0)
-            details.Add(Strings.Format("RestoreResumedFmt", SizeFormatter.Format(report.ResumedFromBytes)));
         if (report.Shrink is { } s) details.Add(Strings.Format("ResShrinkFmt", s.Message));
         if (report.GptRepair is { } g) details.Add(Strings.Format("ResPartTableFmt", g.Description));
         if (report.UniversalRestore is { } u) details.Add(Strings.Format("ResNewHwFmt", u.Message));

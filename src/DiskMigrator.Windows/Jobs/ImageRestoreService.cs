@@ -19,9 +19,6 @@ public sealed record ImageRestoreReport(
 {
     /// <summary>축소 복원이었으면 그 결과(아니면 null).</summary>
     public VhdxShrinkResult? Shrink { get; init; }
-
-    /// <summary>중단된 복원을 이어했으면 그 시작 지점(바이트). 0이면 처음부터.</summary>
-    public long ResumedFromBytes { get; init; }
 }
 
 /// <summary>
@@ -71,7 +68,6 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
 
         CloneResult result;
         GptRepairResult? gptRepair = null;
-        long resumedFromBytes = 0;
 
         // 대상(실디스크)을 오프라인+잠금으로 배타적 쓰기 오픈. GPT 보정까지 마친 뒤 닫아야
         // (닫으면 온라인이 되어 볼륨이 마운트되고, 그다음 Universal Restore가 하이브에 접근).
@@ -129,53 +125,16 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
                 ];
             }
 
-            // --- 이어하기: 같은 이미지→같은 대상의 중단된 복원이면 저널 지점부터. ---
-            // 원본(.vhdx)이 정적이라 중단 전후 내용이 같음이 보장되므로 복원만 이어하기가
-            // 안전합니다(클론·백업은 살아 있는 원본이라 스냅샷이 사라져 불가).
-            var imgInfo = new FileInfo(imagePath);
-            string resumeDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DiskMigrator", "resume");
-            string fingerprint = ResumeJournal.MakeFingerprint(
-                "restore", Path.GetFullPath(imagePath), imgInfo.Length, imgInfo.LastWriteTimeUtc.Ticks,
-                target.Model, target.SerialNumber, target.SizeBytes, target.DiskGuid, target.MbrSignature);
-            long planTotal = regions.Sum(r => r.Length);
-            resumedFromBytes = ResumeJournal.TryLoad(resumeDir, fingerprint, planTotal);
-            if (resumedFromBytes > 0)
-            {
-                logger.LogInformation(
-                    "중단된 복원 발견 — {Resume:N0}바이트({Pct:F0}%) 지점부터 이어합니다 (검증은 전체 범위).",
-                    resumedFromBytes, 100.0 * resumedFromBytes / planTotal);
-            }
-
             var plan = new ClonePlan
             {
                 Name = $"이미지 복원 {Path.GetFileName(imagePath)} → [{target.DeviceNumber}] {target.Model}",
                 Target = targetDevice,
                 Regions = regions,
-                FlushCheckpoint = done => ResumeJournal.Save(resumeDir, fingerprint, done, planTotal),
-            };
-
-            var runOptions = new CloneOptions
-            {
-                BufferSize = options.BufferSize,
-                ReadRetryCount = options.ReadRetryCount,
-                RetryDelay = options.RetryDelay,
-                BadSectorPolicy = options.BadSectorPolicy,
-                MaxBadSectors = options.MaxBadSectors,
-                VerifyAfterClone = options.VerifyAfterClone,
-                ProgressInterval = options.ProgressInterval,
-                FlushInterval = options.FlushInterval,
-                ResumeFromBytes = resumedFromBytes,
             };
 
             var engine = new CloneEngine(_loggerFactory.CreateLogger<CloneEngine>());
-            result = await engine.RunAsync(plan, runOptions, progress, pause, ct);
+            result = await engine.RunAsync(plan, options, progress, pause, ct);
             targetDevice.Flush();
-
-            // 정상 완료면 저널을 지웁니다. 취소·실패는 남겨 다음 실행이 이어하게 합니다.
-            if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors)
-                ResumeJournal.Delete(resumeDir, fingerprint);
 
             // 대상이 이미지보다 크면 GPT 백업 헤더가 디스크 중간에 있으므로 끝으로 옮깁니다.
             if (result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors &&
@@ -224,7 +183,7 @@ public sealed class ImageRestoreService(IDiskService diskService, ILoggerFactory
         }
 
         logger.LogInformation("이미지 복원 종료: {Outcome}", result.Outcome);
-        return new ImageRestoreReport(result, gptRepair, ur) { ResumedFromBytes = resumedFromBytes };
+        return new ImageRestoreReport(result, gptRepair, ur);
     }
 
     /// <summary>

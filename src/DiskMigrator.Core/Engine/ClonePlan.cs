@@ -58,16 +58,6 @@ public sealed class ClonePlan
     /// <summary>사람이 읽을 작업 이름 (로그 헤더에 사용).</summary>
     public string Name { get; init; } = "디스크 클론";
 
-    /// <summary>
-    /// 대상 플러시가 끝날 때마다 "계획 순서 기준 완료 바이트"를 알려주는 콜백(선택).
-    /// </summary>
-    /// <remarks>
-    /// 중단 후 이어하기의 저널 기록용입니다. 플러시 <b>후</b>에만 불리므로, 콜백이 받은
-    /// 지점까지는 대상 디스크에 실제로 기록돼 있음이 보장됩니다 — 전원 차단이 나도 이 지점
-    /// 이전은 신뢰할 수 있습니다.
-    /// </remarks>
-    public Action<long>? FlushCheckpoint { get; init; }
-
     public long TotalBytes => Regions.Sum(r => r.Length);
 
     /// <summary>
@@ -129,9 +119,8 @@ public sealed class ClonePlan
             var curr = ordered[i];
             if (prev.TargetOffset + prev.Length > curr.TargetOffset)
             {
-                throw new InvalidOperationException(Localization.L.T(
-                    $"구간이 대상에서 겹칩니다: '{prev.Description}' 과 '{curr.Description}'.",
-                    $"Regions overlap on the target: '{prev.Description}' and '{curr.Description}'."));
+                throw new InvalidOperationException(
+                    $"구간이 대상에서 겹칩니다: '{prev.Description}' 과 '{curr.Description}'.");
             }
         }
     }
