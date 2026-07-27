@@ -327,8 +327,25 @@
 
                     <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1,0,0,0"
                             Padding="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
-                                   FontSize="16.5" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                        <StackPanel>
+                            <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
+                                       FontSize="16.5" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                            <!-- 제작사 링크 — 클릭하면 기본 브라우저로 엽니다(무료 도구의 유일한 보상 창구). -->
+                            <TextBlock x:Name="CompanyLink" Text="by AiDesign.co.kr" Cursor="Hand"
+                                       FontSize="10.5" Foreground="{StaticResource Muted}" Margin="1,2,0,0"
+                                       MouseLeftButtonUp="CompanyLink_Click">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                <Setter Property="TextDecorations" Value="Underline" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
 

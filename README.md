@@ -64,13 +64,21 @@ dotnet publish src/DiskMigrator.App -c Release -o publish
 src/DiskMigrator.Core/     플랫폼 독립 — 안전 규칙·클론 엔진·GPT/BCD·레지스트리 하이브
 src/DiskMigrator.Windows/  Win32 P/Invoke — 원시 디스크·VSS·부팅 복구·UEFI 변환
 src/DiskMigrator.App/      WPF (MVVM)
-tests/                     실제 디스크 없이 엔진 검증 (248개)
+tests/                     실제 디스크 없이 엔진 검증 (256개)
 tools/                     읽기 전용 진단 + VHD 통합 테스트(가상 디스크에만 씀)
 ```
 
 핵심 설계는 `IBlockDevice` 추상화입니다 — 클론 엔진이 이 인터페이스만 알기 때문에, 파일·메모리 기반 가짜 장치로 불량 섹터·취소·검증 실패까지 전부 테스트할 수 있습니다.
 
 버전별 변경 내역은 [CHANGELOG.md](CHANGELOG.md)를 참조하십시오.
+
+## 만든 곳 · 응원하기
+
+DiskMigrator는 **[AiDesign.co.kr](https://aidesign.co.kr)** 이 만들어 무료로 공개하는 도구입니다.
+
+- ⭐ 도움이 되셨다면 **Star** 하나가 큰 응원이 됩니다
+- 🛠️ 직접 하기 부담스러운 디스크 이사·PC 업그레이드는 [AiDesign.co.kr](https://aidesign.co.kr)로 문의하세요
+- 🐛 버그·제안은 [Issues](https://github.com/withoz/DiskMigrator/issues)로
 
 ## 라이선스
 
