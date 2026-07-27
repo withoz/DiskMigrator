@@ -119,8 +119,9 @@ public sealed class ClonePlan
             var curr = ordered[i];
             if (prev.TargetOffset + prev.Length > curr.TargetOffset)
             {
-                throw new InvalidOperationException(
-                    $"구간이 대상에서 겹칩니다: '{prev.Description}' 과 '{curr.Description}'.");
+                throw new InvalidOperationException(Localization.L.T(
+                    $"구간이 대상에서 겹칩니다: '{prev.Description}' 과 '{curr.Description}'.",
+                    $"Regions overlap on the target: '{prev.Description}' and '{curr.Description}'."));
             }
         }
     }
