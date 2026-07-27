@@ -351,7 +351,7 @@
                                            Tag="https://aixxia.kr" MouseLeftButtonUp="CompanyLink_Click" />
                                 <TextBlock Text=" / " FontSize="10.5" Foreground="{StaticResource Muted}" />
                                 <TextBlock Text="AiDesign.co.kr" Style="{StaticResource SiteLink}"
-                                           Tag="https://aidesign.co.kr" MouseLeftButtonUp="CompanyLink_Click" />
+                                           Tag="http://aidesign.co.kr" MouseLeftButtonUp="CompanyLink_Click" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
