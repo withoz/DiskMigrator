@@ -50,13 +50,16 @@ public partial class MainWindow : Window
     // 헤더의 "한국어 · English"를 누르면 선택을 저장하고(App.SwitchLanguage) 창을 새 언어로
     // 다시 그립니다. XAML 문자열은 로드 시점에 언어가 잡히므로 창을 새로 만들어야 합니다.
 
-    /// <summary>헤더의 제작사 링크 — 기본 브라우저로 엽니다.</summary>
+    /// <summary>헤더의 제작사 링크 — Tag의 주소를 기본 브라우저로 엽니다.</summary>
     private void CompanyLink_Click(object sender, MouseButtonEventArgs e)
     {
+        if ((sender as FrameworkElement)?.Tag is not string url) return;
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                "https://aidesign.co.kr") { UseShellExecute = true });
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            {
+                UseShellExecute = true,
+            });
         }
         catch { /* 브라우저가 없는 환경(PE 등)에서는 조용히 무시 */ }
     }
