@@ -2221,7 +2221,8 @@ public sealed partial class MainViewModel : ObservableObject
 
             // 주입할 실행 파일 = 지금 실행 중인 이 앱(자체 포함 단일 exe 배포본).
             string appExe = Environment.ProcessPath
-                ?? throw new InvalidOperationException("실행 파일 경로를 확인할 수 없습니다.");
+                ?? throw new InvalidOperationException(DiskMigrator.Core.Localization.L.T(
+                    "실행 파일 경로를 확인할 수 없습니다.", "The executable path could not be determined."));
 
             PeProgress = 5;   // 재료 탐지 완료
 
