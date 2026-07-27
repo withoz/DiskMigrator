@@ -148,6 +148,9 @@
   <li>Select the <b>target</b> disk — it will be erased. If it is smaller, an automatic-shrink notice appears</li>
   <li>If the disk will go into a different computer, turn on <b>"Prepare for new hardware"</b> → type the model name → <b>Start Restore</b></li>
 </ol>
+<div class="tip"><b>✓ Your backup file is checked automatically.</b> As soon as you pick a file its structure is verified,
+  and when restore starts a deeper check (including the file system) runs <b>before the target is erased</b>.
+  If the backup is corrupted, nothing is written and the target is left untouched.</div>
 
 <h2 id="fixboot">④ Fix Boot — step by step</h2>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">A tool for when a cloned or restored disk won't boot. It does not copy anything again.</p>
