@@ -152,6 +152,10 @@
   <data name="BootCheckBtn" xml:space="preserve"><value>부팅 구성 검사</value></data>
   <data name="BootCheckTip" xml:space="preserve"><value>실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다.</value></data>
   <data name="Checking" xml:space="preserve"><value>검사 중...</value></data>
+  <data name="RepairDoneTitle" xml:space="preserve"><value>✔ 부팅 복구 완료</value></data>
+  <data name="RepairFailedTitle" xml:space="preserve"><value>❌ 부팅 복구 실패</value></data>
+  <data name="RepairDoneNext" xml:space="preserve"><value>다음 단계: 이 디스크를 원래 컴퓨터에 장착하고 부팅해 보세요. 정상 종료 후 다시 켜도 멈추지 않아야 정상입니다.</value></data>
+  <data name="BootCheckNothingToDo" xml:space="preserve"><value>✔ 검사 완료 — 문제가 발견되지 않아 복구할 것이 없습니다. 이 디스크는 그대로 부팅에 사용하면 됩니다.</value></data>
   <data name="RepairBootBtn" xml:space="preserve"><value>부팅 복구</value></data>
   <data name="RepairBootTip" xml:space="preserve"><value>BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다.</value></data>
   <data name="Repairing" xml:space="preserve"><value>복구 중...</value></data>
