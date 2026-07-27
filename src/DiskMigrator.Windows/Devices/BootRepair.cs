@@ -120,11 +120,25 @@ public sealed class BootRepair(ILogger? logger = null)
 
             string hibernation = DisableResume(bcd, winLetter, steps);
 
+            // 하드웨어 독립화 — 표준 저장소 드라이버를 부팅 시작으로 올려 "아무 PC에서나" 부팅되게
+            // 합니다. 클론·복원 완료 화면에서만 돌던 검증된 처리(UniversalRestore)를 독립 부팅
+            // 복구에서도 적용합니다: 부팅이 막힌 디스크를 가져와 고치는 이 자리야말로 가장
+            // 필요한 곳입니다. 실패해도 BCD 복구 자체는 유효하므로 경고만 남깁니다.
+            string hardware = ApplyHardwareIndependence(winLetter, steps);
+
+            // 쓰기 확정 — bcdedit·하이브 편집은 파일시스템 캐시에 남을 수 있습니다. 복구 직후
+            // USB를 분리하거나 디스크를 다른 PC로 옮기면 그 캐시가 버려져 "복구했는데 원래대로"가
+            // 됩니다. 두 볼륨을 모두 플러시해 매체에 내려간 것을 보장합니다.
+            FlushVolume(espLetter, steps);
+            FlushVolume(winLetter, steps);
+
             return new(true, L.T(
                 $"BCD 장치 참조를 이 디스크({(uefi ? "ESP" : "활성 파티션")} {espLetter}:, " +
-                $"Windows {winLetter}:)로 복구했습니다. 0xc000000e가 해결됩니다.{hibernation}",
+                $"Windows {winLetter}:)로 복구하고 디스크에 확정했습니다. 0xc000000e가 해결됩니다." +
+                $"{hibernation}{hardware}",
                 $"Repaired the BCD device references to this disk ({(uefi ? "ESP" : "active partition")} {espLetter}:, " +
-                $"Windows {winLetter}:). This resolves 0xc000000e.{hibernation}"),
+                $"Windows {winLetter}:) and committed them to the disk. This resolves 0xc000000e." +
+                $"{hibernation}{hardware}"),
                 steps);
         }
         catch (Exception ex)
@@ -137,6 +151,87 @@ public sealed class BootRepair(ILogger? logger = null)
         {
             if (espTemp is { } e) TryRemoveLetter(e);
             if (winTemp is { } w) TryRemoveLetter(w);
+        }
+    }
+
+    /// <summary>
+    /// 대상 Windows의 SYSTEM 하이브에 하드웨어 독립화를 적용합니다(표준 저장소 드라이버를 부팅
+    /// 시작으로 + 빠른 시작/최대 절전 끔). 결과 문구를 돌려주며, 실패해도 예외를 던지지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// 클론·복원 경로에서 이미 검증된 <see cref="Core.Registry.UniversalRestore.Apply"/>를 그대로
+    /// 씁니다 — 하이브를 우리 파서로 직접 편집하므로 reg.exe가 열지 못하는 환경에서도 동작하고,
+    /// 편집 후 체크섬을 다시 계산해 저장합니다.
+    /// </remarks>
+    private string ApplyHardwareIndependence(char winLetter, List<string> steps)
+    {
+        string hivePath = $@"{winLetter}:\Windows\System32\config\SYSTEM";
+        try
+        {
+            if (!File.Exists(hivePath))
+            {
+                steps.Add("universal restore → SYSTEM 하이브 없음");
+                return "";
+            }
+
+            var result = Core.Registry.UniversalRestore.Apply(hivePath, _logger);
+            steps.Add($"universal restore → 드라이버 {result.Enabled.Count}개, " +
+                      $"절전끔={result.HibernationDisabled}");
+
+            if (result.Enabled.Count == 0 && !result.HibernationDisabled)
+            {
+                return L.T(" 저장소 드라이버는 이미 부팅 시작으로 설정돼 있습니다.",
+                           " The storage drivers were already set to boot-start.");
+            }
+
+            return L.T(
+                $" 또한 표준 저장소 드라이버 {result.Enabled.Count}개를 부팅 시작으로 올려, " +
+                "다른 하드웨어(AHCI/NVMe)에서도 부팅되도록 했습니다.",
+                $" It also set {result.Enabled.Count} standard storage driver(s) to boot-start so the disk " +
+                "boots on other hardware (AHCI/NVMe) as well.");
+        }
+        catch (Exception ex)
+        {
+            // 하이브 편집 실패는 BCD 복구를 무효로 만들지 않습니다 — 알리고 계속합니다.
+            _logger.LogWarning(ex, "부팅 복구 중 하드웨어 독립화 실패.");
+            steps.Add($"universal restore → 실패: {ex.Message}");
+            return L.T(
+                $" (하드웨어 독립화는 실패했습니다: {ex.Message} — BCD 복구 자체는 적용됐습니다.)",
+                $" (Hardware independence failed: {ex.Message} — the BCD repair itself was applied.)");
+        }
+    }
+
+    /// <summary>
+    /// 볼륨의 캐시된 쓰기를 매체에 확정합니다. 복구 직후 디스크를 분리·이동해도 유실되지 않게
+    /// 하는 마지막 관문입니다(실패해도 복구 결과를 무효로 보지 않고 기록만 남깁니다).
+    /// </summary>
+    private void FlushVolume(char letter, List<string> steps)
+    {
+        try
+        {
+            using var handle = NativeMethods.CreateFile(
+                $@"\\.\{letter}:",
+                NativeMethods.GENERIC_WRITE,
+                NativeMethods.FILE_SHARE_READ | NativeMethods.FILE_SHARE_WRITE,
+                0,
+                NativeMethods.OPEN_EXISTING,
+                NativeMethods.FILE_ATTRIBUTE_NORMAL,
+                0);
+
+            if (handle.IsInvalid)
+            {
+                steps.Add($"flush {letter}: → 열기 실패");
+                return;
+            }
+
+            bool ok = NativeMethods.FlushFileBuffers(handle);
+            steps.Add($"flush {letter}: → {(ok ? "OK" : "실패")}");
+            if (!ok) _logger.LogWarning("볼륨 {Letter}: 플러시 실패.", letter);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "볼륨 {Letter}: 플러시 중 오류.", letter);
+            steps.Add($"flush {letter}: → 오류 {ex.Message}");
         }
     }
 

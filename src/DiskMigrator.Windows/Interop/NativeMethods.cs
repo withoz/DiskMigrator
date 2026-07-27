@@ -127,6 +127,14 @@ internal static partial class NativeMethods
         uint dwFlagsAndAttributes,
         nint hTemplateFile);
 
+    /// <summary>
+    /// 파일·볼륨의 캐시된 쓰기를 매체에 확정합니다. 볼륨 핸들(<c>\\.\X:</c>)에 걸면 그 볼륨의
+    /// 모든 대기 쓰기가 디스크로 내려갑니다 — 복구 직후 USB를 분리해도 유실되지 않게 합니다.
+    /// </summary>
+    [LibraryImport(Kernel32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool FlushFileBuffers(SafeFileHandle hFile);
+
     [LibraryImport(Kernel32, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool DeviceIoControl(
