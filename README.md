@@ -74,10 +74,10 @@ tools/                     읽기 전용 진단 + VHD 통합 테스트(가상 �
 
 ## 만든 곳 · 응원하기
 
-DiskMigrator는 **[AiDesign.co.kr](http://aidesign.co.kr)** 이 만들어 무료로 공개하는 도구입니다.
+DiskMigrator는 **AixxiA.kr / [AiDesign.co.kr](http://aidesign.co.kr)** 이 만들어 무료로 공개하는 도구입니다.
 
 - ⭐ 도움이 되셨다면 **Star** 하나가 큰 응원이 됩니다
-- 🛠️ 직접 하기 부담스러운 디스크 이사·PC 업그레이드는 [AiDesign.co.kr](http://aidesign.co.kr)로 문의하세요
+- 📧 문의·의뢰(디스크 이사·PC 업그레이드 대행 등): **withoz1111@gmail.com**
 - 🐛 버그·제안은 [Issues](https://github.com/withoz/DiskMigrator/issues)로
 
 ## 라이선스
