@@ -81,6 +81,8 @@
   <data name="BcNameWinVolume" xml:space="preserve"><value>Windows 볼륨</value></data>
   <data name="BcNameOsLoaderFmt" xml:space="preserve"><value>OS 로더 ({0})</value></data>
   <data name="BcNameSystemHive" xml:space="preserve"><value>SYSTEM 레지스트리 하이브</value></data>
+  <data name="BcNameThirdPartyBoot" xml:space="preserve"><value>부팅 초기 서드파티 드라이버 (참고)</value></data>
+  <data name="BcDetailThirdPartyBootFmt" xml:space="preserve"><value>{0} — 원본에 설치된 보안·DRM·디스크 보호 프로그램의 드라이버로 보입니다. 부팅 구성이 모두 정상인데도 다른 PC에서 로고 화면에 멈춘다면 이런 드라이버가 원인일 수 있습니다(정상 제품일 수도 있어 자동으로 끄지 않습니다).</value></data>
   <data name="BcNameHibernation" xml:space="preserve"><value>최대 절전 이미지 (빠른 시작)</value></data>
   <data name="BcNameBcdStore" xml:space="preserve"><value>BCD 스토어</value></data>
   <data name="BcNameBcdStoreValid" xml:space="preserve"><value>BCD 스토어 유효성</value></data>

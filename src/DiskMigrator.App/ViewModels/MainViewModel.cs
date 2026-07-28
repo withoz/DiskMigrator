@@ -501,10 +501,13 @@ public sealed partial class MainViewModel : ObservableObject
     // --- 부팅 복구 (BCD 장치 참조 수정) ------------------------------------
 
     /// <summary>검사에서 BCD 장치 참조 문제가 잡혀 복구 버튼을 보여줄지.</summary>
-    [ObservableProperty] private bool _bootRepairAvailable;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    private bool _bootRepairAvailable;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RepairBootCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
     private bool _isRepairingBoot;
 
     public bool CanRepairBoot => !IsRepairingBoot;
@@ -1241,6 +1244,7 @@ public sealed partial class MainViewModel : ObservableObject
                 IsRepairableCode(i.Code));
 
             BootCheckRan = true;
+            OnPropertyChanged(nameof(ShowForceRepair));
             _logger.LogInformation("부팅 구성 검사: {Verdict}", BootCheckVerdict);
         }
         catch (Exception ex)
@@ -1255,6 +1259,17 @@ public sealed partial class MainViewModel : ObservableObject
             IsBootChecking = false;
         }
     }
+
+    /// <summary>
+    /// 검사에서 문제를 못 찾았어도 <b>그래도 복구를 해 볼 수 있게</b> 안내·버튼을 보일지.
+    /// </summary>
+    /// <remarks>
+    /// 부팅 구성이 모두 정상인데 실제로는 부팅이 막히는 경우가 있습니다(원본에 설치된 보안·DRM
+    /// 드라이버 등 — 검사 범위 밖). 이때도 복구를 돌리면 하드웨어 독립화와 쓰기 확정이 다시
+    /// 적용되므로 시도할 가치가 있습니다. 검사가 문제를 찾은 경우엔 기존 복구 버튼이 나오므로
+    /// 이 안내는 숨깁니다.
+    /// </remarks>
+    public bool ShowForceRepair => BootCheckRan && !BootRepairAvailable && !IsRepairingBoot;
 
     /// <summary>부팅 복구가 고칠 수 있는 검사 항목 코드인지 — 장치 참조·최대 절전 이미지.</summary>
     private static bool IsRepairableCode(string? code) =>

@@ -475,6 +475,17 @@ public static class BootReadinessCheck
                 ? Strings.Get("BcDetailHwBroad")
                 : Strings.Get("BcDetailHwNarrow")));
 
+        // 부팅 초기에 로드되는 서드파티 드라이버 — 부팅 구성이 전부 정상인데도 사본이 로고에서
+        // 멈추는 원인이 대개 여기 있습니다(보안·DRM·디스크 보호 솔루션). 정상 제품일 수도 있어
+        // 자동으로 끄지 않고, "이런 것들이 부팅 초기에 로드된다"는 사실만 알려 줍니다.
+        var thirdParty = ThirdPartyBootDriverScan.Scan(hive, active);
+        if (thirdParty.Count > 0)
+        {
+            string names = string.Join(", ", thirdParty.Select(d => $"{d.ServiceName}(Start={d.Start})"));
+            items.Add(new(Strings.Get("BcNameThirdPartyBoot"), null, BootCheckSeverity.Info,
+                Strings.Format("BcDetailThirdPartyBootFmt", names)));
+        }
+
         if (!uefi)
         {
             // BIOS 부팅은 부트 섹터/코드가 필요하지만 여기선 파일 레벨만 검사한다는 참고.

@@ -152,6 +152,8 @@
   <data name="BootCheckBtn" xml:space="preserve"><value>Check boot setup</value></data>
   <data name="BootCheckTip" xml:space="preserve"><value>Inspects the bootloader, BCD, winload and storage drivers — without actually booting.</value></data>
   <data name="Checking" xml:space="preserve"><value>Checking…</value></data>
+  <data name="ForceRepairTip" xml:space="preserve"><value>The check found no problems. If this disk still won't boot, you can run the repair anyway — it rewrites the boot configuration, prepares the storage drivers so the disk boots on other hardware, and commits the changes to the disk.</value></data>
+  <data name="ForceRepairBtn" xml:space="preserve"><value>Repair anyway</value></data>
   <data name="RepairBootBtn" xml:space="preserve"><value>Repair boot</value></data>
   <data name="RepairBootTip" xml:space="preserve"><value>Repoints the BCD device references to this disk’s partitions to fix error 0xc000000e.</value></data>
   <data name="Repairing" xml:space="preserve"><value>Repairing…</value></data>

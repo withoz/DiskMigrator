@@ -1145,6 +1145,18 @@
                                    Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
 
+                    <!-- 검사는 통과했지만 실제로는 부팅이 막히는 경우(원본의 보안·DRM 드라이버 등
+                         검사 범위 밖 원인)를 위해, 그래도 복구를 해 볼 수 있게 합니다.
+                         복구는 하드웨어 독립화와 쓰기 확정을 다시 적용합니다. -->
+                    <Border Background="{StaticResource SelectionSoft}" CornerRadius="8" Padding="12,10" Margin="0,12,0,0"
+                            Visibility="{Binding ShowForceRepair, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc ForceRepairTip}" TextWrapping="Wrap" Style="{StaticResource Caption}" />
+                            <Button Content="{loc:Loc ForceRepairBtn}" Command="{Binding RepairBootCommand}"
+                                    HorizontalAlignment="Left" MinWidth="150" Padding="14,7" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
                                Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock.Style>

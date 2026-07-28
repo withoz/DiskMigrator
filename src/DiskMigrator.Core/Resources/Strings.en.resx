@@ -81,6 +81,8 @@
   <data name="BcNameWinVolume" xml:space="preserve"><value>Windows volume</value></data>
   <data name="BcNameOsLoaderFmt" xml:space="preserve"><value>OS loader ({0})</value></data>
   <data name="BcNameSystemHive" xml:space="preserve"><value>SYSTEM registry hive</value></data>
+  <data name="BcNameThirdPartyBoot" xml:space="preserve"><value>Third-party boot drivers (info)</value></data>
+  <data name="BcDetailThirdPartyBootFmt" xml:space="preserve"><value>{0} — these look like drivers from security, DRM, or disk-protection software installed on the source. If the boot configuration is fine but the disk still hangs at the logo on another PC, such a driver is a likely cause (they are not disabled automatically, as they may be legitimate).</value></data>
   <data name="BcNameHibernation" xml:space="preserve"><value>Hibernation image (Fast Startup)</value></data>
   <data name="BcNameBcdStore" xml:space="preserve"><value>BCD store</value></data>
   <data name="BcNameBcdStoreValid" xml:space="preserve"><value>BCD store validity</value></data>
