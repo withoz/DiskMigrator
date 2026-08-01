@@ -107,15 +107,28 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
     }
 
     /// <summary>
-    /// Visual C++ 재배포 런타임(msvcp140.dll)이 설치돼 있는지. AlphaVSS의 혼합 어셈블리가
-    /// 이것에 의존하는데, 앱에 동봉되지 않아 PC에 없으면 VSS를 쓸 수 없습니다.
+    /// AlphaVSS의 혼합 어셈블리가 요구하는 <c>vcruntime140.dll</c>을 찾을 수 있는지 —
+    /// <b>앱 폴더(동봉본)</b> 또는 시스템 폴더(재배포 패키지) 어느 쪽이든 있으면 true.
     /// </summary>
+    /// <remarks>
+    /// v1.3.1부터 이 DLL을 앱에 동봉하므로 정상 배포에서는 항상 true입니다. 사용자가 파일을
+    /// 일부만 복사했거나 백신이 격리한 경우를 잡기 위해 남겨 둡니다.
+    /// </remarks>
     private static bool VcRuntimeInstalled()
     {
         try
         {
+            string? appDir = Path.GetDirectoryName(Environment.ProcessPath);
+            if (appDir is not null && File.Exists(Path.Combine(appDir, "vcruntime140.dll")))
+                return true;
+
+            // 단일 exe는 추출 폴더에서 실행되므로 어셈블리 위치도 확인합니다.
+            string? asmDir = Path.GetDirectoryName(typeof(VssSnapshotProvider).Assembly.Location);
+            if (!string.IsNullOrEmpty(asmDir) && File.Exists(Path.Combine(asmDir, "vcruntime140.dll")))
+                return true;
+
             string sys = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            return File.Exists(Path.Combine(sys, "msvcp140.dll"));
+            return File.Exists(Path.Combine(sys, "vcruntime140.dll"));
         }
         catch
         {

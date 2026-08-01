@@ -78,3 +78,24 @@ limitations under the License.
 
 - Serilog: https://github.com/serilog/serilog/blob/main/LICENSE
 - AlphaVSS: https://github.com/alphaleonis/AlphaVSS/blob/master/LICENSE.md
+
+---
+
+## Microsoft Visual C++ Runtime (동봉)
+
+배포본에는 Microsoft Visual C++ 재배포 가능 런타임의 다음 파일이 포함됩니다:
+
+- `vcruntime140.dll`
+- `vcruntime140_1.dll`
+
+**포함 이유**: VSS(볼륨 섀도 복사본) 기능이 쓰는 `AlphaVSS.x64.dll`은 C++/CLI 혼합
+어셈블리라 `vcruntime140.dll`을 필요로 합니다. 이 파일이 없는 PC에서는 VSS가 로드되지
+않아 "실행 중인 시스템 디스크 클론"이 불가능해집니다. 사용자가 별도로 재배포 패키지를
+설치하지 않아도 되도록 앱과 함께 배포합니다(app-local 배포).
+
+**출처**: Visual Studio에 포함된 재배포 파일
+(`VC\Redist\MSVC\<버전>\x64\Microsoft.VC145.CRT`).
+
+**라이선스**: Microsoft Visual Studio의 배포 가능 코드(Distributable Code) 조항에 따라
+재배포가 허용된 파일입니다. 저작권은 Microsoft Corporation에 있습니다.
+https://visualstudio.microsoft.com/license-terms/
