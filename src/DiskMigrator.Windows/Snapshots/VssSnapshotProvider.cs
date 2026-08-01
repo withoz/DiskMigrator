@@ -65,13 +65,29 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "VSS 라이브러리를 로드하지 못했습니다.");
+
+            // 가장 흔한 원인을 직접 확인해 정확히 짚어 줍니다: AlphaVSS.x64는 C++/CLI 혼합
+            // 어셈블리라 Visual C++ 런타임(msvcp140.dll)이 있어야 로드됩니다. 이 DLL은 앱에
+            // 동봉되지 않고 PC에 설치된 것을 쓰므로, 없는 PC에서는 VSS가 통째로 잠깁니다
+            // (실기에서 확인). 있으면 원래 예외 메시지를 그대로 보여 줍니다.
+            bool missingRuntime = !VcRuntimeInstalled();
+            string detail = ex.InnerException?.Message ?? ex.Message;
+
             return new(false,
-                Core.Localization.L.T(
-                    $"VSS 라이브러리를 불러오지 못했습니다: {ex.Message}",
-                    $"Could not load the VSS library: {ex.Message}"),
-                Core.Localization.L.T(
-                    "Microsoft Visual C++ 재배포 패키지(x64)가 설치되어 있는지 확인하십시오.",
-                    "Check that the Microsoft Visual C++ Redistributable (x64) is installed."));
+                missingRuntime
+                    ? Core.Localization.L.T(
+                        "이 PC에 Microsoft Visual C++ 재배포 패키지(x64)가 없어 VSS 라이브러리를 불러올 수 없습니다.",
+                        "The Microsoft Visual C++ Redistributable (x64) is missing on this PC, so the VSS library cannot be loaded.")
+                    : Core.Localization.L.T(
+                        $"VSS 라이브러리를 불러오지 못했습니다: {detail}",
+                        $"Could not load the VSS library: {detail}"),
+                missingRuntime
+                    ? Core.Localization.L.T(
+                        "Microsoft 사이트에서 'Visual C++ 재배포 가능 패키지(x64)'를 설치한 뒤 '새로고침'을 누르십시오.",
+                        "Install the 'Visual C++ Redistributable (x64)' from Microsoft, then press Refresh.")
+                    : Core.Localization.L.T(
+                        "앱을 관리자 권한으로 다시 실행해 보고, 계속되면 로그를 첨부해 문의하십시오.",
+                        "Try running the app as administrator again; if it persists, please report with the log."));
         }
 
         // 서비스가 '사용 안 함'이면 스냅샷 생성 시점에 실패합니다 — 미리 알려 줍니다.
@@ -88,6 +104,23 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
         if (svcNote is not null) _logger.LogInformation("VSS 서비스 상태 확인: {Note}", svcNote);
 
         return new(true, null, null);
+    }
+
+    /// <summary>
+    /// Visual C++ 재배포 런타임(msvcp140.dll)이 설치돼 있는지. AlphaVSS의 혼합 어셈블리가
+    /// 이것에 의존하는데, 앱에 동봉되지 않아 PC에 없으면 VSS를 쓸 수 없습니다.
+    /// </summary>
+    private static bool VcRuntimeInstalled()
+    {
+        try
+        {
+            string sys = Environment.GetFolderPath(Environment.SpecialFolder.System);
+            return File.Exists(Path.Combine(sys, "msvcp140.dll"));
+        }
+        catch
+        {
+            return true;   // 확인 불가면 단정하지 않습니다(원래 예외 메시지를 보여 줍니다).
+        }
     }
 
     /// <summary>서비스가 '사용 안 함(Disabled)'인지. 조회 실패는 false(알 수 없음)로 넘깁니다.</summary>
