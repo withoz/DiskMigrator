@@ -62,11 +62,28 @@ public sealed partial class MainViewModel : ObservableObject
         _snapshotProvider = new VssSnapshotProvider(loggerFactory.CreateLogger<VssSnapshotProvider>());
 
         IsElevated = _diskService.IsElevated;
-        IsSnapshotAvailable = _snapshotProvider.IsAvailable;
+
+        RefreshSnapshotAvailability();
         UseSnapshot = IsSnapshotAvailable;
 
         // 스마트 클론은 스냅샷 볼륨의 할당 정보를 읽어야 하므로 스냅샷이 있을 때만 켭니다.
         SkipUnusedBlocks = IsSnapshotAvailable;
+    }
+
+    /// <summary>
+    /// VSS 사용 가능 여부를 다시 진단해 <see cref="IsSnapshotAvailable"/>·<see cref="SnapshotUnavailableText"/>를
+    /// 갱신합니다. 새로고침 때마다 부릅니다 — 사용자가 서비스를 켜고 새로고침하면 바로 반영되도록.
+    /// </summary>
+    private void RefreshSnapshotAvailability()
+    {
+        var vss = _snapshotProvider.Diagnose();
+        IsSnapshotAvailable = vss.Available;
+        SnapshotUnavailableText = vss.Available
+            ? ""
+            : vss.Hint is null ? vss.Reason ?? "" : $"{vss.Reason} {vss.Hint}";
+
+        if (!vss.Available)
+            _logger.LogWarning("VSS 사용 불가: {Reason} / {Hint}", vss.Reason, vss.Hint);
     }
 
     // --- 상태 -------------------------------------------------------------
@@ -151,7 +168,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsElevated { get; }
 
-    public bool IsSnapshotAvailable { get; }
+    /// <summary>이 환경에서 VSS 스냅샷을 쓸 수 있는지. 새로고침할 때마다 다시 진단합니다.</summary>
+    [ObservableProperty] private bool _isSnapshotAvailable;
+
+    /// <summary>
+    /// VSS를 쓸 수 없을 때 화면에 보여줄 사유·조치 문구(빈 문자열=사용 가능, 표시 안 함).
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 체크박스가 회색으로 잠기기만 해서, 사용자는 왜 안 되는지도 어떻게 고치는지도
+    /// 알 수 없었습니다(실기에서 실제로 막힘). 이유와 조치를 함께 보여 줍니다.
+    /// </remarks>
+    [ObservableProperty] private string _snapshotUnavailableText = "";
 
     public ObservableCollection<DiskItemViewModel> Disks { get; } = [];
 
@@ -591,6 +618,10 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsLoading = true;
         LoadError = null;
+
+        // VSS 상태도 함께 다시 진단합니다 — 사용자가 서비스를 켜거나 런타임을 설치한 뒤
+        // 새로고침하면 앱을 다시 켜지 않아도 반영되도록.
+        RefreshSnapshotAvailability();
 
         try
         {

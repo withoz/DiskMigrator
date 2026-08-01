@@ -33,21 +33,80 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
     /// </remarks>
     public string? DiffAreaVolumeOverride { get; set; }
 
-    public bool IsAvailable
+    public bool IsAvailable => Diagnose().Available;
+
+    /// <summary>VSS 사용 가능 여부와, 불가능하면 그 이유(사용자에게 보여줄 문구).</summary>
+    /// <param name="Available">스냅샷을 만들 수 있는지.</param>
+    /// <param name="Reason">불가능한 이유. 가능하면 null.</param>
+    /// <param name="Hint">사용자가 해볼 수 있는 조치. 없으면 null.</param>
+    public sealed record Availability(bool Available, string? Reason, string? Hint);
+
+    /// <summary>
+    /// VSS를 쓸 수 있는지 진단합니다 — <b>왜</b> 안 되는지까지 알려줍니다.
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 <see cref="IsAvailable"/>이 참/거짓만 돌려주어, 화면에서는 체크박스가 회색으로
+    /// 잠기기만 하고 사용자는 원인도 해결책도 알 수 없었습니다(실기에서 실제로 막혔습니다).
+    /// 두 가지를 나누어 봅니다:
+    /// <list type="number">
+    /// <item><b>AlphaVSS 네이티브 어셈블리 로드</b> — 실패하면 VC++ 재배포 패키지 누락이 흔합니다.</item>
+    /// <item><b>VSS 서비스 상태</b> — "사용 안 함(Disabled)"이면 어셈블리가 멀쩡해도 스냅샷 생성이
+    ///   실패합니다. 중지(Stopped)는 정상입니다 — 수동 시작이라 필요할 때 Windows가 켭니다.</item>
+    /// </list>
+    /// 진단만 하고 서비스를 건드리지는 않습니다(시스템 설정 변경은 사용자 몫).
+    /// </remarks>
+    public Availability Diagnose()
     {
-        get
+        try
         {
-            try
-            {
-                // 플랫폼별 네이티브 어셈블리를 실제로 로드해 봐야 사용 가능 여부를 알 수 있습니다.
-                _ = VssFactoryProvider.Default.GetVssFactory();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "VSS를 사용할 수 없습니다.");
-                return false;
-            }
+            // 플랫폼별 네이티브 어셈블리를 실제로 로드해 봐야 사용 가능 여부를 알 수 있습니다.
+            _ = VssFactoryProvider.Default.GetVssFactory();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "VSS 라이브러리를 로드하지 못했습니다.");
+            return new(false,
+                Core.Localization.L.T(
+                    $"VSS 라이브러리를 불러오지 못했습니다: {ex.Message}",
+                    $"Could not load the VSS library: {ex.Message}"),
+                Core.Localization.L.T(
+                    "Microsoft Visual C++ 재배포 패키지(x64)가 설치되어 있는지 확인하십시오.",
+                    "Check that the Microsoft Visual C++ Redistributable (x64) is installed."));
+        }
+
+        // 서비스가 '사용 안 함'이면 스냅샷 생성 시점에 실패합니다 — 미리 알려 줍니다.
+        if (IsServiceDisabled("VSS", out string? svcNote))
+        {
+            return new(false,
+                Core.Localization.L.T(
+                    "Windows의 볼륨 섀도 복사본(VSS) 서비스가 '사용 안 함'으로 설정돼 있습니다.",
+                    "The Windows Volume Shadow Copy (VSS) service is set to Disabled."),
+                Core.Localization.L.T(
+                    "services.msc에서 'Volume Shadow Copy' 서비스의 시작 유형을 '수동'으로 바꾸십시오.",
+                    "In services.msc, set the 'Volume Shadow Copy' service startup type to Manual."));
+        }
+        if (svcNote is not null) _logger.LogInformation("VSS 서비스 상태 확인: {Note}", svcNote);
+
+        return new(true, null, null);
+    }
+
+    /// <summary>서비스가 '사용 안 함(Disabled)'인지. 조회 실패는 false(알 수 없음)로 넘깁니다.</summary>
+    private static bool IsServiceDisabled(string serviceName, out string? note)
+    {
+        note = null;
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                $@"SYSTEM\CurrentControlSet\Services\{serviceName}");
+            if (key?.GetValue("Start") is not int start) return false;
+
+            note = $"{serviceName} Start={start}";
+            return start == 4;   // SERVICE_DISABLED
+        }
+        catch
+        {
+            // 조회 자체가 안 되면 판단하지 않습니다 — 실제 생성 시점에 확인됩니다.
+            return false;
         }
     }
 
