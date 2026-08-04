@@ -141,16 +141,26 @@ public partial class App : Application
             Log.Information("EULA v{Version} 동의를 기록했습니다.", EulaAcceptance.Version);
         }
 
-        var viewModel = new MainViewModel(_loggerFactory);
-        var window = new MainWindow { DataContext = viewModel };
+        try
+        {
+            var viewModel = new MainViewModel(_loggerFactory);
+            var window = new MainWindow { DataContext = viewModel };
 
-        MainWindow = window;
-        window.Show();
+            MainWindow = window;
+            window.Show();
 
-        CloseSplashAfterMinimum();
+            CloseSplashAfterMinimum();
 
-        _ = viewModel.RefreshDisksAsync();
-        _ = viewModel.CheckForUpdatesAsync();
+            _ = viewModel.RefreshDisksAsync();
+            _ = viewModel.CheckForUpdatesAsync();
+        }
+        catch
+        {
+            // 시작 중 실패해도 스플래시는 반드시 걷습니다 — topMost라 그대로 두면 오류 대화상자
+            // 까지 가려, 사용자는 아무 설명 없이 멈춘 로고만 보게 됩니다.
+            CloseSplash(TimeSpan.Zero);
+            throw;
+        }
     }
 
     /// <summary>스플래시를 즉시 또는 페이드로 닫습니다(없으면 무시).</summary>
@@ -188,6 +198,10 @@ public partial class App : Application
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Log.Fatal(e.Exception, "처리되지 않은 UI 예외");
+
+        // 아직 스플래시가 떠 있으면(시작 도중 실패) 먼저 걷습니다 — topMost라 아래 오류 창을
+        // 가려 버려, 사용자에게는 설명 없이 멈춘 로고만 보이게 됩니다.
+        CloseSplash(TimeSpan.Zero);
 
         MessageBox.Show(
             $"예기치 않은 오류가 발생했습니다:\n\n{e.Exception.Message}\n\n" +
