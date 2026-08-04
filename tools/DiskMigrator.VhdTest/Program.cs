@@ -59,7 +59,8 @@ if (args.Length >= 3 && args[0] == "--pe-build")
     }
 
     var builder = new DiskMigrator.Windows.Pe.WinPeMediaBuilder(lfb2.CreateLogger("WinPeBuild"));
-    builder.Progress += step => Console.WriteLine($"  → {step}");
+    // Progress는 (문구, 진행률 0~1)입니다 — 진행률도 함께 보여 줍니다.
+    builder.Progress += (step, pct) => Console.WriteLine($"  [{pct,5:P0}] → {step}");
     var buildResult = await builder.BuildAsync(ing2, args[2], args[1]);
     Console.WriteLine();
     Console.WriteLine(buildResult.Success
