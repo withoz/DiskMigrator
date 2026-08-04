@@ -67,6 +67,23 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 실행 중인 앱의 버전(예: <c>v1.4.0</c>). 헤더에 항상 보이게 두어, 어느 버전으로 작업했는지
+    /// 나중에도 확인할 수 있게 합니다.
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 시작 화면(스플래시)에만 있어 1.5초 뒤 사라졌습니다 — 실행 중에는 물론이고
+    /// 로그를 봐도 버전을 알 수 없어, 문제를 신고받아도 어느 빌드인지 특정할 수 없었습니다.
+    /// 어셈블리에서 직접 읽으므로 버전을 올리면 자동으로 따라옵니다(csproj 한 곳만 고치면 됨).
+    /// </remarks>
+    public static string AppVersion { get; } = FormatVersion();
+
+    private static string FormatVersion()
+    {
+        var v = typeof(MainViewModel).Assembly.GetName().Version;
+        return v is null ? "" : $"v{v.Major}.{v.Minor}.{v.Build}";
+    }
+
+    /// <summary>
     /// VSS 사용 가능 여부를 다시 진단해 <see cref="IsSnapshotAvailable"/>·<see cref="SnapshotUnavailableText"/>를
     /// 갱신합니다. 새로고침 때마다 부릅니다 — 사용자가 서비스를 켜고 새로고침하면 바로 반영되도록.
     /// </summary>

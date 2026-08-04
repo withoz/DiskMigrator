@@ -111,7 +111,13 @@ public partial class App : Application
 
         _loggerFactory = new SerilogLoggerFactory(Log.Logger);
 
-        Log.Information("=== DiskMigrator 시작 ===");
+        // 버전을 함께 남깁니다 — 사용자가 로그를 보내왔을 때 어느 빌드인지 특정할 수 없으면
+        // 이미 고친 결함을 다시 쫓게 됩니다.
+        var asmVer = typeof(App).Assembly.GetName().Version;
+        Log.Information("=== DiskMigrator v{Version} 시작 (OS {Os}, {Bits}bit) ===",
+            asmVer is null ? "?" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}",
+            Environment.OSVersion.VersionString,
+            Environment.Is64BitProcess ? 64 : 32);
 
         // 처리하지 못한 예외가 앱을 조용히 죽이면 사용자는 디스크 상태를 알 수 없게 됩니다.
         DispatcherUnhandledException += OnUnhandledException;

@@ -346,6 +346,11 @@
                                         </Style.Triggers>
                                     </Style>
                                 </StackPanel.Resources>
+                                <!-- 실행 중인 버전 — 스플래시는 곧 사라지므로 여기서 항상 확인할 수 있게
+                                     둡니다. 어셈블리에서 읽어 표시하므로 버전을 올리면 자동으로 따라옵니다. -->
+                                <TextBlock Text="{x:Static vm:MainViewModel.AppVersion}"
+                                           FontSize="10.5" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextBrush}" Margin="0,0,4,0" />
                                 <TextBlock Text="by " FontSize="10.5" Foreground="{StaticResource Muted}" />
                                 <!-- AixxiA.kr는 준비 중 — 사이트가 열리면 SiteLink 스타일+Tag로 활성화 -->
                                 <TextBlock Text="AixxiA.kr" FontSize="10.5" Foreground="{StaticResource Muted}" />
