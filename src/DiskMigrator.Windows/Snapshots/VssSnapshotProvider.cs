@@ -67,9 +67,11 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
             _logger.LogWarning(ex, "VSS 라이브러리를 로드하지 못했습니다.");
 
             // 가장 흔한 원인을 직접 확인해 정확히 짚어 줍니다: AlphaVSS.x64는 C++/CLI 혼합
-            // 어셈블리라 Visual C++ 런타임(msvcp140.dll)이 있어야 로드됩니다. 이 DLL은 앱에
-            // 동봉되지 않고 PC에 설치된 것을 쓰므로, 없는 PC에서는 VSS가 통째로 잠깁니다
-            // (실기에서 확인). 있으면 원래 예외 메시지를 그대로 보여 줍니다.
+            // 어셈블리라 Visual C++ 런타임(vcruntime140.dll — PE import로 확인)이 있어야
+            // 로드됩니다. .NET 자체 포함 배포에는 이름이 다른 vcruntime140_cor3.dll만 들어가
+            // 대체되지 않으므로, 재배포 패키지가 없는 PC에서는 VSS가 통째로 잠겼습니다
+            // (실기에서 확인). 지금은 앱에 동봉하지만, 파일이 빠지거나 백신이 격리한 경우를
+            // 잡기 위해 확인을 남겨 둡니다. 있으면 원래 예외 메시지를 그대로 보여 줍니다.
             bool missingRuntime = !VcRuntimeInstalled();
             string detail = ex.InnerException?.Message ?? ex.Message;
 
@@ -111,8 +113,8 @@ public sealed class VssSnapshotProvider(ILogger<VssSnapshotProvider>? logger = n
     /// <b>앱 폴더(동봉본)</b> 또는 시스템 폴더(재배포 패키지) 어느 쪽이든 있으면 true.
     /// </summary>
     /// <remarks>
-    /// v1.3.1부터 이 DLL을 앱에 동봉하므로 정상 배포에서는 항상 true입니다. 사용자가 파일을
-    /// 일부만 복사했거나 백신이 격리한 경우를 잡기 위해 남겨 둡니다.
+    /// 이 DLL은 앱에 동봉하므로(DiskMigrator.App.csproj 참조) 정상 배포에서는 항상 true입니다.
+    /// 사용자가 파일을 일부만 복사했거나 백신이 격리한 경우를 잡기 위해 남겨 둡니다.
     /// </remarks>
     private static bool VcRuntimeInstalled()
     {

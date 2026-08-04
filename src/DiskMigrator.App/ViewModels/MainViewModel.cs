@@ -64,27 +64,43 @@ public sealed partial class MainViewModel : ObservableObject
         IsElevated = _diskService.IsElevated;
 
         RefreshSnapshotAvailability();
-        UseSnapshot = IsSnapshotAvailable;
-
-        // 스마트 클론은 스냅샷 볼륨의 할당 정보를 읽어야 하므로 스냅샷이 있을 때만 켭니다.
-        SkipUnusedBlocks = IsSnapshotAvailable;
     }
 
     /// <summary>
     /// VSS 사용 가능 여부를 다시 진단해 <see cref="IsSnapshotAvailable"/>·<see cref="SnapshotUnavailableText"/>를
     /// 갱신합니다. 새로고침 때마다 부릅니다 — 사용자가 서비스를 켜고 새로고침하면 바로 반영되도록.
     /// </summary>
+    /// <remarks>
+    /// 쓸 수 없게 되면 관련 옵션을 <b>끄고</b>, 다시 쓸 수 있게 되면 <b>켭니다</b>. 화면의 안내는
+    /// "런타임을 설치한 뒤 새로고침을 누르십시오"라고 말하므로, 새로고침 후에는 옵션이 실제로
+    /// 켜져 있어야 합니다 — 잠금만 풀리고 체크는 꺼진 채로 두면 안내대로 했는데도 스냅샷 없이
+    /// 복사가 진행됩니다.
+    /// </remarks>
     private void RefreshSnapshotAvailability()
     {
         var vss = _snapshotProvider.Diagnose();
+        bool was = IsSnapshotAvailable;
         IsSnapshotAvailable = vss.Available;
         SnapshotUnavailableText = vss.Available
             ? ""
             : vss.Hint is null ? vss.Reason ?? "" : $"{vss.Reason} {vss.Hint}";
 
+        // 첫 진단이거나 가용 여부가 바뀐 경우에만 옵션을 맞춥니다 — 사용자가 일부러 끈 선택을
+        // 새로고침 때마다 되돌리지 않기 위함입니다.
+        if (!_snapshotAvailabilityKnown || was != vss.Available)
+        {
+            UseSnapshot = vss.Available;
+            // 스마트 클론은 스냅샷 볼륨의 할당 정보를 읽어야 하므로 스냅샷이 있을 때만 켭니다.
+            SkipUnusedBlocks = vss.Available;
+            _snapshotAvailabilityKnown = true;
+        }
+
         if (!vss.Available)
             _logger.LogWarning("VSS 사용 불가: {Reason} / {Hint}", vss.Reason, vss.Hint);
     }
+
+    /// <summary>VSS 가용성을 한 번이라도 진단했는지(첫 진단에서만 옵션 기본값을 정하기 위함).</summary>
+    private bool _snapshotAvailabilityKnown;
 
     // --- 상태 -------------------------------------------------------------
 
