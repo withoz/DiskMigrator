@@ -116,6 +116,9 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <!-- MCP 접근 토큰을 DPAPI로 암호화해 저장합니다(McpTokenStore). 대상 프레임워크(net8.0)에
+         맞춰 8.x로 고정합니다 — 상위 버전은 .NET 10 런타임 어셈블리를 끌고 들어옵니다. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

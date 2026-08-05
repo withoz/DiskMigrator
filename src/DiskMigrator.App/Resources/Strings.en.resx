@@ -305,4 +305,8 @@
   <data name="DiagFailFmt" xml:space="preserve"><value>Could not save the report: {0}</value></data>
   <data name="DiagCollecting" xml:space="preserve"><value>Collecting… reading only, nothing is written to the disk.</value></data>
   <data name="DiagIncludeDetails" xml:space="preserve"><value>Include disk serials and volume names</value></data>
+  <data name="McpRunningReusedHint" xml:space="preserve"><value>The connection is open with the same address and token as last time — if you have already put them into Claude, nothing needs changing.</value></data>
+  <data name="McpResetToken" xml:space="preserve"><value>Issue a new token</value></data>
+  <data name="McpResetTokenHint" xml:space="preserve"><value>Use this if you think the token leaked. The old one stops working and you must paste the new one into Claude.</value></data>
+  <data name="McpTokenReset" xml:space="preserve"><value>A new token was issued. Copy it into Claude again.</value></data>
 </root>

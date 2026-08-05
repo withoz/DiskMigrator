@@ -57,11 +57,18 @@ public sealed class McpHost(
     /// <param name="includeSensitive">
     /// 시리얼·볼륨 레이블을 가리지 않고 보낼지. 기본은 가립니다 — 진단 결과가 대화 로그에 남습니다.
     /// </param>
-    public async Task<McpHostStatus> StartAsync(bool includeSensitive = false, CancellationToken ct = default)
+    /// <param name="reuse">
+    /// 지난번에 쓰던 토큰·포트. 주면 그대로 씁니다 — 사용자가 Claude 설정에 넣어 둔 값이
+    /// 그대로 통해야 재시작할 때마다 다시 붙여 넣지 않습니다. null이면 새로 발급합니다.
+    /// </param>
+    public async Task<McpHostStatus> StartAsync(
+        bool includeSensitive = false,
+        McpReuse? reuse = null,
+        CancellationToken ct = default)
     {
         if (_app is not null) return Status;
 
-        _token = AccessToken.Create();
+        _token = reuse is null ? AccessToken.Create() : AccessToken.FromStored(reuse.Token);
 
         var builder = WebApplication.CreateSlimBuilder();
 
@@ -119,7 +126,9 @@ public sealed class McpHost(
 
         // 외부 인터페이스에 열지 않습니다. IPAddress.Loopback에 직접 묶습니다 —
         // "localhost"나 "*" 같은 문자열은 환경에 따라 모든 인터페이스에 붙을 수 있습니다.
-        _port = FindFreePort();
+        // 지난번 포트를 먼저 시도합니다 — 주소가 그대로여야 Claude 설정을 다시 고치지 않습니다.
+        // 그 포트가 이미 쓰이고 있으면 평소대로 빈 포트를 찾습니다.
+        _port = FindFreePort(reuse?.Port);
         builder.Services.Configure<KestrelServerOptions>(k => k.Listen(IPAddress.Loopback, _port));
 
         var app = builder.Build();
@@ -173,30 +182,71 @@ public sealed class McpHost(
 
     public async ValueTask DisposeAsync() => await StopAsync();
 
-    private static string ThisVersion =>
-        typeof(McpHost).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
+    /// <summary>
+    /// <c>initialize</c> 응답으로 Claude에게 알리는 버전 — <b>앱</b>의 버전입니다.
+    /// </summary>
+    /// <remarks>
+    /// 이 어셈블리의 버전을 쓰면 앱을 올려도 값이 그대로라, Claude가 보는 버전과 사용자가
+    /// 화면에서 보는 버전이 어긋납니다. 문제를 신고받았을 때 어느 빌드인지 특정하지 못하게 됩니다.
+    /// (진단 리포트의 <c>AppVersion</c>도 같은 이유로 진입점 어셈블리를 봅니다.)
+    /// </remarks>
+    private static string ThisVersion
+    {
+        get
+        {
+            var asm = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(McpHost).Assembly;
+            return asm.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
+        }
+    }
 
     private static string? ExtractBearer(string? header) =>
         header is not null && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
             ? header["Bearer ".Length..].Trim()
             : null;
 
-    /// <summary>비어 있는 포트를 찾습니다. 전부 막혀 있으면 예외를 던집니다.</summary>
-    private static int FindFreePort()
+    /// <summary>
+    /// 비어 있는 포트를 찾습니다. 전부 막혀 있으면 예외를 던집니다.
+    /// </summary>
+    /// <param name="preferFirst">
+    /// 먼저 시도할 포트(지난번에 쓰던 것). 비어 있으면 그대로 씁니다 — 주소가 유지되어야
+    /// 사용자가 Claude 설정을 다시 고치지 않습니다.
+    /// </param>
+    private static int FindFreePort(int? preferFirst = null)
     {
+        // 통로를 닫고 곧바로 다시 열면 방금 쓰던 포트가 아직 풀리지 않았을 수 있습니다.
+        // 그때 다른 번호로 옮겨 가면 주소가 바뀌어 사용자가 Claude 설정을 다시 고쳐야 합니다.
+        // 잠깐 기다렸다 같은 포트를 다시 시도합니다 — 진짜 다른 앱이 쓰고 있으면 아래로 내려갑니다.
+        if (preferFirst is { } first)
+        {
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                if (IsFree(first)) return first;
+                Thread.Sleep(200);
+            }
+        }
+
         for (int p = PreferredPort; p < PreferredPort + MaxPortAttempts; p++)
         {
-            try
-            {
-                var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, p);
-                l.Start();
-                l.Stop();
-                return p;
-            }
-            catch (System.Net.Sockets.SocketException) { /* 다음 포트 */ }
+            if (IsFree(p)) return p;
         }
         throw new InvalidOperationException(
             $"사용할 수 있는 포트를 찾지 못했습니다 ({PreferredPort}~{PreferredPort + MaxPortAttempts - 1}).");
+    }
+
+    /// <summary>그 포트에 지금 묶을 수 있는지.</summary>
+    private static bool IsFree(int port)
+    {
+        try
+        {
+            var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, port);
+            l.Start();
+            l.Stop();
+            return true;
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Kestrel의 로그를 앱 로거로 넘깁니다.</summary>

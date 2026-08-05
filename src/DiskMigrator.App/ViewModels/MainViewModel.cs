@@ -183,13 +183,24 @@ public sealed partial class MainViewModel : ObservableObject
                     _diskService, _proposalStore, new AppStateBridge(this), _loggerFactory);
             }
 
-            var status = await _mcpHost.StartAsync(McpShareDetails);
+            // 지난번 토큰·포트를 이어 씁니다 — 사용자가 Claude 설정에 넣어 둔 값이 그대로
+            // 통해야 재시작할 때마다 다시 붙여 넣지 않습니다.
+            var stored = McpTokenStore.Load();
+            var reuse = stored is null ? null : new DiskMigrator.Mcp.McpReuse(stored.Token, stored.Port);
+
+            var status = await _mcpHost.StartAsync(McpShareDetails, reuse);
 
             McpRunning = status.Running;
             McpUrl = status.Url ?? "";
             McpToken = status.Token ?? "";
-            McpStatusText = Strings.Get("McpRunningHint");
-            _logger.LogInformation("Claude 연결 통로를 열었습니다: {Url}", status.Url);
+            McpStatusText = Strings.Get(stored is null ? "McpRunningHint" : "McpRunningReusedHint");
+
+            // 실제로 열린 포트를 보관합니다 — 지난번 포트가 막혀 다른 번호로 열렸을 수 있습니다.
+            if (status is { Running: true, Token: { } t, Url: { } u } && TryParsePort(u) is { } p)
+                McpTokenStore.Save(t, p);
+
+            _logger.LogInformation("Claude 연결 통로를 열었습니다: {Url} (토큰 {Reused})",
+                status.Url, stored is null ? "새로 발급" : "이어 씀");
         }
         catch (Exception ex)
         {
@@ -198,6 +209,34 @@ public sealed partial class MainViewModel : ObservableObject
             McpRunning = false;
             McpStatusText = Strings.Format("McpFailFmt", ex.Message);
         }
+    }
+
+    /// <summary>주소 문자열에서 포트를 꺼냅니다. 형식이 다르면 null.</summary>
+    private static int? TryParsePort(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Port > 0 ? u.Port : null;
+
+    /// <summary>
+    /// 토큰을 버리고 새로 발급합니다 — 토큰이 샜다고 생각될 때.
+    /// </summary>
+    /// <remarks>
+    /// 새 토큰을 쓰려면 통로를 다시 열어야 하고, 사용자는 Claude 설정의 값을 한 번 더
+    /// 바꿔야 합니다. 그래서 자동으로 하지 않고 사용자가 명시적으로 누를 때만 합니다.
+    /// </remarks>
+    [RelayCommand]
+    private async Task ResetMcpTokenAsync()
+    {
+        McpTokenStore.Clear();
+
+        // 열려 있었다면 새 토큰으로 다시 엽니다 — 안 그러면 방금 버린 토큰으로 계속 통합니다.
+        if (_mcpHost is { IsRunning: true })
+        {
+            await _mcpHost.StopAsync();
+            McpRunning = false;
+            await ToggleMcpAsync();
+        }
+
+        McpStatusText = Strings.Get("McpTokenReset");
+        _logger.LogInformation("MCP 토큰을 새로 발급했습니다.");
     }
 
     /// <summary>주소와 토큰을 클립보드로 복사합니다 — 손으로 옮겨 적지 않게.</summary>
