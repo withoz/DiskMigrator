@@ -220,6 +220,38 @@ public sealed class ReadOnlyTools(
         }
     }
 
+    [McpServerTool(Name = "analyze_boot_trace")]
+    [Description(
+        "Work out HOW FAR the last boot attempt got, from the traces left on the disk. When a boot " +
+        "fails there is nothing on screen, but the boot loader and the kernel touch DIFFERENT files — " +
+        "comparing which ones were updated and which are untouched shows where it stopped. " +
+        "This is the strongest tool for a disk that hangs with no error message: it separates " +
+        "'the kernel never started' from 'the kernel started and stalled later', which need completely " +
+        "different fixes. Also returns the tail of ntbtlog.txt when boot logging was enabled. " +
+        "NOTE: reads files from the disk, so it cannot target the disk this app runs from.")]
+    public async Task<ToolResult<BootTraceDto>> AnalyzeBootTraceAsync(
+        [Description("Physical disk number, as returned by list_disks.")] int deviceNumber,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var (windowsRoot, error) = await ResolveHiveRootAsync<BootTraceDto>(deviceNumber, ct);
+            if (error is not null) return error;
+
+            var result = await Task.Run(() => Core.Registry.BootTraceAnalysis.Inspect(windowsRoot!), ct);
+
+            _logger.LogInformation("MCP analyze_boot_trace({Number}) → {Progress} (시도 {When})",
+                deviceNumber, result.Progress, result.LastAttemptUtc?.ToString("u") ?? "?");
+            return ToolResult<BootTraceDto>.Success(mapping.ToDto(result));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP analyze_boot_trace 실패.");
+            return ToolResult<BootTraceDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "inspect_disk")]
     [Description(
         "Inspect one disk in detail: its partition layout (offset, size, file system, label, " +

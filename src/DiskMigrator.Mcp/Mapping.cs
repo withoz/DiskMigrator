@@ -118,6 +118,50 @@ public sealed class Mapping(bool includeSensitive = false)
             r.ResumeWouldBeAttempted, summary);
     }
 
+    /// <summary>부팅 흔적 분석을 DTO로. 판정 문장이 이 도구의 핵심 산출물입니다.</summary>
+    /// <remarks>
+    /// 단계 이름만 돌려주면 Claude가 그 의미를 스스로 추론해야 합니다. 무엇을 뜻하는지와
+    /// <b>다음에 무엇을 봐야 하는지</b>까지 문장으로 만들어, 조사가 엉뚱한 곳으로 새지 않게 합니다.
+    /// </remarks>
+    public BootTraceDto ToDto(Core.Registry.BootTraceResult r)
+    {
+        string verdict = r.Progress switch
+        {
+            Core.Registry.BootProgress.BootloaderOnly =>
+                "The boot loader ran and wrote to the disk, but the kernel left no trace at all — " +
+                "the registry hives and event log were not touched. The kernel never really started. " +
+                "Look at storage drivers (read_boot_drivers), a pending resume image (read_fast_startup), " +
+                "or firmware-level transfer problems. Note the loader could WRITE to the disk, so the " +
+                "medium itself is reachable.",
+
+            Core.Registry.BootProgress.KernelStarted =>
+                "The kernel started and wrote to the registry, but device enumeration left no trace. " +
+                "It stalled early — most likely while loading boot drivers.",
+
+            Core.Registry.BootProgress.DevicesEnumerated =>
+                "The kernel reached device enumeration and installed drivers, so it got quite far. " +
+                "A failure after this point is usually a service or a late driver, not the storage stack.",
+
+            Core.Registry.BootProgress.BootCompleted =>
+                "This boot went all the way through — servicing ran, which happens late. " +
+                "If the machine still failed, the failure was on a DIFFERENT boot attempt than this trace.",
+
+            _ => "There is not enough evidence to judge — the boot loader left no timestamp on this disk. " +
+                 "Either it never ran, or the disk was written by something else since.",
+        };
+
+        return new BootTraceDto(
+            LastAttemptUtc: r.LastAttemptUtc,
+            Progress: r.Progress.ToString(),
+            Verdict: verdict,
+            Files: r.Files.Select(ToDto).ToList(),
+            NtbtlogTail: r.NtbtlogTailLines,
+            NtbtlogNotLoaded: r.NtbtlogNotLoaded);
+    }
+
+    public BootTraceFileDto ToDto(Core.Registry.BootTraceFile f) =>
+        new(f.Name, f.Exists, f.LastWriteUtc, f.SizeBytes, f.Stage.ToString(), f.Meaning);
+
     /// <summary>
     /// 파티션이 무엇인지 사람이 이해할 수 있게 분류합니다. Claude가 GUID를 해석하지 않아도 되게.
     /// </summary>

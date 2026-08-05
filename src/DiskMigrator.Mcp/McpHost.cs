@@ -73,7 +73,9 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
         builder.Services
             .AddMcpServer(o =>
             {
-                o.ServerInfo = new() { Name = "DiskMigrator", Version = ThisVersion };
+                // 제품명은 DiskMigrator-X입니다 — 수동 버전(DiskMigrator v1.x)과 구분됩니다.
+                // Claude가 도구 목록에서 어느 앱과 이야기하는지 알아볼 이름이기도 합니다.
+                o.ServerInfo = new() { Name = "DiskMigrator-X", Version = ThisVersion };
             })
             .WithHttpTransport()
             .WithTools<ReadOnlyTools>();
