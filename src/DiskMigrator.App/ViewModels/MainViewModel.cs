@@ -565,6 +565,17 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
     private bool _bootRepairAvailable;
 
+    /// <summary>
+    /// 검사가 <b>확인하지 못한</b> 치명 항목이 있는지(디스크 오프라인, 볼륨 미마운트 등).
+    /// </summary>
+    /// <remarks>
+    /// "문제를 찾지 못했다"와 "확인하지 못했다"는 전혀 다릅니다. 후자를 전자로 말하면
+    /// 사용자는 읽지도 못한 디스크에 쓰기를 걸게 됩니다.
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    private bool _bootCheckInconclusive;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RepairBootCommand))]
     [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
@@ -1224,6 +1235,7 @@ public sealed partial class MainViewModel : ObservableObject
         BootCheckVerdict = "";
         BootCheckVerdictIsGood = false;
         BootRepairAvailable = false;
+        BootCheckInconclusive = false;
         BootRepairRan = false;
         BootRepairMessage = "";
         _deviceRefIsOnlyFatalFailure = false;
@@ -1285,8 +1297,12 @@ public sealed partial class MainViewModel : ObservableObject
             bool anyFatalFailed = report.Items.Any(i =>
                 i.Severity == BootCheckSeverity.Fatal && i.Passed == false);
 
-            (BootCheckVerdict, BootCheckVerdictIsGood) =
-                (report.WouldBoot, report.HasWarnings, anyFatalFailed) switch
+            // 오프라인 디스크는 볼륨이 마운트되지 않아 ESP도 Windows 폴더도 "없는 것처럼"
+            // 보입니다. 그것을 부팅 결함으로 읽으면 멀쩡한 디스크를 고치겠다고 덤비게 되므로,
+            // 검사 결과보다 먼저 "지금은 검사 자체가 불가능하다"고 말해야 합니다.
+            (BootCheckVerdict, BootCheckVerdictIsGood) = target.IsOffline
+                ? (Strings.Get("VerdictDiskOffline"), false)
+                : (report.WouldBoot, report.HasWarnings, anyFatalFailed) switch
                 {
                     (true, false, _) => (Strings.Get("VerdictReady"), true),
                     (true, true, _) => (Strings.Get("VerdictReadyWarn"), true),
@@ -1297,6 +1313,15 @@ public sealed partial class MainViewModel : ObservableObject
             // 부팅 복구(BootRepair)가 고칠 수 있는 실패가 있으면 복구 버튼을 제안합니다:
             // BCD 장치 참조 불일치(0xc000000e)와 최대 절전 이미지 잔존(재개를 끄고 hiberfil 삭제).
             // 이름은 언어에 따라 바뀌므로 안정 코드로 판별합니다.
+            // 확인하지 못한 치명 항목이 있으면 "문제를 찾지 못했다"고 말할 수 없습니다.
+            // 이것은 아래 '그래도 복구 실행' 안내에만 씁니다 — 그 안내의 전제가 바로
+            // "검사가 끝까지 돌았고 아무 문제도 없었다"이기 때문입니다.
+            BootCheckInconclusive = target.IsOffline || report.Items.Any(i =>
+                i.Severity == BootCheckSeverity.Fatal && i.Passed is null);
+
+            // 반면 실제로 '찾아낸' 문제는 다른 항목을 못 봤다고 없던 일이 되지 않습니다.
+            // 여기서 걸러 버리면 고칠 수 있는 디스크에서 복구 버튼이 사라집니다.
+            // (오프라인 디스크는 모든 항목이 '확인 불가'라 어차피 여기 걸리지 않습니다.)
             BootRepairAvailable = report.Items.Any(i =>
                 i.Passed == false && IsRepairableCode(i.Code));
 
@@ -1333,7 +1358,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// 적용되므로 시도할 가치가 있습니다. 검사가 문제를 찾은 경우엔 기존 복구 버튼이 나오므로
     /// 이 안내는 숨깁니다.
     /// </remarks>
-    public bool ShowForceRepair => BootCheckRan && !BootRepairAvailable && !IsRepairingBoot;
+    public bool ShowForceRepair =>
+        BootCheckRan && !BootCheckInconclusive && !BootRepairAvailable && !IsRepairingBoot;
 
     /// <summary>부팅 복구가 고칠 수 있는 검사 항목 코드인지 — 장치 참조·최대 절전 이미지.</summary>
     private static bool IsRepairableCode(string? code) =>
