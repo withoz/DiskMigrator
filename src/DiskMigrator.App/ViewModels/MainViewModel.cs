@@ -124,6 +124,7 @@ public sealed partial class MainViewModel : ObservableObject
     // --- Claude 연결 (로컬 MCP 통로) --------------------------------------
 
     private DiskMigrator.Mcp.McpHost? _mcpHost;
+    private DiskMigrator.Mcp.Proposals.ProposalStore? _proposalStore;
 
     /// <summary>연결 통로가 열려 있는지.</summary>
     [ObservableProperty]
@@ -169,7 +170,19 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            _mcpHost ??= new DiskMigrator.Mcp.McpHost(_diskService, _loggerFactory);
+            if (_mcpHost is null)
+            {
+                _proposalStore = new DiskMigrator.Mcp.Proposals.ProposalStore();
+
+                // 제안이 오거나 사라지면 카드를 보이고 숨깁니다. MCP 스레드에서 오는
+                // 이벤트이므로 UI 스레드로 넘겨야 합니다.
+                _proposalStore.Changed += (_, e) =>
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() => Proposal = e.Current);
+
+                _mcpHost = new DiskMigrator.Mcp.McpHost(
+                    _diskService, _proposalStore, new AppStateBridge(this), _loggerFactory);
+            }
+
             var status = await _mcpHost.StartAsync(McpShareDetails);
 
             McpRunning = status.Running;
@@ -210,6 +223,62 @@ public sealed partial class MainViewModel : ObservableObject
         if (_mcpHost is null) return;
         await _mcpHost.DisposeAsync();
         _mcpHost = null;
+    }
+
+    // --- Claude의 제안 (3단계 확인 게이트) --------------------------------
+
+    /// <summary>지금 화면에 떠 있는 제안. 없으면 null.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProposal))]
+    private DiskMigrator.Mcp.Proposals.CloneProposal? _proposal;
+
+    public bool HasProposal => Proposal is not null;
+
+    /// <summary>
+    /// 사용자가 제안을 받아들였습니다 — <b>여기서 처음으로 화면 값이 채워집니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 계획서 §6.3의 1차 관문입니다. Claude는 카드를 띄우는 데까지이고, 값을 채우는 것은
+    /// 사용자가 이 버튼을 누른 뒤 앱이 하는 일입니다. <b>모델명 확인란은 여기서도 건드리지
+    /// 않습니다</b> — 그것이 2차 관문이며 사람만 채울 수 있어야 합니다.
+    ///
+    /// <para>적용 시점에 디스크를 다시 확인합니다. 제안을 만든 뒤 사용자가 USB를 바꿔 꽂았을 수
+    /// 있고, 장치 번호는 그대로인데 다른 디스크일 수 있습니다.</para>
+    /// </remarks>
+    [RelayCommand]
+    private void ApplyProposal()
+    {
+        var applied = _proposalStore?.MarkApplied();
+        if (applied is null) return;
+
+        // 지문으로 다시 찾습니다 — 번호가 아니라 정체로.
+        var source = Disks.FirstOrDefault(d => applied.Source.Matches(d.Disk));
+        var target = Disks.FirstOrDefault(d => applied.Target.Matches(d.Disk));
+
+        if (source is null || target is null)
+        {
+            _logger.LogWarning("제안 적용 실패: 디스크를 다시 찾지 못했습니다 (제안 {Id})", applied.Id);
+            McpStatusText = Strings.Get("ProposalDiskGone");
+            return;
+        }
+
+        Mode = AppMode.Clone;
+        SelectedSource = source;
+        SelectedTarget = target;
+        UseSnapshot = applied.UseSnapshot && IsSnapshotAvailable;
+        VerifyAfterClone = applied.VerifyAfterCopy;
+
+        // ConfirmationText는 채우지 않습니다. 사람이 직접 입력해야 시작 버튼이 살아납니다.
+        _logger.LogInformation("제안 {Id} 적용: 디스크 {Src}→{Tgt} (모델명 확인은 사용자 몫)",
+            applied.Id, source.Disk.DeviceNumber, target.Disk.DeviceNumber);
+    }
+
+    /// <summary>사용자가 제안을 무시했습니다.</summary>
+    [RelayCommand]
+    private void DismissProposal()
+    {
+        _proposalStore?.MarkDismissed();
+        _logger.LogInformation("제안을 무시했습니다.");
     }
 
     // --- 상태 -------------------------------------------------------------
@@ -747,6 +816,8 @@ public sealed partial class MainViewModel : ObservableObject
         IsLoading = true;
         LoadError = null;
 
+
+
         // VSS 상태도 함께 다시 진단합니다 — 사용자가 서비스를 켜거나 런타임을 설치한 뒤
         // 새로고침하면 앱을 다시 켜지 않아도 반영되도록.
         RefreshSnapshotAvailability();
@@ -765,6 +836,10 @@ public sealed partial class MainViewModel : ObservableObject
 
             SelectedSource = Rematch(previousSource);
             SelectedTarget = Rematch(previousTarget);
+
+            // 대기 중인 제안이 아직 같은 디스크를 가리키는지 확인합니다. 제안을 만든 뒤
+            // 사용자가 USB를 바꿔 꽂았을 수 있고, 장치 번호는 그대로인데 다른 디스크일 수 있습니다.
+            _proposalStore?.InvalidateIfDisksChanged(disks);
 
             _logger.LogInformation("디스크 {Count}개를 찾았습니다.", disks.Count);
         }

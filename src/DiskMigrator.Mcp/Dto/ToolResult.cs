@@ -39,6 +39,12 @@ public static class ToolErrorCodes
     /// <summary>관리자 권한이 없어 읽을 수 없습니다.</summary>
     public const string NotElevated = "NOT_ELEVATED";
 
+    /// <summary>
+    /// 안전 규칙이 막았습니다 — <b>어떤 확인으로도 진행할 수 없습니다.</b>
+    /// </summary>
+    /// <remarks>차단된 조합은 제안 카드조차 띄우지 않습니다(계획서 §6.3).</remarks>
+    public const string Blocked = "BLOCKED";
+
     /// <summary>앱이 다른 작업(클론·백업 등)을 하는 중입니다.</summary>
     public const string Busy = "BUSY";
 

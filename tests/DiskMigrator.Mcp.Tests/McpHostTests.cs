@@ -41,11 +41,23 @@ public class McpHostTests
 
         private const string NotHere = "진단 경로에서 불려서는 안 되는 메서드입니다.";
     }
+    /// <summary>앱이 없는 환경에서 호스트만 시험하기 위한 가짜 상태.</summary>
+    private sealed class IdleAppState : IAppState
+    {
+        public bool IsBusy => false;
+        public OperationProgress GetProgress() => new(false, null, 0, null, null, null, null);
+        public void RequestCancel() => throw new InvalidOperationException("이 시험에서는 불려서는 안 됩니다.");
+    }
+
+    /// <summary>테스트마다 새 호스트 — 제안 저장소도 함께 만듭니다.</summary>
+    private static McpHost NewHost() =>
+        new(new FakeDiskService(), new Proposals.ProposalStore(), new IdleAppState());
+
 
     [Fact]
     public async Task 시작하면_루프백_주소와_토큰을_돌려준다()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
 
         var status = await host.StartAsync();
 
@@ -61,7 +73,7 @@ public class McpHostTests
     [Fact]
     public async Task 토큰_없는_요청은_401()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
         var status = await host.StartAsync();
 
         using var http = new HttpClient();
@@ -73,7 +85,7 @@ public class McpHostTests
     [Fact]
     public async Task 틀린_토큰도_401()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
         var status = await host.StartAsync();
 
         using var http = new HttpClient();
@@ -86,7 +98,7 @@ public class McpHostTests
     [Fact]
     public async Task 맞는_토큰이면_401이_아니다()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
         var status = await host.StartAsync();
 
         using var http = new HttpClient();
@@ -100,7 +112,7 @@ public class McpHostTests
     [Fact]
     public async Task 다시_켜면_토큰이_바뀐다()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
 
         string? first = (await host.StartAsync()).Token;
         await host.StopAsync();
@@ -114,7 +126,7 @@ public class McpHostTests
     [Fact]
     public async Task 멈춘_뒤에는_상태가_비어_있다()
     {
-        await using var host = new McpHost(new FakeDiskService());
+        await using var host = NewHost();
         await host.StartAsync();
         await host.StopAsync();
 

@@ -428,6 +428,58 @@
             </Grid>
         </Border>
 
+        <!-- Claude의 제안 카드 — 계획서 §6.3의 1차 관문.
+             모달이 아닙니다. 강제로 답을 요구하면 내용을 읽지 않고 누르게 됩니다.
+             [적용]을 눌러야 비로소 선택이 채워지고, 그 뒤에도 모델명 입력이 남습니다. -->
+        <Border Background="#FFF7ED" BorderBrush="{StaticResource Warning}"
+                BorderThickness="0,0,0,1" Padding="40,10"
+                Visibility="{Binding HasProposal, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ApplyProposalCommand}" Style="{StaticResource AccentButton}"
+                            Padding="16,6" Margin="0,0,8,0">
+                        <TextBlock Text="{loc:Loc ProposalApply}" Foreground="White" />
+                    </Button>
+                    <Button Command="{Binding DismissProposalCommand}" Padding="14,6">
+                        <TextBlock Text="{loc:Loc ProposalDismiss}" />
+                    </Button>
+                </StackPanel>
+
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{loc:Loc ProposalTitle}" Foreground="{StaticResource Warning}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Proposal.Source.DeviceNumber, StringFormat=' · 디스크 {0}'}"
+                                   Foreground="{StaticResource Muted}" FontSize="12.5"
+                                   VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <TextBlock Text="{Binding Proposal.Target.Model, StringFormat=' → {0}'}"
+                                   Foreground="{StaticResource Muted}" FontSize="12.5"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Claude가 왜 제안했는지 — 사용자가 판단할 근거입니다. -->
+                    <TextBlock Text="{Binding Proposal.Reason}" TextWrapping="Wrap"
+                               FontSize="12.5" Margin="0,3,0,0" />
+
+                    <!-- 적용해도 실행되지 않는다는 사실을 분명히 밝힙니다. 모델명 입력이
+                         필요한 경우와 아닌 경우의 문구가 다릅니다. -->
+                    <TextBlock TextWrapping="Wrap" Margin="0,3,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                <Setter Property="Text" Value="{loc:Loc ProposalPlainNote}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Proposal.NeedsTypedConfirmation}" Value="True">
+                                        <Setter Property="Text" Value="{loc:Loc ProposalConfirmNote}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <!-- 업데이트 알림 배너 — 새 버전이 있을 때만 보입니다. 자동으로 내려받지 않고
              릴리스 페이지 링크만 엽니다(다운로드·설치는 사용자가 결정). -->
         <Border Background="{StaticResource SelectionSoft}" BorderBrush="{StaticResource Info}"

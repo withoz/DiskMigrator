@@ -28,7 +28,11 @@ public sealed record McpHostStatus(bool Running, string? Url, string? Token);
 /// 통로를 사용자 모르게 열어두지 않습니다.</para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFactory = null) : IAsyncDisposable
+public sealed class McpHost(
+    IDiskService diskService,
+    Proposals.ProposalStore proposals,
+    IAppState appState,
+    ILoggerFactory? loggerFactory = null) : IAsyncDisposable
 {
     private readonly ILogger _logger =
         (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<McpHost>();
@@ -96,6 +100,11 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
 
         builder.Services.AddSingleton<PlanningTools>();
 
+        // 3단계 — 제안. 저장소와 앱 상태는 앱이 넘겨준 것을 그대로 씁니다(도구가 만들지 않습니다).
+        builder.Services.AddSingleton(proposals);
+        builder.Services.AddSingleton(appState);
+        builder.Services.AddSingleton<ProposalTools>();
+
         builder.Services
             .AddMcpServer(o =>
             {
@@ -105,7 +114,8 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
             })
             .WithHttpTransport()
             .WithTools<ReadOnlyTools>()
-            .WithTools<PlanningTools>();
+            .WithTools<PlanningTools>()
+            .WithTools<ProposalTools>();
 
         // 외부 인터페이스에 열지 않습니다. IPAddress.Loopback에 직접 묶습니다 —
         // "localhost"나 "*" 같은 문자열은 환경에 따라 모든 인터페이스에 붙을 수 있습니다.
