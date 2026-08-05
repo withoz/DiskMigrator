@@ -1,7 +1,12 @@
-# DiskMigrator × Claude 연계 계획 (v2)
+# DiskMigrator-X — Claude 연계 계획
 
-> **이 문서는 `mcp` 브랜치의 계획서입니다.**
-> `master`(v1.4.1)는 손대지 않습니다 — 지금까지의 수동 버전은 그대로 쓸 수 있어야 합니다.
+> **제품명: DiskMigrator-X.** 기존 수동 버전(DiskMigrator v1.x)과 구분되는, 완전히 새로운 앱입니다.
+> 이 문서는 `mcp` 브랜치의 계획서이며 `master`(v1.4.1)는 손대지 않습니다 —
+> 지금까지의 수동 버전은 그대로 쓸 수 있어야 합니다.
+>
+> **작업 폴더**: `D:\aimigration-x` (git worktree, `mcp` 브랜치 고정).
+> `D:\aimigration`은 `master`(v1.4.1)로 남습니다. 저장소는 하나이므로 Core/Windows를 공유하고,
+> 진단 엔진을 수동 버전으로 역이식하기도 쉽습니다.
 
 ---
 
@@ -535,18 +540,30 @@ tests/
 
 | | `master` | `mcp` |
 |---|---|---|
-| 버전 | **v1.4.x — 수동 버전(안정)** | v2.x — Claude 연계 |
+| 제품명 | **DiskMigrator** (수동 버전) | **DiskMigrator-X** |
+| 버전 | v1.4.x — 안정 | v2.x |
+| 작업 폴더 | `D:\aimigration` | `D:\aimigration-x` (worktree) |
 | 상태 | 실기 검증 완료, 유지보수만 | 개발 중 |
-| 릴리스 | **v1.4.1 릴리스는 계속 유지한다** | 완성 시 v2.0.0 |
+| 릴리스 | **v1.4.1은 계속 유지한다** | 완성 시 v2.0.0 |
 
 > **관례 변경**: 지금까지는 GitHub 릴리스를 최신 하나만 남겼지만(v1.4.0 삭제 등),
-> **v1.4.1은 v2가 나와도 지우지 않는다.** 수동 버전을 계속 쓸 수 있어야 한다는 사용자 요구.
+> **v1.4.1은 DiskMigrator-X가 나와도 지우지 않는다.** 수동 버전을 계속 쓸 수 있어야 한다는 요구.
 
-**역이식**: 1단계 진단 엔진(`audit_esp`·`analyze_boot_trace` 등)은 수동 버전에도 유용하므로
-`Core`/`Windows`에 구현해, 안정화되면 `master`로 가져갈 수 있게 한다.
+**두 앱은 공존한다.** 제품명이 다르므로 설치 경로·시작 메뉴 항목·설정 저장 위치를 모두 분리한다:
 
-**설치 충돌**은 v2 착수 시점에 정한다 — v2가 v1 기능을 모두 포함하므로 대체해도 되지만,
-둘을 동시에 두려면 설치 경로·앱 이름을 분리해야 한다(`DiskMigrator 2`).
+| | DiskMigrator (v1.x) | DiskMigrator-X |
+|---|---|---|
+| 설치 경로 | `%ProgramFiles%\DiskMigrator` | `%ProgramFiles%\DiskMigrator-X` |
+| 실행 파일 | `DiskMigrator.exe` | `DiskMigratorX.exe` |
+| 설정·로그 | `%LocalAppData%\DiskMigrator` | `%LocalAppData%\DiskMigrator-X` |
+| MCP 서버 이름 | (없음) | `DiskMigrator-X` |
+
+> 설정과 로그까지 나누는 이유: 두 앱이 같은 폴더를 쓰면 한쪽의 언어 설정이나 EULA 동의가
+> 다른 쪽에 새고, 로그가 섞여 문제를 신고받았을 때 어느 앱의 것인지 알 수 없게 됩니다.
+
+**역이식**: 진단 엔진(`BootDriverInventory`·`BootTraceAnalysis`·`FastStartupState` 등)은
+수동 버전에도 유용하므로 `Core`/`Windows`에 구현한다. 안정화되면 `master`로 가져간다 —
+저장소가 하나라 `git cherry-pick`으로 끝난다.
 
 ---
 
