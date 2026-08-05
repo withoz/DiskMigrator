@@ -17,14 +17,14 @@ namespace DiskMigrator.Mcp.Tests;
 public class ToolRegistrationTests
 {
     private static MethodInfo[] ToolMethods =>
-        typeof(ReadOnlyTools)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+        new[] { typeof(ReadOnlyTools), typeof(PlanningTools) }
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() is not null)
             .ToArray();
 
-    /// <summary>1단계에서 갖추기로 한 도구가 전부 있는지 — 계획서 §6.1.</summary>
+    /// <summary>1·2단계에서 갖추기로 한 도구가 전부 있는지 — 계획서 §6.1·§6.2.</summary>
     [Fact]
-    public void 계획한_1단계_도구가_모두_등록되어_있다()
+    public void 계획한_도구가_모두_등록되어_있다()
     {
         var names = ToolMethods
             .Select(m => m.GetCustomAttribute<McpServerToolAttribute>()!.Name)
@@ -32,15 +32,31 @@ public class ToolRegistrationTests
 
         foreach (string expected in new[]
         {
+            // 1단계 — 진단
             "list_disks", "inspect_disk",
             "check_boot_readiness", "read_boot_drivers", "read_fast_startup",
             "analyze_boot_trace", "audit_esp",
             "inspect_image", "check_hardware_compatibility",
             "save_diagnostic", "load_diagnostic", "diff_diagnostics",
+            // 2단계 — 계획·조언
+            "evaluate_safety", "explain_boot_failure",
         })
         {
             Assert.Contains(expected, names);
         }
+    }
+
+    /// <summary>
+    /// 2단계 도구도 쓰기 통로를 받지 않아야 합니다 — 계획하고 설명할 뿐 실행하지 않습니다.
+    /// </summary>
+    [Fact]
+    public void 계획_도구도_읽기_전용_통로만_받는다()
+    {
+        var ctor = typeof(PlanningTools).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToArray();
+
+        Assert.DoesNotContain(typeof(Core.Abstractions.IDiskService), paramTypes);
+        Assert.Contains(typeof(IDiskReader), paramTypes);
     }
 
     /// <summary>

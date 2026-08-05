@@ -123,6 +123,41 @@ public sealed class Mapping(bool includeSensitive = false)
                 fw.BiosReleaseDate, fw.SmbiosVersion, fw.IsUefi, fw.SecureBootEnabled),
             TargetBusType: targetBusType);
 
+    /// <summary>안전성 판정을 DTO로. 엔진의 판정을 그대로 옮기고 재해석하지 않습니다.</summary>
+    /// <remarks>
+    /// 계획서 §4의 두 번째 원칙 — MCP 계층은 <see cref="Core.Safety.SafetyGuard"/>를 호출할 뿐
+    /// 안전 판정을 다시 쓰지 않습니다. 여기서 하는 일은 형식 변환과 요약 문장 생성뿐입니다.
+    /// </remarks>
+    public SafetyDto ToDto(Core.Safety.SafetyReport r, Core.Models.DiskInfo source, Core.Models.DiskInfo target)
+    {
+        var blockers = r.Blockers.Select(ToDto).ToList();
+        var confirmations = r.Confirmations.Select(ToDto).ToList();
+        var warnings = r.Warnings.Select(ToDto).ToList();
+
+        string summary = !r.CanProceed
+            ? $"BLOCKED — {blockers.Count} reason(s) prevent this: {string.Join("; ", blockers.Select(b => b.Code))}. " +
+              "No confirmation can override these."
+            : r.NeedsTypedConfirmation
+                ? $"Allowed, but the target holds data — the user must type the target model name in the app " +
+                  $"before it will run. Warnings: {(warnings.Count == 0 ? "none" : string.Join("; ", warnings.Select(w => w.Code)))}."
+                : warnings.Count > 0
+                    ? $"Allowed. {warnings.Count} warning(s) worth mentioning: {string.Join("; ", warnings.Select(w => w.Code))}."
+                    : "Allowed, with nothing of concern found.";
+
+        return new SafetyDto(
+            CanProceed: r.CanProceed,
+            NeedsTypedConfirmation: r.NeedsTypedConfirmation,
+            Summary: summary,
+            Blockers: blockers,
+            Confirmations: confirmations,
+            Warnings: warnings,
+            Source: ToDto(source),
+            Target: ToDto(target));
+    }
+
+    public SafetyIssueDto ToDto(Core.Safety.SafetyIssue i) =>
+        new(i.Code, i.Severity.ToString(), i.Message);
+
     /// <summary>이미지 무결성 검사 결과를 DTO로.</summary>
     public ImageInspectionDto ToDto(Windows.Jobs.ImageInspectionReport r)
     {

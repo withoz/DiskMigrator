@@ -85,6 +85,7 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
         
 
         builder.Services.AddSingleton<ReadOnlyTools>();
+        builder.Services.AddSingleton<PlanningTools>();
 
         builder.Services
             .AddMcpServer(o =>
@@ -94,7 +95,8 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
                 o.ServerInfo = new() { Name = "DiskMigrator-X", Version = ThisVersion };
             })
             .WithHttpTransport()
-            .WithTools<ReadOnlyTools>();
+            .WithTools<ReadOnlyTools>()
+            .WithTools<PlanningTools>();
 
         // 외부 인터페이스에 열지 않습니다. IPAddress.Loopback에 직접 묶습니다 —
         // "localhost"나 "*" 같은 문자열은 환경에 따라 모든 인터페이스에 붙을 수 있습니다.
