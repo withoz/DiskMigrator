@@ -1,4 +1,4 @@
-﻿; DiskMigrator 설치 프로그램 (Inno Setup 6)
+; DiskMigrator 설치 프로그램 (Inno Setup 6)
 ;
 ; 빌드: installer\build.ps1 을 실행하면 최신 앱을 publish → 라이선스 생성 → 이 스크립트를
 ;       ISCC로 컴파일해 installer\output\DiskMigrator-Setup-v<버전>.exe 를 만듭니다.
@@ -7,7 +7,7 @@
 ; exe 한 개를 Program Files에 넣고, 시작 메뉴 바로가기와 제거 프로그램을 만듭니다.
 
 #define AppName "DiskMigrator"
-#define AppVersion "1.4.1"
+#define AppVersion "1.4.2"
 #define AppPublisher "DiskMigrator"
 #define AppExeName "DiskMigrator.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"
