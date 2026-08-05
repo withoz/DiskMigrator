@@ -573,8 +573,32 @@ Claude              앱 화면                         사용자
 차단 조합은 카드 없이 거절, 유효한 제안은 카드 → [적용] → 폼은 채워지되 "확인 필요"에서 멈춤,
 `get_progress`는 `Running: false`, `get_proposal_status`는 `Applied` + "아직 실행되지 않았다".
 
-확장한 셋(`propose_backup`·`propose_restore`·`propose_boot_repair`)은 자동 시험
-(`ProposalKindTests`, 위 금지선 전부)까지 통과했고 **실기 검증은 아직이다.**
+확장한 셋(`propose_backup`·`propose_restore`·`propose_boot_repair`)도 실기로 확인했다(2026-08-05).
+
+| 확인한 것 | 결과 |
+|---|---|
+| 부팅 복구 → 실행 중인 시스템 디스크 | `LIVE_SYSTEM_DISK`, 카드 없음 |
+| 복원 → 실행 중인 시스템 디스크 | `BLOCKED`(SYSTEM+BOOT+PAGEFILE), 카드 없음 |
+| 복원 → 없는 이미지 / 없는 디스크 | `FILE_NOT_FOUND` / `DISK_NOT_FOUND` |
+| 복제 0→0, 복제 → 시스템 디스크 | `INVALID_ARGUMENT` / `BLOCKED` |
+| 이유 없는 제안(전 종류) | `INVALID_ARGUMENT` |
+| 백업·복원·부팅 복구 카드 | 종류 표시·양 끝·경고 수위 모두 정상 |
+| 부팅 복구 [적용] | 화면 전환 + 대상 선택, **모델명 입력란은 그대로** |
+
+**남은 것**: `propose_backup`·`propose_restore`의 [적용] 경로는 아직 눌러 보지 않았다
+(자동 시험과 코드로만 확인). 되돌릴 수 없는 쪽이므로 실기로 한 번 더 볼 것.
+
+#### 확장 검증 중에 드러난 결함 (2026-08-05, 모두 수정)
+
+제안 게이트와 무관하게, **실기로 돌려 보지 않았으면 못 찾았을 것들**이다.
+
+| 결함 | 어디가 문제였나 |
+|---|---|
+| `IsOffline`이 하드코딩 `false` | 엔진은 같은 IOCTL을 **이미 쓰고 있었다**(`DiskOfflineScope`가 클론 전 대상을 오프라인으로 내림). 읽는 법을 몰라서가 아니라 *보고하는 자리*에만 `false`가 박혀 있었다. 소비처가 `DiskInfo.cs` 한 줄뿐이라 아무도 틀렸다는 걸 몰랐다 |
+| 오프라인을 부팅 결함으로 읽음 | 오프라인 디스크는 ESP도 Windows 폴더도 "없는 것처럼" 보인다. 멀쩡한 디스크에 부팅 복구를 하겠다고 덤빌 수 있는 자리 → `DISK_OFFLINE`을 확정 원인으로 먼저 낸다 |
+| [적용] 후 목록이 스크롤되지 않음 | 선택은 됐지만 화면 밖. **무엇에 동의했는지 눈으로 확인할 수 없으면 확인 카드의 뜻이 없다** |
+
+앞의 둘은 `Core`/`Windows` 변경이라 **master의 v1.4.1에도 있는 결함**이다. 백포트는 미결정.
 
 ---
 
