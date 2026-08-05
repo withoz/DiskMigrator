@@ -316,4 +316,5 @@
   <data name="McpActProposal" xml:space="preserve"><value>Suggestion</value></data>
   <data name="McpActRead" xml:space="preserve"><value>Read</value></data>
   <data name="McpActCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="VerdictDiskOffline" xml:space="preserve"><value>This disk is OFFLINE, so its volumes are not mounted and nothing could be checked. Bring it online first (Disk Management, or diskpart: select disk N -&gt; online disk), then check again.</value></data>
 </root>
