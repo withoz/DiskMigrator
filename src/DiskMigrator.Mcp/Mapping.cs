@@ -123,6 +123,66 @@ public sealed class Mapping(bool includeSensitive = false)
                 fw.BiosReleaseDate, fw.SmbiosVersion, fw.IsUefi, fw.SecureBootEnabled),
             TargetBusType: targetBusType);
 
+    /// <summary>복사 계획을 DTO로. 한계를 함께 실어 보냅니다.</summary>
+    /// <remarks>
+    /// <c>CopyRegion</c>은 <c>IBlockDevice</c>를 품어 직렬화할 수 없으므로(계획서 §5.2) 필요한
+    /// 숫자만 옮깁니다. 그리고 <b>이 계획이 무엇을 말하지 않는지</b>를 caveats로 명시합니다 —
+    /// 스냅샷 없이 계산했기에 스마트 클론으로 줄어들 양이 빠져 있고, 그걸 모르면 사용자가
+    /// "예상보다 훨씬 빨리 끝났다"거나 반대로 불필요한 걱정을 하게 됩니다.
+    /// </remarks>
+    public ClonePlanDto ToDto(
+        Windows.Jobs.ClonePreview preview,
+        Core.Models.DiskInfo source,
+        Core.Models.DiskInfo target)
+    {
+        long total = preview.TotalBytes;
+
+        // 마지막 구간의 끝이 대상에 들어가야 합니다 — 총량이 아니라 '배치의 끝'이 기준입니다.
+        long neededEnd = preview.Regions.Count == 0 ? 0 : preview.Regions.Max(r => r.TargetOffset + r.Length);
+        long spare = target.SizeBytes - neededEnd;
+        bool fits = spare >= 0;
+
+        // 어림 속도: USB 연결이면 훨씬 느리므로 나눠 잡습니다. 정확한 예측이 목적이 아니라
+        // "몇 분짜리인가 몇 시간짜리인가"를 알려주는 것이 목적입니다.
+        bool overUsb = source.BusType == Core.Models.DiskBusType.Usb || target.BusType == Core.Models.DiskBusType.Usb;
+        double mbPerSec = overUsb ? 90 : 400;
+        int minutes = (int)Math.Ceiling(total / 1024.0 / 1024 / mbPerSec / 60);
+
+        var caveats = new List<string>
+        {
+            "Calculated WITHOUT a VSS snapshot, so the reduction from smart-clone (copying only used " +
+            "blocks) is not reflected — the real copy is usually smaller and faster than this.",
+            $"The time estimate assumes roughly {mbPerSec:N0} MB/s ({(overUsb ? "USB-attached" : "internally attached")}) " +
+            "and is a rough order of magnitude, not a promise.",
+        };
+
+        if (!fits)
+        {
+            caveats.Add($"The layout does not fit: it needs {SizeFormatter.Format(neededEnd)} but the target " +
+                        $"is {SizeFormatter.Format(target.SizeBytes)}. Shrinking would be required.");
+        }
+
+        string summary = fits
+            ? $"{preview.Regions.Count} region(s), {SizeFormatter.Format(total)} to copy, roughly {minutes} minute(s). " +
+              $"{SizeFormatter.Format(spare)} would be left over on the target."
+            : $"{preview.Regions.Count} region(s), {SizeFormatter.Format(total)} to copy — but the source layout " +
+              $"does NOT fit on this target ({SizeFormatter.Format(-spare)} too large). Shrinking is required.";
+
+        return new ClonePlanDto(
+            Summary: summary,
+            RegionCount: preview.Regions.Count,
+            TotalBytes: total,
+            TotalText: SizeFormatter.Format(total),
+            Regions: preview.Regions.Select(r => new CopyRegionDto(
+                r.Description, r.SourceOffset, r.TargetOffset, r.Length, SizeFormatter.Format(r.Length))).ToList(),
+            TargetFitsSource: fits,
+            SpareBytesOnTarget: spare,
+            EstimatedMinutes: minutes,
+            Caveats: caveats,
+            Source: ToDto(source),
+            Target: ToDto(target));
+    }
+
     /// <summary>안전성 판정을 DTO로. 엔진의 판정을 그대로 옮기고 재해석하지 않습니다.</summary>
     /// <remarks>
     /// 계획서 §4의 두 번째 원칙 — MCP 계층은 <see cref="Core.Safety.SafetyGuard"/>를 호출할 뿐

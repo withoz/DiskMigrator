@@ -21,6 +21,7 @@ namespace DiskMigrator.Mcp.Tools;
 [SupportedOSPlatform("windows")]
 public sealed class PlanningTools(
     IDiskReader diskService,
+    IClonePlanner clonePlanner,
     Mapping mapping,
     ILogger<PlanningTools>? logger = null)
 {
@@ -90,6 +91,67 @@ public sealed class PlanningTools(
         {
             _logger.LogWarning(ex, "MCP evaluate_safety 실패.");
             return ToolResult<SafetyDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "plan_clone")]
+    [Description(
+        "Work out what a clone would actually do: which regions get copied where, how much data, " +
+        "whether the source layout even fits on the target, and roughly how long it would take. " +
+        "Nothing is written and no snapshot is taken. " +
+        "ALWAYS pass on the 'caveats' field — the plan is computed without a snapshot, so the " +
+        "reduction from smart-clone is not included and the real copy is usually smaller and faster. " +
+        "Presenting the number as a firm prediction misleads people. " +
+        "If targetFitsSource is false the source layout is too large and shrinking would be needed; " +
+        "say that plainly rather than implying the clone will just work. " +
+        "Run evaluate_safety as well — a plan that fits can still be blocked.")]
+    public async Task<ToolResult<ClonePlanDto>> PlanCloneAsync(
+        [Description("Physical disk number to copy FROM. It is only read.")] int sourceDeviceNumber,
+        [Description("Physical disk number to copy TO. Nothing is written during planning.")] int targetDeviceNumber,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (!diskService.IsElevated)
+            {
+                return ToolResult<ClonePlanDto>.Fail(
+                    ToolErrorCodes.NotElevated, "Reading disk information requires administrator rights.",
+                    "Restart DiskMigrator-X as administrator.");
+            }
+
+            if (sourceDeviceNumber == targetDeviceNumber)
+            {
+                return ToolResult<ClonePlanDto>.Fail(
+                    ToolErrorCodes.InvalidArgument, "Source and target are the same disk number.",
+                    "Pick two different disks.");
+            }
+
+            var disks = await diskService.EnumerateDisksAsync(ct);
+            var source = disks.FirstOrDefault(d => d.DeviceNumber == sourceDeviceNumber);
+            var target = disks.FirstOrDefault(d => d.DeviceNumber == targetDeviceNumber);
+
+            if (source is null || target is null)
+            {
+                return ToolResult<ClonePlanDto>.Fail(
+                    ToolErrorCodes.DiskNotFound,
+                    $"Disk {(source is null ? sourceDeviceNumber : targetDeviceNumber)} was not found.",
+                    "Call list_disks again — a disk may have been disconnected.");
+            }
+
+            // useSnapshot: false — 계획을 세우는 데 스냅샷은 필요 없고, 만들었다 지우는 부작용만 남습니다.
+            // 구간 배치는 스냅샷 유무와 무관하게 같습니다.
+            using var preview = await clonePlanner.PreviewAsync(source, useSnapshot: false, ct);
+
+            _logger.LogInformation("MCP plan_clone({Src}→{Tgt}) → 구간 {Count}개 {Bytes:N0}바이트",
+                sourceDeviceNumber, targetDeviceNumber, preview.Regions.Count, preview.TotalBytes);
+
+            return ToolResult<ClonePlanDto>.Success(mapping.ToDto(preview, source, target));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP plan_clone 실패.");
+            return ToolResult<ClonePlanDto>.Fail(ToolErrorCodes.Internal, ex.Message);
         }
     }
 

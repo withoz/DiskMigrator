@@ -85,6 +85,15 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
         
 
         builder.Services.AddSingleton<ReadOnlyTools>();
+                // 계획 도구용 — CloneSessionFactory에는 실제 클론 세션을 만드는 CreateAsync도 있으므로
+        // PreviewAsync만 보이는 어댑터로 감쌉니다.
+        builder.Services.AddSingleton<IClonePlanner>(new CloneSessionPlanner(
+            new Windows.Jobs.CloneSessionFactory(
+                diskService,
+                new Windows.Snapshots.VssSnapshotProvider(
+                    (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<Windows.Snapshots.VssSnapshotProvider>()),
+                (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<Windows.Jobs.CloneSessionFactory>())));
+
         builder.Services.AddSingleton<PlanningTools>();
 
         builder.Services

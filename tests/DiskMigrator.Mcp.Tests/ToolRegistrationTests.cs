@@ -39,7 +39,7 @@ public class ToolRegistrationTests
             "inspect_image", "check_hardware_compatibility",
             "save_diagnostic", "load_diagnostic", "diff_diagnostics",
             // 2단계 — 계획·조언
-            "evaluate_safety", "explain_boot_failure",
+            "evaluate_safety", "plan_clone", "explain_boot_failure",
         })
         {
             Assert.Contains(expected, names);
@@ -49,6 +49,11 @@ public class ToolRegistrationTests
     /// <summary>
     /// 2단계 도구도 쓰기 통로를 받지 않아야 합니다 — 계획하고 설명할 뿐 실행하지 않습니다.
     /// </summary>
+    /// <remarks>
+    /// <c>CloneSessionFactory</c>를 그대로 받으면 <c>CreateAsync</c>로 실제 클론 세션을 만들 수
+    /// 있습니다. 계획만 필요하므로 <see cref="IClonePlanner"/>로 표면을 좁혔고, 그것이 유지되는지
+    /// 확인합니다.
+    /// </remarks>
     [Fact]
     public void 계획_도구도_읽기_전용_통로만_받는다()
     {
@@ -56,7 +61,24 @@ public class ToolRegistrationTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToArray();
 
         Assert.DoesNotContain(typeof(Core.Abstractions.IDiskService), paramTypes);
+        Assert.DoesNotContain(typeof(Windows.Jobs.CloneSessionFactory), paramTypes);
+
         Assert.Contains(typeof(IDiskReader), paramTypes);
+        Assert.Contains(typeof(IClonePlanner), paramTypes);
+    }
+
+    /// <summary>계획 통로에는 실행을 뜻하는 메서드가 없어야 합니다.</summary>
+    [Fact]
+    public void IClonePlanner에는_실행_메서드가_없다()
+    {
+        var names = typeof(IClonePlanner).GetMembers().Select(m => m.Name).ToArray();
+
+        foreach (string forbidden in new[] { "Create", "Start", "Run", "Execute", "Write" })
+        {
+            Assert.DoesNotContain(names, n => n.Contains(forbidden, StringComparison.OrdinalIgnoreCase));
+        }
+
+        Assert.Contains(names, n => n.Contains("Preview", StringComparison.Ordinal));
     }
 
     /// <summary>
