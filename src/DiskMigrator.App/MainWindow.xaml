@@ -449,12 +449,33 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{loc:Loc ProposalTitle}" Foreground="{StaticResource Warning}"
                                    FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Proposal.Source.DeviceNumber, StringFormat=' · 디스크 {0}'}"
+
+                        <!-- 무엇을 하자는 제안인지. 복원·복제는 대상이 지워지므로 색을 달리합니다. -->
+                        <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold" FontSize="12.5">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{loc:Loc ProposalKindClone}" />
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Proposal.Kind}" Value="Backup">
+                                            <Setter Property="Text" Value="{loc:Loc ProposalKindBackup}" />
+                                            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Proposal.Kind}" Value="Restore">
+                                            <Setter Property="Text" Value="{loc:Loc ProposalKindRestore}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Proposal.Kind}" Value="BootRepair">
+                                            <Setter Property="Text" Value="{loc:Loc ProposalKindBootRepair}" />
+                                            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <TextBlock Text="{Binding Proposal.Endpoints}"
                                    Foreground="{StaticResource Muted}" FontSize="12.5"
-                                   VerticalAlignment="Center" Margin="4,0,0,0" />
-                        <TextBlock Text="{Binding Proposal.Target.Model, StringFormat=' → {0}'}"
-                                   Foreground="{StaticResource Muted}" FontSize="12.5"
-                                   VerticalAlignment="Center" />
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
 
                     <!-- Claude가 왜 제안했는지 — 사용자가 판단할 근거입니다. -->

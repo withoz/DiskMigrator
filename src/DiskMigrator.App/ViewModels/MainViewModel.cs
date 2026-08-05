@@ -251,26 +251,52 @@ public sealed partial class MainViewModel : ObservableObject
         var applied = _proposalStore?.MarkApplied();
         if (applied is null) return;
 
-        // 지문으로 다시 찾습니다 — 번호가 아니라 정체로.
-        var source = Disks.FirstOrDefault(d => applied.Source.Matches(d.Disk));
-        var target = Disks.FirstOrDefault(d => applied.Target.Matches(d.Disk));
+        // 지문으로 다시 찾습니다 — 번호가 아니라 정체로. 제안에 없는 쪽은 null입니다.
+        var source = applied.Source is null ? null : Disks.FirstOrDefault(d => applied.Source.Matches(d.Disk));
+        var target = applied.Target is null ? null : Disks.FirstOrDefault(d => applied.Target.Matches(d.Disk));
 
-        if (source is null || target is null)
+        // 제안이 가리키던 디스크가 사라졌으면 채우지 않습니다 — 엉뚱한 디스크에 적용되면 안 됩니다.
+        if ((applied.Source is not null && source is null) ||
+            (applied.Target is not null && target is null))
         {
             _logger.LogWarning("제안 적용 실패: 디스크를 다시 찾지 못했습니다 (제안 {Id})", applied.Id);
             McpStatusText = Strings.Get("ProposalDiskGone");
             return;
         }
 
-        Mode = AppMode.Clone;
-        SelectedSource = source;
-        SelectedTarget = target;
-        UseSnapshot = applied.UseSnapshot && IsSnapshotAvailable;
-        VerifyAfterClone = applied.VerifyAfterCopy;
+        switch (applied.Kind)
+        {
+            case DiskMigrator.Mcp.Proposals.ProposalKind.Clone:
+                Mode = AppMode.Clone;
+                SelectedSource = source;
+                SelectedTarget = target;
+                UseSnapshot = applied.UseSnapshot && IsSnapshotAvailable;
+                VerifyAfterClone = applied.VerifyAfterCopy;
+                break;
 
-        // ConfirmationText는 채우지 않습니다. 사람이 직접 입력해야 시작 버튼이 살아납니다.
-        _logger.LogInformation("제안 {Id} 적용: 디스크 {Src}→{Tgt} (모델명 확인은 사용자 몫)",
-            applied.Id, source.Disk.DeviceNumber, target.Disk.DeviceNumber);
+            case DiskMigrator.Mcp.Proposals.ProposalKind.Backup:
+                Mode = AppMode.Backup;
+                SelectedSource = source;
+                ImagePath = applied.ImagePath ?? "";
+                UseSnapshot = applied.UseSnapshot && IsSnapshotAvailable;
+                break;
+
+            case DiskMigrator.Mcp.Proposals.ProposalKind.Restore:
+                Mode = AppMode.Restore;
+                SelectedTarget = target;
+                ImagePath = applied.ImagePath ?? "";
+                break;
+
+            case DiskMigrator.Mcp.Proposals.ProposalKind.BootRepair:
+                // 검사·복구는 사용자가 직접 눌러야 합니다 — 화면만 열어 둡니다.
+                Mode = AppMode.FixBoot;
+                SelectedTarget = target;
+                break;
+        }
+
+        // ConfirmationText는 어느 경로에서도 채우지 않습니다.
+        // 사람이 직접 입력해야 시작 버튼이 살아납니다.
+        _logger.LogInformation("제안 {Id}({Kind}) 적용 — 확인·시작은 사용자 몫", applied.Id, applied.Kind);
     }
 
     /// <summary>사용자가 제안을 무시했습니다.</summary>

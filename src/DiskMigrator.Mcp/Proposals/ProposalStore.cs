@@ -45,14 +45,19 @@ public sealed class ProposalStore
     /// <summary>
     /// 새 제안을 올립니다. 기존 제안이 있으면 <see cref="ProposalStatus.Superseded"/>로 밀어냅니다.
     /// </summary>
+    /// <param name="source">읽을 디스크(복제·백업). 복원·부팅 복구에서는 null.</param>
+    /// <param name="target">쓸 디스크(복제·복원·부팅 복구). 백업에서는 null.</param>
+    /// <param name="imagePath">이미지 파일 경로(백업·복원).</param>
     public CloneProposal Propose(
-        DiskInfo source, DiskInfo target, string reason,
+        ProposalKind kind, DiskInfo? source, DiskInfo? target, string? imagePath, string reason,
         bool useSnapshot, bool verifyAfterCopy, bool needsTypedConfirmation)
     {
         var proposal = new CloneProposal(
             Id: Guid.NewGuid().ToString("N")[..8],
-            Source: DiskFingerprint.Of(source),
-            Target: DiskFingerprint.Of(target),
+            Kind: kind,
+            Source: source is null ? null : DiskFingerprint.Of(source),
+            Target: target is null ? null : DiskFingerprint.Of(target),
+            ImagePath: imagePath,
             Reason: reason,
             UseSnapshot: useSnapshot,
             VerifyAfterCopy: verifyAfterCopy,
@@ -124,8 +129,9 @@ public sealed class ProposalStore
         {
             if (_current is { Status: ProposalStatus.Pending } p)
             {
-                bool sourceOk = disks.Any(d => p.Source.Matches(d));
-                bool targetOk = disks.Any(d => p.Target.Matches(d));
+                // 제안에 없는 쪽(백업의 대상, 복원의 원본)은 확인할 것이 없으므로 통과입니다.
+                bool sourceOk = p.Source is null || disks.Any(d => p.Source.Matches(d));
+                bool targetOk = p.Target is null || disks.Any(d => p.Target.Matches(d));
 
                 if (!sourceOk || !targetOk)
                 {

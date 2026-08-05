@@ -53,30 +53,8 @@ public sealed class ProposalTools(
     {
         try
         {
-            if (!diskService.IsElevated)
-            {
-                return ToolResult<ProposalDto>.Fail(
-                    ToolErrorCodes.NotElevated, "Reading disk information requires administrator rights.",
-                    "Restart DiskMigrator-X as administrator.");
-            }
-
-            if (string.IsNullOrWhiteSpace(reason))
-            {
-                return ToolResult<ProposalDto>.Fail(
-                    ToolErrorCodes.InvalidArgument,
-                    "A reason is required — the user sees it on the card and needs it to decide.",
-                    "Explain briefly why this clone, to this target, now.");
-            }
-
-            // 작업 중에는 제안을 받지 않습니다. 진행 중인 화면을 제안 카드로 덮으면
-            // 사용자가 무엇을 보고 있는지 혼란스러워집니다.
-            if (appState.IsBusy)
-            {
-                return ToolResult<ProposalDto>.Fail(
-                    ToolErrorCodes.Busy,
-                    "The app is running an operation right now, so it cannot take a proposal.",
-                    "Watch it with get_progress and propose again once it finishes.");
-            }
+            var pre = await PrecheckAsync<ProposalDto>(reason, ct);
+            if (pre is not null) return pre;
 
             if (sourceDeviceNumber == targetDeviceNumber)
             {
@@ -112,7 +90,8 @@ public sealed class ProposalTools(
             }
 
             var proposal = proposals.Propose(
-                source, target, reason.Trim(), useSnapshot, verifyAfterCopy, safety.NeedsTypedConfirmation);
+                ProposalKind.Clone, source, target, null, reason.Trim(),
+                useSnapshot, verifyAfterCopy, safety.NeedsTypedConfirmation);
 
             _logger.LogInformation("MCP propose_clone → 제안 {Id} 등록 ({Src}→{Tgt}), 타이핑확인={Confirm}",
                 proposal.Id, sourceDeviceNumber, targetDeviceNumber, safety.NeedsTypedConfirmation);
@@ -129,6 +108,226 @@ public sealed class ProposalTools(
             _logger.LogWarning(ex, "MCP propose_clone 실패.");
             return ToolResult<ProposalDto>.Fail(ToolErrorCodes.Internal, ex.Message);
         }
+    }
+
+    [McpServerTool(Name = "propose_backup")]
+    [Description(
+        "Suggest backing a disk up to an image file (.vhdx). The disk is only read, so this is the " +
+        "least risky of the proposals — but if the path already holds a backup the app will treat it " +
+        "as an incremental chain, so say which file you mean and why. " +
+        "As with every proposal this only shows a card: the user presses Apply, then Start. " +
+        "Nothing begins from this call.")]
+    public async Task<ToolResult<ProposalDto>> ProposeBackupAsync(
+        [Description("Physical disk number to back up. It is only read.")] int sourceDeviceNumber,
+        [Description(@"Where to write the image, e.g. E:\backup.vhdx")] string imagePath,
+        [Description("Why you are suggesting this. The user reads it on the card.")] string reason,
+        [Description("Suggest using a VSS snapshot (needed when the source is the running system).")]
+        bool useSnapshot = true,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var pre = await PrecheckAsync<ProposalDto>(reason, ct);
+            if (pre is not null) return pre;
+
+            if (string.IsNullOrWhiteSpace(imagePath))
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.InvalidArgument, "An image path is required.",
+                    @"Give a full path ending in .vhdx, e.g. E:\backup.vhdx");
+            }
+
+            var disks = await diskService.EnumerateDisksAsync(ct);
+            var source = disks.FirstOrDefault(d => d.DeviceNumber == sourceDeviceNumber);
+            if (source is null)
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.DiskNotFound, $"Disk {sourceDeviceNumber} was not found.",
+                    "Call list_disks again — the disk may have been disconnected.");
+            }
+
+            // 백업은 디스크를 읽기만 하므로 SafetyGuard의 대상 파괴 규칙이 적용되지 않습니다.
+            // 대신 경로가 이미 있으면 증분 사슬로 이어진다는 사실을 카드에 담습니다.
+            bool exists = File.Exists(imagePath);
+            var proposal = proposals.Propose(
+                ProposalKind.Backup, source, null, imagePath, reason.Trim(),
+                useSnapshot, verifyAfterCopy: false, needsTypedConfirmation: false);
+
+            _logger.LogInformation("MCP propose_backup → 제안 {Id} (디스크 {Src} → {Path}, 기존파일={Exists})",
+                proposal.Id, sourceDeviceNumber, imagePath, exists);
+
+            return ToolResult<ProposalDto>.Success(ToDto(proposal,
+                exists
+                    ? "The card is on screen. That file already exists, so the app will add to it as an " +
+                      "incremental backup rather than starting fresh — make sure the user expects that."
+                    : "The card is on screen. Nothing has started — the user presses Apply, then Start."));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP propose_backup 실패.");
+            return ToolResult<ProposalDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "propose_restore")]
+    [Description(
+        "Suggest restoring an image file onto a disk. THIS ERASES THE TARGET DISK — treat it as the " +
+        "most dangerous proposal and say so plainly to the user before calling it. " +
+        "Check the image first with inspect_image: restoring a damaged image produces a broken disk, " +
+        "and by then the target is already overwritten. " +
+        "Blocked targets are refused here rather than shown. The user must Apply and then type the " +
+        "target model name; you cannot do either.")]
+    public async Task<ToolResult<ProposalDto>> ProposeRestoreAsync(
+        [Description("Full path to the .vhdx image to restore FROM.")] string imagePath,
+        [Description("Physical disk number to restore ONTO. Everything on it would be erased.")]
+        int targetDeviceNumber,
+        [Description("Why you are suggesting this. The user reads it on the card — be specific.")] string reason,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var pre = await PrecheckAsync<ProposalDto>(reason, ct);
+            if (pre is not null) return pre;
+
+            if (!File.Exists(imagePath))
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.FileNotFound, $"No image file at {imagePath}.",
+                    "Check the path. Images made by this app end in .vhdx.");
+            }
+
+            var disks = await diskService.EnumerateDisksAsync(ct);
+            var target = disks.FirstOrDefault(d => d.DeviceNumber == targetDeviceNumber);
+            if (target is null)
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.DiskNotFound, $"Disk {targetDeviceNumber} was not found.",
+                    "Call list_disks again — the disk may have been disconnected.");
+            }
+
+            // 복원은 대상을 지우므로 클론과 같은 차단 규칙을 적용합니다. 원본이 파일이라
+            // SafetyGuard에 넘길 '원본 디스크'가 없으므로, 대상 자체의 금기만 확인합니다.
+            if (target.IsSystemDisk || target.IsBootDisk || target.HasPageFile || target.IsReadOnly)
+            {
+                var reasons = new List<string>();
+                if (target.IsSystemDisk) reasons.Add("TARGET_IS_SYSTEM_DISK");
+                if (target.IsBootDisk) reasons.Add("TARGET_IS_BOOT_DISK");
+                if (target.HasPageFile) reasons.Add("TARGET_HAS_PAGEFILE");
+                if (target.IsReadOnly) reasons.Add("TARGET_READ_ONLY");
+
+                _logger.LogInformation("MCP propose_restore 거절(차단): {Codes}", string.Join(", ", reasons));
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.Blocked,
+                    $"This target cannot be restored onto: {string.Join(", ", reasons)}. No card was shown.",
+                    "Explain to the user why this disk is off limits instead of proposing it.");
+            }
+
+            bool needsConfirmation = target.HasExistingData;
+            var proposal = proposals.Propose(
+                ProposalKind.Restore, null, target, imagePath, reason.Trim(),
+                useSnapshot: false, verifyAfterCopy: true, needsTypedConfirmation: needsConfirmation);
+
+            _logger.LogInformation("MCP propose_restore → 제안 {Id} ({Path} → 디스크 {Tgt}), 타이핑확인={Confirm}",
+                proposal.Id, imagePath, targetDeviceNumber, needsConfirmation);
+
+            return ToolResult<ProposalDto>.Success(ToDto(proposal,
+                "The card is on screen. Nothing has started — the user presses Apply, and then " +
+                (needsConfirmation ? "types the target model name before the restore can begin."
+                                   : "presses Start before the restore can begin.")));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP propose_restore 실패.");
+            return ToolResult<ProposalDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "propose_boot_repair")]
+    [Description(
+        "Suggest repairing the boot configuration of a disk — rewriting BCD device references, turning " +
+        "off a leftover resume image, and setting standard storage drivers to boot-start so the disk " +
+        "can start on different hardware. It changes the disk but does not erase data. " +
+        "Run explain_boot_failure first: repairing a disk whose problem lies outside it (firmware, " +
+        "hardware) changes nothing and wastes the user's time. The disk this app runs from is refused.")]
+    public async Task<ToolResult<ProposalDto>> ProposeBootRepairAsync(
+        [Description("Physical disk number whose boot configuration should be repaired.")] int deviceNumber,
+        [Description("Why you are suggesting this — which finding led you here.")] string reason,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var pre = await PrecheckAsync<ProposalDto>(reason, ct);
+            if (pre is not null) return pre;
+
+            var disks = await diskService.EnumerateDisksAsync(ct);
+            var target = disks.FirstOrDefault(d => d.DeviceNumber == deviceNumber);
+            if (target is null)
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.DiskNotFound, $"Disk {deviceNumber} was not found.",
+                    "Call list_disks again — the disk may have been disconnected.");
+            }
+
+            // 실행 중인 시스템은 고칠 대상이 아닙니다 — 이미 부팅되고 있고, 하이브도 잠겨 있습니다.
+            if (target.IsSystemDisk || target.IsBootDisk)
+            {
+                return ToolResult<ProposalDto>.Fail(
+                    ToolErrorCodes.LiveSystemDisk,
+                    $"Disk {deviceNumber} is the Windows this app is running from — and it evidently boots.",
+                    "Point this at the disk that fails: a clone, a restored copy, or one from another PC.");
+            }
+
+            var proposal = proposals.Propose(
+                ProposalKind.BootRepair, null, target, null, reason.Trim(),
+                useSnapshot: false, verifyAfterCopy: false, needsTypedConfirmation: false);
+
+            _logger.LogInformation("MCP propose_boot_repair → 제안 {Id} (디스크 {Tgt})", proposal.Id, deviceNumber);
+
+            return ToolResult<ProposalDto>.Success(ToDto(proposal,
+                "The card is on screen. Nothing has started — the user presses Apply, which opens the " +
+                "boot repair screen for that disk, and then runs the repair themselves."));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP propose_boot_repair 실패.");
+            return ToolResult<ProposalDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 모든 제안이 공통으로 거치는 검사 — 권한, 이유, 작업 중 여부.
+    /// </summary>
+    /// <returns>문제가 있으면 그대로 돌려줄 오류, 없으면 null.</returns>
+    private async Task<ToolResult<T>?> PrecheckAsync<T>(string reason, CancellationToken ct)
+    {
+        if (!diskService.IsElevated)
+        {
+            return ToolResult<T>.Fail(
+                ToolErrorCodes.NotElevated, "Reading disk information requires administrator rights.",
+                "Restart DiskMigrator-X as administrator.");
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return ToolResult<T>.Fail(
+                ToolErrorCodes.InvalidArgument,
+                "A reason is required — the user sees it on the card and needs it to decide.",
+                "Explain briefly why this, why now.");
+        }
+
+        if (appState.IsBusy)
+        {
+            return ToolResult<T>.Fail(
+                ToolErrorCodes.Busy,
+                "The app is running an operation right now, so it cannot take a proposal.",
+                "Watch it with get_progress and propose again once it finishes.");
+        }
+
+        await Task.CompletedTask;
+        return null;
     }
 
     [McpServerTool(Name = "get_proposal_status")]
@@ -220,13 +419,16 @@ public sealed class ProposalTools(
 
     private static ProposalDto ToDto(CloneProposal p, string note) => new(
         Id: p.Id,
+        Kind: p.Kind.ToString(),
         Status: p.Status.ToString(),
         Note: note,
-        SourceDeviceNumber: p.Source.DeviceNumber,
-        SourceModel: p.Source.Model,
-        TargetDeviceNumber: p.Target.DeviceNumber,
-        TargetModel: p.Target.Model,
+        SourceDeviceNumber: p.Source?.DeviceNumber,
+        SourceModel: p.Source?.Model,
+        TargetDeviceNumber: p.Target?.DeviceNumber,
+        TargetModel: p.Target?.Model,
+        ImagePath: p.ImagePath,
         Reason: p.Reason,
+        IsDestructive: p.IsDestructive,
         NeedsTypedConfirmation: p.NeedsTypedConfirmation,
         CreatedUtc: p.CreatedUtc,
         ExpiresUtc: p.CreatedUtc + CloneProposal.Lifetime);

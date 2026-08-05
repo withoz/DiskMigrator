@@ -25,6 +25,12 @@ public class ProposalGateTests
         LogicalSectorSize = 512,
         PartitionStyle = PartitionStyle.Gpt,
     };
+    /// <summary>테스트에서 반복되는 복제 제안 — 확장된 시그니처를 한곳에서만 다룹니다.</summary>
+    private static CloneProposal ProposeClone(
+        ProposalStore store, DiskInfo source, DiskInfo target,
+        string reason = "이유", bool needsTypedConfirmation = false) =>
+        store.Propose(ProposalKind.Clone, source, target, null, reason,
+            useSnapshot: true, verifyAfterCopy: true, needsTypedConfirmation);
 
     // --- 게이트의 핵심: Claude는 확인란에 닿을 수 없다 -----------------------
 
@@ -89,8 +95,8 @@ public class ProposalGateTests
     public void 새_제안은_기존_제안을_밀어낸다()
     {
         var store = new ProposalStore();
-        var first = store.Propose(Disk(0, "A"), Disk(1, "B"), "첫 번째", true, true, false);
-        var second = store.Propose(Disk(0, "A"), Disk(2, "C", serial: "S2"), "두 번째", true, true, false);
+        var first = ProposeClone(store, Disk(0, "A"), Disk(1, "B"), "첫 번째");
+        var second = ProposeClone(store, Disk(0, "A"), Disk(2, "C", serial: "S2"), "두 번째");
 
         Assert.Equal(ProposalStatus.Superseded, store.Find(first.Id)!.Status);
         Assert.Equal(ProposalStatus.Pending, store.Find(second.Id)!.Status);
@@ -101,7 +107,7 @@ public class ProposalGateTests
     public void 적용하면_대기_상태가_아니게_되고_카드가_사라진다()
     {
         var store = new ProposalStore();
-        var p = store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, true);
+        var p = ProposeClone(store, Disk(0, "A"), Disk(1, "B"), needsTypedConfirmation: true);
 
         var applied = store.MarkApplied();
 
@@ -117,7 +123,7 @@ public class ProposalGateTests
     public void 적용해도_모델명_요구는_사라지지_않는다()
     {
         var store = new ProposalStore();
-        store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, needsTypedConfirmation: true);
+        ProposeClone(store, Disk(0, "A"), Disk(1, "B"), needsTypedConfirmation: true);
 
         var applied = store.MarkApplied();
 
@@ -128,7 +134,7 @@ public class ProposalGateTests
     public void 무시하면_카드가_사라진다()
     {
         var store = new ProposalStore();
-        var p = store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, false);
+        var p = ProposeClone(store, Disk(0, "A"), Disk(1, "B"), "이유");
 
         store.MarkDismissed();
 
@@ -140,7 +146,7 @@ public class ProposalGateTests
     public void 이미_처리된_제안은_다시_적용되지_않는다()
     {
         var store = new ProposalStore();
-        store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, false);
+        ProposeClone(store, Disk(0, "A"), Disk(1, "B"), "이유");
 
         Assert.NotNull(store.MarkApplied());
         Assert.Null(store.MarkApplied());   // 두 번째는 없습니다
@@ -156,7 +162,7 @@ public class ProposalGateTests
     public void 대상이_다른_디스크로_바뀌면_제안이_무효가_된다()
     {
         var store = new ProposalStore();
-        var p = store.Propose(Disk(0, "A"), Disk(1, "B", serial: "S-OLD"), "이유", true, true, false);
+        var p = ProposeClone(store, Disk(0, "A"), Disk(1, "B", serial: "S-OLD"));
 
         // 같은 번호(1)지만 시리얼이 다른 디스크로 교체됨
         store.InvalidateIfDisksChanged([Disk(0, "A"), Disk(1, "B", serial: "S-NEW")]);
@@ -169,7 +175,7 @@ public class ProposalGateTests
     public void 대상이_빠지면_제안이_무효가_된다()
     {
         var store = new ProposalStore();
-        var p = store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, false);
+        var p = ProposeClone(store, Disk(0, "A"), Disk(1, "B"), "이유");
 
         store.InvalidateIfDisksChanged([Disk(0, "A")]);   // 대상이 사라짐
 
@@ -180,7 +186,7 @@ public class ProposalGateTests
     public void 디스크가_그대로면_제안이_유지된다()
     {
         var store = new ProposalStore();
-        var p = store.Propose(Disk(0, "A"), Disk(1, "B"), "이유", true, true, false);
+        var p = ProposeClone(store, Disk(0, "A"), Disk(1, "B"), "이유");
 
         // 번호만 바뀌고 정체는 같은 경우 — USB를 다른 포트에 꽂았을 때
         store.InvalidateIfDisksChanged([Disk(3, "A"), Disk(5, "B")]);
@@ -194,8 +200,7 @@ public class ProposalGateTests
     [Fact]
     public void 시간이_지나면_만료한다()
     {
-        var p = new CloneProposal("id", new(0, "A", "S", 1), new(1, "B", "S", 1),
-            "이유", true, true, false, DateTime.UtcNow.AddMinutes(-11), ProposalStatus.Pending);
+        var p = new CloneProposal("id", ProposalKind.Clone, new(0, "A", "S", 1), new(1, "B", "S", 1), null, "이유", true, true, false, DateTime.UtcNow.AddMinutes(-11), ProposalStatus.Pending);
 
         Assert.True(p.IsExpiredAt(DateTime.UtcNow));
         Assert.False(p.IsLiveAt(DateTime.UtcNow));
@@ -204,8 +209,7 @@ public class ProposalGateTests
     [Fact]
     public void 시간_안이면_살아_있다()
     {
-        var p = new CloneProposal("id", new(0, "A", "S", 1), new(1, "B", "S", 1),
-            "이유", true, true, false, DateTime.UtcNow.AddMinutes(-3), ProposalStatus.Pending);
+        var p = new CloneProposal("id", ProposalKind.Clone, new(0, "A", "S", 1), new(1, "B", "S", 1), null, "이유", true, true, false, DateTime.UtcNow.AddMinutes(-3), ProposalStatus.Pending);
 
         Assert.False(p.IsExpiredAt(DateTime.UtcNow));
         Assert.True(p.IsLiveAt(DateTime.UtcNow));
