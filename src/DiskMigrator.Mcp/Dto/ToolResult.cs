@@ -48,6 +48,15 @@ public static class ToolErrorCodes
     /// <summary>인자가 잘못됐습니다.</summary>
     public const string InvalidArgument = "INVALID_ARGUMENT";
 
+    /// <summary>
+    /// 지금 실행 중인 Windows라 레지스트리 하이브를 파일로 읽을 수 없습니다.
+    /// </summary>
+    /// <remarks>
+    /// 커널이 SYSTEM 하이브를 배타적으로 잠그므로 관리자 권한으로도 열리지 않습니다.
+    /// 이 진단은 <b>다른 디스크</b>(클론한 사본, 부팅이 막힌 디스크)를 대상으로 쓰는 것입니다.
+    /// </remarks>
+    public const string LiveSystemDisk = "LIVE_SYSTEM_DISK";
+
     /// <summary>읽는 중 예기치 못한 오류가 났습니다.</summary>
     public const string Internal = "INTERNAL";
 }

@@ -51,6 +51,73 @@ public sealed class Mapping(bool includeSensitive = false)
         // 여유 공간만 알 수 있으므로 사용량은 역산합니다. 마운트 안 된 볼륨은 알 수 없어 null입니다.
         UsedBytes: p.FreeSpaceBytes is { } free ? p.LengthBytes - free : null);
 
+    /// <summary>부팅 준비 검사 결과를 DTO로. 요약 한 줄은 여기서 만듭니다.</summary>
+    public BootCheckDto ToDto(Core.Registry.BootReadinessReport r)
+    {
+        int fatalFailed = r.Items.Count(i => i.Severity == Core.Registry.BootCheckSeverity.Fatal && i.Passed == false);
+        int unknown = r.Items.Count(i => i.Severity == Core.Registry.BootCheckSeverity.Fatal && i.Passed is null);
+        int warned = r.Items.Count(i => i.Severity == Core.Registry.BootCheckSeverity.Warning && i.Passed == false);
+
+        // "확인 못 함"과 "실패"를 구분해 말합니다 — 볼륨이 안 잡혀 못 본 것을 결함으로 단정하면
+        // 사용자가 멀쩡한 디스크를 의심하게 됩니다.
+        string summary = r.WouldBoot
+            ? warned > 0
+                ? $"Boot configuration looks complete, but {warned} warning(s) may matter on different hardware."
+                : "Boot configuration looks complete."
+            : fatalFailed > 0
+                ? $"{fatalFailed} critical check(s) failed — this disk is not expected to boot."
+                : $"{unknown} critical check(s) could not be verified (volume not mounted?) — boot cannot be confirmed.";
+
+        return new BootCheckDto(r.WouldBoot, r.HasWarnings, summary, r.Items.Select(ToDto).ToList());
+    }
+
+    public BootCheckItemDto ToDto(Core.Registry.BootCheckItem i) =>
+        new(i.Name, i.Passed, i.Severity.ToString(), i.Detail, i.Code);
+
+    /// <summary>부팅 드라이버 조사 결과를 DTO로.</summary>
+    /// <remarks>
+    /// 정상 드라이버 89개를 다 보내면 응답만 길어지고 판단에는 도움이 안 됩니다.
+    /// <b>문제가 되는 것(파일 없음·표준 위치 밖)만</b> 목록으로 싣고, 나머지는 개수로 요약합니다.
+    /// </remarks>
+    public BootDriverInventoryDto ToDto(Core.Registry.BootDriverInventoryResult r)
+    {
+        string summary = r.MissingFiles.Count > 0
+            ? $"{r.MissingFiles.Count} of {r.Drivers.Count} boot-start driver(s) are registered but their files are missing — " +
+              "this alone can stop the kernel from starting."
+            : r.OutsideSystem32.Count > 0
+                ? $"All {r.Drivers.Count} boot-start driver files are present. " +
+                  $"{r.OutsideSystem32.Count} load from outside System32 (third-party — may be fine, worth noting)."
+                : $"All {r.Drivers.Count} boot-start driver files are present and load from standard locations.";
+
+        return new BootDriverInventoryDto(
+            ControlSet: r.ControlSet,
+            TotalCount: r.Drivers.Count,
+            MissingCount: r.MissingFiles.Count,
+            OutsideSystem32Count: r.OutsideSystem32.Count,
+            Summary: summary,
+            Missing: r.MissingFiles.Select(ToDto).ToList(),
+            OutsideSystem32: r.OutsideSystem32.Select(ToDto).ToList());
+    }
+
+    public BootDriverDto ToDto(Core.Registry.BootDriverEntry d) =>
+        new(d.ServiceName, d.Group, d.ImagePath, d.ResolvedPath, d.FileExists, d.FileSizeBytes);
+
+    /// <summary>빠른 시작 상태를 DTO로. 요약에 "무슨 일이 벌어지는지"를 적습니다.</summary>
+    public FastStartupDto ToDto(Core.Registry.FastStartupStateResult r)
+    {
+        string summary = r.ResumeWouldBeAttempted
+            ? "A hibernation image (hiberfil.sys) is present, so the boot manager will try to RESUME " +
+              "instead of booting. On different hardware that resume fails and hangs at the logo — " +
+              "and boot diagnostics stay silent because they only apply to the normal boot path."
+            : r.HiberbootEnabled == 1
+                ? "No hibernation image right now, but Fast Startup is ON — shutting down will create one again."
+                : "Fast Startup is off and there is no hibernation image. The disk will take the normal boot path.";
+
+        return new FastStartupDto(
+            r.HiberbootEnabled, r.HibernateEnabled, r.HiberfilExists, r.HiberfilSizeBytes,
+            r.ResumeWouldBeAttempted, summary);
+    }
+
     /// <summary>
     /// 파티션이 무엇인지 사람이 이해할 수 있게 분류합니다. Claude가 GUID를 해석하지 않아도 되게.
     /// </summary>
