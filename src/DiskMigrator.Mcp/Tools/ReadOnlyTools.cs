@@ -20,6 +20,7 @@ namespace DiskMigrator.Mcp.Tools;
 public sealed class ReadOnlyTools(
     IDiskReader diskService,
     Mapping mapping,
+    Windows.Jobs.ImageInspector imageInspector,
     ILogger<ReadOnlyTools>? logger = null)
 {
     private readonly ILogger _logger = logger ?? (ILogger)NullLogger.Instance;
@@ -59,6 +60,100 @@ public sealed class ReadOnlyTools(
         }
 
         return (windowsRoot, null);
+    }
+
+    [McpServerTool(Name = "check_hardware_compatibility")]
+    [Description(
+        "Judge whether THIS PC can boot from a given disk, based on its firmware generation, UEFI vs " +
+        "legacy mode, and how the disk is attached. Returns a verdict (Supported / Uncertain / " +
+        "Unsupported) together with a CONFIDENCE level, the reasoning, and what the user can do — " +
+        "including when the honest answer is 'this board cannot do it, use a SATA SSD or replace the " +
+        "board'. Never state such a conclusion without the reasoning this returns. " +
+        "When the verdict is Uncertain the result lists checks only the user can perform (does the " +
+        "boot menu show the disk, does a FULL power-off/power-on work) — ask them, do not guess. " +
+        "IMPORTANT: this describes the PC the app is running on, not a different target PC.")]
+    public async Task<ToolResult<CompatibilityDto>> CheckHardwareCompatibilityAsync(
+        [Description("Physical disk number of the disk you intend to boot from. Omit to judge by firmware alone.")]
+        int? deviceNumber = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            string busType = "Sata";
+            bool isMbr = false;
+
+            if (deviceNumber is { } n)
+            {
+                var (disk, error) = await ResolveDiskAsync<CompatibilityDto>(n, ct);
+                if (error is not null) return error;
+                busType = disk!.BusType.ToString();
+                isMbr = disk.PartitionStyle == Core.Models.PartitionStyle.Mbr;
+            }
+
+            var fw = await Task.Run(Windows.Devices.FirmwareInfo.Read, ct);
+            var verdict = Core.Registry.BootCompatibility.Evaluate(
+                fw.IsUefi, fw.BiosReleaseDate, busType, isMbr);
+
+            _logger.LogInformation("MCP check_hardware_compatibility({Number}) → {Verdict}/{Conf} (버스 {Bus})",
+                deviceNumber, verdict.Verdict, verdict.Confidence, busType);
+
+            return ToolResult<CompatibilityDto>.Success(mapping.ToDto(verdict, fw, busType));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP check_hardware_compatibility 실패.");
+            return ToolResult<CompatibilityDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "inspect_image")]
+    [Description(
+        "Check whether a backup image (.vhdx) is intact BEFORE restoring it. Attaches the image " +
+        "read-only and verifies its structure, partition table, and the file system of each volume. " +
+        "Use this whenever someone is about to restore an old or unverified backup — a damaged image " +
+        "restored onto a disk produces a broken result, and by then the target is already overwritten. " +
+        "The image itself is never modified.")]
+    public async Task<ToolResult<ImageInspectionDto>> InspectImageAsync(
+        [Description("Full path to the .vhdx backup image.")] string path,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return ToolResult<ImageInspectionDto>.Fail(
+                    ToolErrorCodes.InvalidArgument, "No image path was given.");
+            }
+
+            if (!File.Exists(path))
+            {
+                return ToolResult<ImageInspectionDto>.Fail(
+                    ToolErrorCodes.FileNotFound,
+                    $"No file at {path}.",
+                    "Check the path. Backup images made by this app end in .vhdx.");
+            }
+
+            if (!diskService.IsElevated)
+            {
+                return ToolResult<ImageInspectionDto>.Fail(
+                    ToolErrorCodes.NotElevated,
+                    "Attaching an image requires administrator rights.",
+                    "Restart DiskMigrator-X as administrator.");
+            }
+
+            var report = await imageInspector.InspectAsync(path, ct);
+
+            _logger.LogInformation("MCP inspect_image({Path}) → ok={Ok} 항목 {Count}개",
+                path, report.Ok, report.Items.Count);
+            return ToolResult<ImageInspectionDto>.Success(mapping.ToDto(report));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP inspect_image 실패.");
+            return ToolResult<ImageInspectionDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
     }
 
     [McpServerTool(Name = "audit_esp")]

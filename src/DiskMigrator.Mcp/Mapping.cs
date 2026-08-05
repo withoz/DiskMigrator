@@ -102,6 +102,42 @@ public sealed class Mapping(bool includeSensitive = false)
     public BootDriverDto ToDto(Core.Registry.BootDriverEntry d) =>
         new(d.ServiceName, d.Group, d.ImagePath, d.ResolvedPath, d.FileExists, d.FileSizeBytes);
 
+    /// <summary>호환성 판정과 그 근거가 된 펌웨어 정보를 함께 DTO로.</summary>
+    /// <remarks>
+    /// 판정만 보내면 Claude가 근거 없이 "메인보드를 바꾸세요"라고 말할 수 있습니다.
+    /// 무엇을 보고 그렇게 판단했는지(BIOS 날짜·UEFI 여부·연결 방식)를 함께 실어,
+    /// 사용자가 납득하거나 반박할 수 있게 합니다.
+    /// </remarks>
+    public CompatibilityDto ToDto(
+        Core.Registry.CompatibilityResult r,
+        Windows.Devices.FirmwareInfoResult fw,
+        string targetBusType) =>
+        new(
+            Verdict: r.Verdict.ToString(),
+            Confidence: r.Confidence.ToString(),
+            Reason: r.Reason,
+            Advice: r.Advice,
+            UserChecks: r.UserChecks,
+            Firmware: new FirmwareDto(
+                fw.BoardManufacturer, fw.BoardProduct, fw.BiosVendor, fw.BiosVersion,
+                fw.BiosReleaseDate, fw.SmbiosVersion, fw.IsUefi, fw.SecureBootEnabled),
+            TargetBusType: targetBusType);
+
+    /// <summary>이미지 무결성 검사 결과를 DTO로.</summary>
+    public ImageInspectionDto ToDto(Windows.Jobs.ImageInspectionReport r)
+    {
+        var failed = r.Items.Where(i => !i.Passed).ToList();
+
+        string summary = r.Ok
+            ? $"The image passed all {r.Items.Count} checks and is safe to restore."
+            : $"{failed.Count} check(s) failed — restoring this image may produce a broken disk. " +
+              $"First failure: {failed[0].Name} — {failed[0].Detail}";
+
+        return new ImageInspectionDto(
+            r.Ok, summary,
+            r.Items.Select(i => new ImageCheckItemDto(i.Name, i.Passed, i.Detail)).ToList());
+    }
+
     /// <summary>ESP 감사 결과를 DTO로. 서명 발급자의 '의미'를 문장으로 붙입니다.</summary>
     public EspAuditDto ToDto(Core.Registry.EspAuditResult r)
     {

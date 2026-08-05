@@ -68,6 +68,14 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
         // 진단 도구가 쓰는 것들. IDiskReader만 등록해 쓰기 서비스는 컨테이너에도 넣지 않습니다.
         builder.Services.AddSingleton<IDiskReader>(new DiskServiceReader(diskService));
         builder.Services.AddSingleton(new Mapping(includeSensitive));
+
+        // ImageInspector는 IDiskService를 받지만 EnumerateDisksAsync만 쓰고 공개 메서드도
+        // InspectAsync 하나뿐이라 읽기 전용입니다. 완성된 객체로 넣어, 도구가 그 안의
+        // 서비스에 손대지 못하게 합니다 — 컨테이너에 IDiskService 자체는 등록하지 않습니다.
+        builder.Services.AddSingleton(new Windows.Jobs.ImageInspector(
+            diskService,
+            (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<Windows.Jobs.ImageInspector>()));
+
         builder.Services.AddSingleton<ReadOnlyTools>();
 
         builder.Services
