@@ -309,4 +309,11 @@
   <data name="McpResetToken" xml:space="preserve"><value>새 토큰 발급</value></data>
   <data name="McpResetTokenHint" xml:space="preserve"><value>토큰이 샜다고 생각될 때 쓰십시오. 기존 토큰은 통하지 않게 되고, 새 토큰을 Claude에 다시 넣어야 합니다.</value></data>
   <data name="McpTokenReset" xml:space="preserve"><value>새 토큰을 발급했습니다. Claude에 다시 넣으십시오.</value></data>
+  <data name="McpActivityHint" xml:space="preserve"><value>모든 호출이 이곳을 지납니다. 읽기는 디스크를 읽기만 한 것이고, 제안은 화면에 카드를 띄운 것입니다 — 실행된 것은 없습니다.</value></data>
+  <data name="McpActProtocol" xml:space="preserve"><value>연결</value></data>
+  <data name="McpActivityTitle" xml:space="preserve"><value>Claude가 무엇을 봤는지</value></data>
+  <data name="McpActivityEmpty" xml:space="preserve"><value>아직 없습니다. Claude가 일하는 대로 여기에 나타납니다.</value></data>
+  <data name="McpActProposal" xml:space="preserve"><value>제안</value></data>
+  <data name="McpActRead" xml:space="preserve"><value>읽기</value></data>
+  <data name="McpActCancel" xml:space="preserve"><value>취소</value></data>
 </root>

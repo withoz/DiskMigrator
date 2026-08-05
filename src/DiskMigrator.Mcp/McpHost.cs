@@ -4,6 +4,7 @@ using DiskMigrator.Core.Abstractions;
 using DiskMigrator.Mcp.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,7 +33,8 @@ public sealed class McpHost(
     IDiskService diskService,
     Proposals.ProposalStore proposals,
     IAppState appState,
-    ILoggerFactory? loggerFactory = null) : IAsyncDisposable
+    ILoggerFactory? loggerFactory = null,
+    McpActivityLog? activityLog = null) : IAsyncDisposable
 {
     private readonly ILogger _logger =
         (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<McpHost>();
@@ -148,6 +150,10 @@ public sealed class McpHost(
             await next();
         });
 
+        // 사용자가 화면에서 "무엇을 읽었는지" 볼 수 있게 호출을 기록합니다.
+        // 도구 호출은 전부 이 한 곳을 지나므로 도구마다 손볼 필요가 없습니다.
+        if (activityLog is not null) app.Use(RecordActivityAsync);
+
         app.MapMcp("/mcp");
 
         await app.StartAsync(ct);
@@ -231,6 +237,156 @@ public sealed class McpHost(
         }
         throw new InvalidOperationException(
             $"사용할 수 있는 포트를 찾지 못했습니다 ({PreferredPort}~{PreferredPort + MaxPortAttempts - 1}).");
+    }
+
+    /// <summary>
+    /// 요청 본문에서 어떤 도구를 불렀는지 읽어 활동 기록에 남깁니다.
+    /// </summary>
+    /// <remarks>
+    /// <b>기록이 호출을 방해해서는 안 됩니다.</b> 본문을 못 읽거나 형식이 달라도 그대로
+    /// 통과시킵니다 — 화면에 한 줄 덜 남는 것보다 진단이 실패하는 쪽이 나쁩니다.
+    ///
+    /// <para>본문을 읽은 뒤 위치를 처음으로 되돌립니다. 그러지 않으면 MCP 처리기가 빈 본문을
+    /// 보게 되어 모든 호출이 깨집니다.</para>
+    /// </remarks>
+    private async Task RecordActivityAsync(HttpContext ctx, Func<Task> next)
+    {
+        string method = "";
+        string tool = "";
+        string detail = "";
+
+        try
+        {
+            ctx.Request.EnableBuffering();
+            using var reader = new StreamReader(
+                ctx.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+            string body = await reader.ReadToEndAsync();
+            ctx.Request.Body.Position = 0;
+
+            if (body.Length > 0)
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(body);
+                var root = doc.RootElement;
+
+                method = root.TryGetProperty("method", out var m) ? m.GetString() ?? "" : "";
+                if (method == "tools/call" && root.TryGetProperty("params", out var ps))
+                {
+                    tool = ps.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    detail = SummarizeArguments(ps);
+                }
+            }
+        }
+        catch
+        {
+            // 형식이 다르거나 읽지 못했습니다. 기록만 건너뜁니다.
+        }
+
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        bool failed;
+
+        // 도구 호출은 거절되어도 HTTP 200으로 옵니다 — 오류는 본문 안에 있습니다.
+        // 상태 코드만 보면 "차단됨"과 "정상 처리"가 화면에서 구분되지 않아, 감사 목록의
+        // 뜻이 절반이 됩니다. 그래서 도구 호출에 한해 응답 본문까지 들여다봅니다.
+        //
+        // 본문을 가로채는 것은 tools/call 요청에만 합니다. MCP는 서버가 먼저 보내는
+        // 스트림도 쓰는데, 그런 응답까지 모아 두면 전달이 늦어집니다.
+        if (tool.Length > 0 && HttpMethods.IsPost(ctx.Request.Method))
+        {
+            // ⚠ Response.Body만 바꾸면 잡히지 않습니다. SSE 응답은 BodyWriter(PipeWriter)로
+            //   나가므로 스트림 교체를 그냥 지나갑니다 — 실기에서 거절이 계속 정상으로
+            //   보였던 이유입니다. 본문 기능(IHttpResponseBodyFeature) 자체를 갈아 끼웁니다.
+            var originalFeature = ctx.Features.Get<IHttpResponseBodyFeature>();
+            using var buffer = new MemoryStream();
+            ctx.Features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(buffer));
+            try
+            {
+                await next();
+                buffer.Position = 0;
+                failed = LooksLikeError(buffer) || ctx.Response.StatusCode >= 400;
+            }
+            finally
+            {
+                if (originalFeature is not null) ctx.Features.Set(originalFeature);
+                buffer.Position = 0;
+                await buffer.CopyToAsync(ctx.Response.Body);
+            }
+        }
+        else
+        {
+            await next();
+            failed = ctx.Response.StatusCode >= 400;
+        }
+
+        long ms = (long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
+        // 알림(notifications/*)은 응답이 없고 사용자에게 의미도 없어 기록하지 않습니다.
+        string name = tool.Length > 0 ? tool : method;
+        if (name.Length == 0 || name.StartsWith("notifications/", StringComparison.Ordinal)) return;
+
+        activityLog!.Record(new McpActivity(
+            DateTime.Now, name, detail, McpActivityLog.Classify(name), failed, ms));
+    }
+
+    /// <summary>
+    /// 응답 본문이 오류를 담고 있는지 — 우리 도구는 거절도 HTTP 200으로 돌려줍니다.
+    /// </summary>
+    /// <remarks>
+    /// 우리 도구는 <c>ToolResult</c>를 JSON <b>문자열로</b> 감싸 돌려주므로, 본문 안의
+    /// <c>ok</c> 필드는 한 번 더 이스케이프된 채로 들어 있습니다.
+    ///
+    /// <para>⚠ 그 이스케이프가 <c>\"</c>가 아니라 <b><c>"</c></b>입니다 — SDK의 직렬화
+    /// 설정 때문입니다. 실기에서 <c>\"ok\":false</c>로 찾다가 아무것도 못 잡았습니다.
+    /// 그래서 두 형태를 모두 따옴표로 되돌린 뒤 봅니다.</para>
+    ///
+    /// <para>판단이 애매하면 <b>실패로 표시하지 않습니다</b> — 멀쩡한 호출을 붉게 칠하면
+    /// 목록 자체를 믿지 못하게 됩니다.</para>
+    /// </remarks>
+    private static bool LooksLikeError(Stream body)
+    {
+        try
+        {
+            using var reader = new StreamReader(body, System.Text.Encoding.UTF8, leaveOpen: true);
+            string text = reader.ReadToEnd()
+                .Replace("\\u0022", "\"", StringComparison.OrdinalIgnoreCase)
+                .Replace("\\\"", "\"", StringComparison.Ordinal);
+
+            return text.Contains("\"ok\":false", StringComparison.Ordinal) ||
+                   text.Contains("\"isError\":true", StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 인자에서 사용자가 알아볼 만한 것만 뽑습니다 — 디스크 번호와 파일 이름.
+    /// </summary>
+    /// <remarks>
+    /// 전부 보여주면 이유(reason) 문장이 길게 흘러 화면이 읽히지 않습니다. 경로는 파일명만
+    /// 남깁니다 — 어느 파일인지 알면 충분하고, 전체 경로는 사용자 폴더 이름까지 드러냅니다.
+    /// </remarks>
+    private static string SummarizeArguments(System.Text.Json.JsonElement ps)
+    {
+        if (!ps.TryGetProperty("arguments", out var a) ||
+            a.ValueKind != System.Text.Json.JsonValueKind.Object) return "";
+
+        var parts = new List<string>();
+        foreach (var p in a.EnumerateObject())
+        {
+            if (p.Name.Contains("DeviceNumber", StringComparison.OrdinalIgnoreCase) &&
+                p.Value.TryGetInt32(out int n))
+            {
+                parts.Add($"디스크 {n}");
+            }
+            else if (p.Name.Contains("path", StringComparison.OrdinalIgnoreCase) &&
+                     p.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                string? s = p.Value.GetString();
+                if (!string.IsNullOrWhiteSpace(s)) parts.Add(Path.GetFileName(s));
+            }
+        }
+        return string.Join(" · ", parts);
     }
 
     /// <summary>그 포트에 지금 묶을 수 있는지.</summary>

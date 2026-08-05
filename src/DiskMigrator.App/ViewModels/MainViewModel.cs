@@ -149,6 +149,20 @@ public sealed partial class MainViewModel : ObservableObject
     /// </remarks>
     [ObservableProperty] private bool _mcpShareDetails;
 
+    /// <summary>
+    /// Claude가 지금까지 무엇을 물었는지 — 최신이 위로.
+    /// </summary>
+    /// <remarks>
+    /// 앱은 "읽기만 합니다"라고 말하면서 정작 무엇을 읽었는지는 보여주지 않았습니다.
+    /// 그 말을 확인할 방법이 사용자에게 없었다는 뜻입니다. 파일 로그에도 남지만,
+    /// 로그를 열어 보라고 하는 것은 답이 아닙니다.
+    /// </remarks>
+    public ObservableCollection<McpActivityViewModel> McpActivities { get; } = [];
+
+    public bool HasMcpActivity => McpActivities.Count > 0;
+
+    private readonly DiskMigrator.Mcp.McpActivityLog _mcpActivityLog = new();
+
     public string McpToggleLabel => McpRunning
         ? Strings.Get("McpStop")
         : Strings.Get("McpStart");
@@ -179,8 +193,19 @@ public sealed partial class MainViewModel : ObservableObject
                 _proposalStore.Changed += (_, e) =>
                     System.Windows.Application.Current?.Dispatcher.Invoke(() => Proposal = e.Current);
 
+                // 호출 기록은 MCP 스레드에서 오므로 UI 스레드로 넘겨야 합니다.
+                _mcpActivityLog.Recorded += (_, a) =>
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        McpActivities.Insert(0, new McpActivityViewModel(a));
+                        while (McpActivities.Count > DiskMigrator.Mcp.McpActivityLog.Capacity)
+                            McpActivities.RemoveAt(McpActivities.Count - 1);
+                        OnPropertyChanged(nameof(HasMcpActivity));
+                    });
+
                 _mcpHost = new DiskMigrator.Mcp.McpHost(
-                    _diskService, _proposalStore, new AppStateBridge(this), _loggerFactory);
+                    _diskService, _proposalStore, new AppStateBridge(this), _loggerFactory,
+                    _mcpActivityLog);
             }
 
             // 지난번 토큰·포트를 이어 씁니다 — 사용자가 Claude 설정에 넣어 둔 값이 그대로
