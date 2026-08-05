@@ -210,7 +210,8 @@ public sealed class PlanningTools(
                 input.SystemRoot is { } s1 ? Try(() => Core.Registry.EspAudit.Inspect(s1)) : null
             ), ct);
 
-            var analysis = Core.Registry.BootFailureAnalysis.Analyze(boot, drivers, fast, trace, esp);
+            var analysis = Core.Registry.BootFailureAnalysis.Analyze(
+                boot, drivers, fast, trace, esp, disk.IsOffline);
 
             _logger.LogInformation("MCP explain_boot_failure({Number}) → 원인 후보 {Count}개, 최상위 {Top}",
                 deviceNumber, analysis.Causes.Count,

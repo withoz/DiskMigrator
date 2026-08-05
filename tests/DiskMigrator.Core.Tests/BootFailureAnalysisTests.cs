@@ -49,6 +49,49 @@ public class BootFailureAnalysisTests
     }
 
     /// <summary>
+    /// 오프라인 디스크에서 "검사 실패"를 부팅 결함으로 읽어서는 안 됩니다.
+    /// </summary>
+    /// <remarks>
+    /// 2026-08-05 실기에서 드러난 자리입니다. 오프라인 디스크는 열리고 파티션 테이블도 읽히지만
+    /// 볼륨이 마운트되지 않아 ESP도 Windows 폴더도 <b>없는 것처럼 보입니다.</b> 그것을 결함으로
+    /// 읽으면 멀쩡한 디스크에 부팅 복구를 하겠다고 덤비게 됩니다 — 원인은 그냥 오프라인인데.
+    /// </remarks>
+    [Fact]
+    public void 오프라인_디스크는_부팅_결함으로_읽지_않는다()
+    {
+        var r = BootFailureAnalysis.Analyze(
+            boot: Boot(wouldBoot: false),               // 검사가 통과하지 못했지만
+            drivers: null,                              // 볼륨을 못 읽어 진단들이 비어 있습니다
+            fastStartup: null,
+            trace: null,
+            esp: null,
+            diskIsOffline: true);
+
+        var cause = Assert.Single(r.Causes);
+        Assert.Equal(BootFailureAnalysis.CodeDiskOffline, cause.Code);
+        Assert.Equal("Certain", cause.Confidence);
+
+        // 무엇을 해야 하는지가 구체적이어야 합니다 — "확인하십시오"로는 부족합니다.
+        Assert.Contains("online", cause.Action, StringComparison.OrdinalIgnoreCase);
+
+        // 다른 원인을 함께 늘어놓으면 사용자가 그쪽을 먼저 건드립니다.
+        Assert.DoesNotContain(r.Causes, c => c.Code == BootFailureAnalysis.CodeOutsideDisk);
+        Assert.Contains("offline", r.Verdict, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>온라인이면 지금까지의 판단이 그대로여야 합니다 — 기본값이 판단을 바꾸면 안 됩니다.</summary>
+    [Fact]
+    public void 온라인이면_기존_판단이_그대로다()
+    {
+        var r = BootFailureAnalysis.Analyze(
+            Boot(true), Drivers(), Fast(false), Trace(BootProgress.BootloaderOnly), Esp(),
+            diskIsOffline: false);
+
+        Assert.Contains(r.Causes, c => c.Code == BootFailureAnalysis.CodeOutsideDisk);
+        Assert.DoesNotContain(r.Causes, c => c.Code == BootFailureAnalysis.CodeDiskOffline);
+    }
+
+    /// <summary>
     /// 2026-08-04 조사가 도달한 결론 — 디스크는 온전한데 커널이 시작조차 못 한 경우.
     /// </summary>
     [Fact]

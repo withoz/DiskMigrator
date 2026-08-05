@@ -38,6 +38,7 @@ public static class BootFailureAnalysis
     public const string CodeDeviceReference = "BCD_DEVICE_REFERENCE";
     public const string CodeThirdPartyBootDriver = "THIRD_PARTY_BOOT_DRIVER";
     public const string CodeOutsideDisk = "CAUSE_OUTSIDE_DISK";
+    public const string CodeDiskOffline = "DISK_OFFLINE";
 
     /// <summary>
     /// 1단계 진단 결과들을 받아 원인을 추립니다 — 순수 함수라 테스트로 고정할 수 있습니다.
@@ -47,15 +48,40 @@ public static class BootFailureAnalysis
     /// <param name="fastStartup">빠른 시작 상태(없으면 null).</param>
     /// <param name="trace">부팅 흔적(없으면 null).</param>
     /// <param name="esp">ESP 감사(없으면 null).</param>
+    /// <param name="diskIsOffline">
+    /// 디스크가 오프라인인지. 오프라인이면 볼륨이 마운트되지 않아 <b>검사 자체가 불가능</b>하며,
+    /// 그것을 부팅 결함으로 읽어서는 안 됩니다.
+    /// </param>
     public static BootFailureAnalysisResult Analyze(
         BootReadinessReport? boot,
         BootDriverInventoryResult? drivers,
         FastStartupStateResult? fastStartup,
         BootTraceResult? trace,
-        EspAuditResult? esp)
+        EspAuditResult? esp,
+        bool diskIsOffline = false)
     {
         var causes = new List<BootFailureCause>();
         var checks = new List<string>();
+
+        // --- 검사가 불가능한 상태부터 -----------------------------------------
+        //
+        // 오프라인 디스크는 열리고 파티션 테이블도 읽히지만 볼륨이 마운트되지 않습니다.
+        // 그러면 ESP도 Windows 폴더도 "없는 것"처럼 보입니다. 이것을 부팅 결함으로 읽으면
+        // 멀쩡한 디스크를 고치겠다고 덤비게 되므로, 다른 무엇보다 먼저 말해야 합니다.
+        if (diskIsOffline)
+        {
+            causes.Add(new(CodeDiskOffline, "Certain",
+                "This disk is OFFLINE, so Windows has not mounted its volumes. The boot files and the Windows " +
+                "folder cannot be read at all — anything reported as missing below is unverified, not absent.",
+                "Bring the disk online first (Disk Management, or diskpart: select disk N → online disk), " +
+                "then run the diagnostics again. Only then do the results mean anything."));
+
+            return new BootFailureAnalysisResult(
+                causes,
+                "The disk is offline — no boot conclusion can be drawn until it is online. " +
+                "Do not treat the unverified checks below as faults.",
+                checks);
+        }
 
         // --- 확정적인 것부터 -------------------------------------------------
 

@@ -130,6 +130,15 @@ public sealed class WindowsDiskService(ILogger<WindowsDiskService>? logger = nul
         // IOCTL_DISK_IS_WRITABLE 이 실패하면 쓰기 방지 상태입니다.
         bool isWritable = DiskIoctl.TryControl(handle, NativeMethods.IOCTL_DISK_IS_WRITABLE);
 
+        // 오프라인 디스크는 열리고 파티션 테이블도 읽히지만 볼륨이 마운트되지 않습니다.
+        // 부팅 검사가 "ESP를 찾지 못했다"고 할 때, 디스크가 오프라인이라 그런 것인지
+        // 정말 ESP가 없는 것인지는 이 값으로만 갈립니다. 조회에 실패하면(구형 드라이버 등)
+        // 온라인으로 봅니다 — 파티션을 읽어 온 시점에서 접근은 되고 있으므로.
+        bool isOffline =
+            DiskIoctl.TryQuery<GET_DISK_ATTRIBUTES>(
+                handle, NativeMethods.IOCTL_DISK_GET_DISK_ATTRIBUTES, out var attributes) &&
+            (attributes.Attributes & NativeMethods.DISK_ATTRIBUTE_OFFLINE) != 0;
+
         var partitions = BuildPartitions(layout, diskVolumes);
 
         string model = ResolveModel(wmi, descriptor, number);
@@ -151,7 +160,7 @@ public sealed class WindowsDiskService(ILogger<WindowsDiskService>? logger = nul
             IsRemovable = descriptor?.RemovableMedia
                           ?? geometry.Geometry.MediaType == MEDIA_TYPE.RemovableMedia,
             IsReadOnly = !isWritable,
-            IsOffline = false,
+            IsOffline = isOffline,
             IsSystemDisk = systemDiskNumber == number,
             IsBootDisk = bootDiskNumber == number,
             HasPageFile = pageFileDisks.Contains(number),

@@ -1,7 +1,8 @@
 <Application x:Class="DiskMigrator.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:conv="clr-namespace:DiskMigrator.App.Converters">
+             xmlns:conv="clr-namespace:DiskMigrator.App.Converters"
+             xmlns:rt="clr-namespace:DiskMigrator.App.Runtime">
     <Application.Resources>
 
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
@@ -324,6 +325,13 @@
                 디스크를 지우는 도구에서 원본과 대상이 저절로 같아지는 건 위험합니다.
             -->
             <Setter Property="IsSynchronizedWithCurrentItem" Value="False" />
+
+            <!--
+                Claude의 제안을 [적용]하면 코드가 선택을 바꿉니다. WPF는 그때 목록을 움직이지
+                않으므로, 디스크가 여러 개면 선택된 항목이 화면 밖에 남아 아무것도 선택되지
+                않은 것처럼 보입니다. 무엇에 동의했는지 눈으로 확인할 수 없으면 카드의 뜻이 없습니다.
+            -->
+            <Setter Property="rt:SelectionVisibility.AutoScroll" Value="True" />
         </Style>
 
     </Application.Resources>
