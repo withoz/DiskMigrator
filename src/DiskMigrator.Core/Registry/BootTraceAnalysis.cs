@@ -125,7 +125,13 @@ public static class BootTraceAnalysis
         return new BootTraceResult(files, attempt, progress, tail, notLoaded);
     }
 
-    /// <summary>마지막 부팅 시도 시각 — 부트로더가 남긴 것.</summary>
+    /// <summary>
+    /// 부트로더가 마지막으로 흔적을 남긴 시각.
+    /// </summary>
+    /// <remarks>
+    /// <b>이것을 "부팅을 시작한 시각"으로 읽으면 안 됩니다.</b> <c>bootstat.dat</c>는 부팅을 시작할 때뿐
+    /// 아니라 <b>종료할 때도</b> 갱신됩니다 — 성공한 부팅에서는 이 값이 사실상 종료 시각입니다.
+    /// </remarks>
     public static DateTime? LastAttemptOf(IReadOnlyList<BootTraceFile> files) =>
         files.FirstOrDefault(f => f.Stage == BootProgress.BootloaderOnly)?.LastWriteUtc;
 
@@ -141,18 +147,26 @@ public static class BootTraceAnalysis
     {
         ArgumentNullException.ThrowIfNull(files);
 
-        // 기준은 부트로더가 남긴 시각입니다. 이게 없으면 비교할 원점이 없습니다.
-        if (LastAttemptOf(files) is not { } t0) return BootProgress.Unknown;
+        // 부트로더 흔적이 없으면 부팅을 시도한 적이 있는지조차 알 수 없습니다.
+        if (LastAttemptOf(files) is null) return BootProgress.Unknown;
+
+        // 기준은 '이 디스크의 가장 최근 활동'입니다.
+        //
+        // 부트로더 시각을 원점으로 삼으면 안 됩니다 — bootstat.dat는 부팅을 시작할 때뿐 아니라
+        // 종료할 때도 갱신되기 때문입니다. 성공한 부팅에서는 그 값이 사실상 종료 시각이 되고,
+        // 부팅 도중에 쓰인 파일들이 전부 '그보다 이전'으로 보여 단계를 낮게 판정하게 됩니다.
+        // (실물 M.2 검증에서 발견 — 1시간을 쓰고 정상 종료한 부팅을 DevicesEnumerated로 읽었습니다.)
+        //
+        // 부팅이 실패한 경우에는 bootstat이 곧 가장 최근 시각이므로 판정이 달라지지 않습니다.
+        DateTime latest = files.Where(f => f.LastWriteUtc is not null).Max(f => f.LastWriteUtc!.Value);
 
         var progress = BootProgress.BootloaderOnly;
         foreach (var f in files)
         {
             if (f.LastWriteUtc is not { } tf || f.Stage == BootProgress.BootloaderOnly) continue;
 
-            // 부트로더 시각 '이후'로 갱신됐고 같은 부팅으로 볼 만큼 가까우면 그 단계에 도달한 것입니다.
-            // 시계 오차와 파일별 기록 순서를 감안해 조금 이른 것도 허용합니다.
-            var delta = tf - t0;
-            if (delta > -TimeSpan.FromMinutes(5) && delta < SameBootWindow && f.Stage > progress)
+            // 마지막 활동으로부터 같은 부팅으로 볼 만큼 가까우면 그 단계에 도달한 것입니다.
+            if (latest - tf < SameBootWindow && f.Stage > progress)
                 progress = f.Stage;
         }
 

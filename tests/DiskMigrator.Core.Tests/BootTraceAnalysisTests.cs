@@ -95,6 +95,32 @@ public class BootTraceAnalysisTests
     }
 
     /// <summary>
+    /// 2026-08-05 실물 M.2에서 읽은 배치 — 13:19에 부팅해 한 시간 쓰고 14:18에 정상 종료한 흔적.
+    /// </summary>
+    /// <remarks>
+    /// 이 사례가 판정 로직의 결함을 드러냈습니다. <c>bootstat.dat</c>는 <b>종료할 때도</b> 갱신되므로
+    /// 그 시각을 "부팅 시작"으로 잡으면, 부팅 도중에 쓰인 CBS.log가 한 시간 이전으로 보여
+    /// 단계를 낮게 판정합니다. 기준을 '가장 최근 활동'으로 바꿔 고쳤습니다.
+    /// 단위 테스트만으로는 못 찾았을 결함입니다 — 실물 검증이 잡아냈습니다.
+    /// </remarks>
+    [Fact]
+    public void 한참_쓰고_종료한_부팅도_완료로_판정한다()
+    {
+        var shutdown = new DateTime(2026, 8, 4, 14, 18, 30, DateTimeKind.Utc);
+
+        var files = new[]
+        {
+            F("bootstat.dat", BootProgress.BootloaderOnly, shutdown),                   // 종료 시에도 갱신
+            F("SYSTEM hive", BootProgress.KernelStarted, shutdown),
+            F("System event log", BootProgress.KernelStarted, shutdown.AddSeconds(-2)),
+            F("setupapi.dev.log", BootProgress.DevicesEnumerated, shutdown.AddMinutes(-25)),
+            F("CBS.log", BootProgress.BootCompleted, shutdown.AddMinutes(-59)),         // 부팅 중 서비싱
+        };
+
+        Assert.Equal(BootProgress.BootCompleted, BootTraceAnalysis.Judge(files));
+    }
+
+    /// <summary>
     /// 파일마다 기록 순서가 조금씩 달라 부트로더보다 살짝 이른 시각이 찍힐 수 있습니다.
     /// 그 정도는 같은 부팅으로 봅니다.
     /// </summary>
