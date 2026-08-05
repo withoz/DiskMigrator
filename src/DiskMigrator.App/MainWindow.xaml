@@ -1211,6 +1211,44 @@
                                TextWrapping="Wrap" MaxWidth="440" Text="{loc:Loc FixBootReadOnlyNote}" />
                 </StackPanel>
 
+                <!-- 진단 리포트 저장 — 오프라인 브리지(계획서 §2.5).
+                     부팅이 막힌 PC에는 Claude도 인터넷도 없습니다. 그 PC에서 이 파일을 만들어
+                     USB로 옮겨야 정상 PC에서 분석할 수 있습니다. 그래서 이 버튼은 Claude 연결과
+                     무관하게 동작해야 합니다 — 여기에 있는 이유입니다. -->
+                <Border Background="{StaticResource SelectionSoft}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,14,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{loc:Loc DiagSaveBtn}" Command="{Binding SaveDiagnosticCommand}"
+                                    MinWidth="130" Padding="14,7" VerticalAlignment="Top" />
+                            <TextBlock Margin="12,0,0,0" Style="{StaticResource Micro}"
+                                       TextWrapping="Wrap" MaxWidth="440" Text="{loc:Loc DiagSaveHint}" />
+                        </StackPanel>
+
+                        <CheckBox IsChecked="{Binding DiagIncludeDetails}" Margin="0,10,0,0"
+                                  Content="{loc:Loc DiagIncludeDetails}" />
+                        <TextBlock Text="{loc:Loc DiagIncludeHint}" Style="{StaticResource Micro}"
+                                   Margin="24,2,0,0" TextWrapping="Wrap" MaxWidth="560" />
+
+                        <TextBlock Text="{loc:Loc DiagCollecting}" Style="{StaticResource Caption}" Margin="0,8,0,0"
+                                   Visibility="{Binding IsCollectingDiagnostic, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Text="{Binding DiagnosticMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding DiagnosticSaved, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
+                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DiagnosticFailed}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="{loc:Loc Checking}" Margin="0,8,0,0" Style="{StaticResource Caption}"
                            Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
 

@@ -183,8 +183,7 @@ public sealed class DiagnosticCollector(IDiskService diskService, ILogger? logge
         var report = new DiagnosticReport(
             FormatVersion: CurrentFormatVersion,
             CollectedUtc: DateTime.UtcNow,
-            AppVersion: typeof(DiagnosticCollector).Assembly.GetName().Version is { } v
-                ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0",
+            AppVersion: ResolveAppVersion(),
             CollectedInWinPe: IsWinPe(),
             Summary: "",   // 아래에서 채웁니다
             Disk: new DiagnosticDisk(
@@ -206,6 +205,21 @@ public sealed class DiagnosticCollector(IDiskService diskService, ILogger? logge
         return report with { Summary = BuildSummary(report) };
     }
 
+    /// <summary>
+    /// 리포트를 찍은 <b>앱</b>의 버전. 이 라이브러리의 버전이 아닙니다.
+    /// </summary>
+    /// <remarks>
+    /// 리포트를 받아 든 사람에게 "어느 앱으로 찍었는가"는 중요한 정보입니다 — 그 버전에
+    /// 알려진 결함이 있었는지, 이후 고쳐진 것인지가 갈립니다. 라이브러리 버전을 찍으면
+    /// 앱을 올려도 값이 그대로라 아무것도 구분하지 못합니다.
+    /// <para>실행 진입점을 알 수 없는 경우(테스트 호스트 등)에만 이 라이브러리 버전으로 물러섭니다.</para>
+    /// </remarks>
+    private static string ResolveAppVersion()
+    {
+        var asm = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(DiagnosticCollector).Assembly;
+        return asm.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
+    }
+
     /// <summary>리포트를 파일로 저장합니다. 내용 해시를 함께 넣어 옮기는 중 깨졌는지 알 수 있게 합니다.</summary>
     public async Task SaveAsync(DiagnosticReport report, string path, CancellationToken ct = default)
     {
@@ -220,8 +234,12 @@ public sealed class DiagnosticCollector(IDiskService diskService, ILogger? logge
         sb.AppendLine($"// DiskMigrator-X diagnostic report  sha256:{hash}");
         sb.Append(body);
 
-        await File.WriteAllTextAsync(path, sb.ToString(), Encoding.UTF8, ct);
-        _logger.LogInformation("진단 리포트 저장: {Path} ({Size:N0} bytes)", path, sb.Length);
+        string text = sb.ToString();
+        await File.WriteAllTextAsync(path, text, Encoding.UTF8, ct);
+
+        // sb.Length는 '문자 수'입니다. UTF-8에서 한글은 3바이트라 실제 파일 크기와 어긋납니다.
+        _logger.LogInformation("진단 리포트 저장: {Path} ({Size:N0} bytes)",
+            path, Encoding.UTF8.GetByteCount(text));
     }
 
     /// <summary>저장한 리포트를 읽습니다. 해시가 어긋나면 경고를 남기되 읽기는 계속합니다.</summary>

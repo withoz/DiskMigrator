@@ -748,6 +748,37 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>판정이 긍정(부팅 준비/가능)이면 true — 색 구분용.</summary>
     [ObservableProperty] private bool _bootCheckVerdictIsGood;
 
+    // --- 진단 리포트 저장 (오프라인 브리지) --------------------------------
+    //
+    // 부팅이 막힌 PC에는 Claude도 인터넷도 없습니다. 그 PC에서 이 버튼으로 진단을 파일 하나에
+    // 모아 USB로 옮기면, 정상 PC에서 그 파일을 읽어 분석할 수 있습니다. 이 버튼이 없으면
+    // 진단 파일을 만드는 유일한 방법이 Claude 도구가 되어, "PE에는 Claude가 없다"는 전제와
+    // 모순됩니다 — 정작 필요한 곳에서 쓸 수 없게 됩니다.
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveDiagnosticCommand))]
+    private bool _isCollectingDiagnostic;
+
+    public bool CanSaveDiagnostic => !IsCollectingDiagnostic && SelectedTarget is not null;
+
+    /// <summary>수집·저장 결과 안내(성공하면 경로 포함).</summary>
+    [ObservableProperty] private string _diagnosticMessage = "";
+
+    [ObservableProperty] private bool _diagnosticSaved;
+
+    /// <summary>실패했으면 true — 색 구분용.</summary>
+    [ObservableProperty] private bool _diagnosticFailed;
+
+    /// <summary>
+    /// 시리얼·볼륨 이름을 가리지 않고 담을지. 기본은 가립니다.
+    /// </summary>
+    /// <remarks>
+    /// 이 파일은 남에게 보내려고 만드는 것입니다 — 포럼에 올리거나 Claude에게 보여줍니다.
+    /// 기본을 노출로 두면 사용자가 의식하지 못한 채 식별 정보를 내보내게 됩니다.
+    /// (Claude 연결의 공유 옵션과는 별개입니다. 저장은 저장 시점에 정합니다.)
+    /// </remarks>
+    [ObservableProperty] private bool _diagIncludeDetails;
+
     // --- 부팅 복구 (BCD 장치 참조 수정) ------------------------------------
 
     /// <summary>검사에서 BCD 장치 참조 문제가 잡혀 복구 버튼을 보여줄지.</summary>
@@ -919,6 +950,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(BootUsbBlockedReason));
         BuildBootUsbCommand.NotifyCanExecuteChanged();
         BootCheckCommand.NotifyCanExecuteChanged();
+        SaveDiagnosticCommand.NotifyCanExecuteChanged();
         UpdateSafety();
     }
 
@@ -1443,6 +1475,88 @@ public sealed partial class MainViewModel : ObservableObject
         SafeRemoveRan = false;
         SafeRemoveMessage = "";
         SafeRemoveSuccess = false;
+    }
+
+    /// <summary>
+    /// 선택한 디스크의 부팅 진단을 파일 하나로 모아 저장합니다 — 오프라인 브리지.
+    /// </summary>
+    /// <remarks>
+    /// 부팅이 막힌 PC에는 Claude도 인터넷도 없습니다. 그 PC에서 이 파일을 만들어 USB로 옮기면
+    /// 정상 PC에서 분석할 수 있습니다. 조치 전후로 두 번 저장해 두면 무엇이 바뀌었는지도
+    /// 비교할 수 있습니다.
+    ///
+    /// <para><b>수집은 순수 읽기입니다.</b> 진단 대상 디스크에는 아무것도 쓰지 않으며,
+    /// 리포트를 그 디스크에 저장하는 것도 막습니다 — 부팅이 막힌 디스크는 이미 상태가
+    /// 위태로울 수 있고, 진단이 그것을 더 건드려서는 안 됩니다.</para>
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(CanSaveDiagnostic))]
+    private async Task SaveDiagnosticAsync()
+    {
+        if (SelectedTarget is null) return;
+
+        DiagnosticSaved = false;
+        DiagnosticFailed = false;
+        DiagnosticMessage = "";
+
+        var target = await ResolveCurrentTargetAsync();
+        if (target is null)
+        {
+            DiagnosticFailed = true;
+            DiagnosticSaved = true;
+            DiagnosticMessage = Strings.Get("TargetNotFoundAgain");
+            return;
+        }
+
+        string defaultName = $"diag-disk{target.DeviceNumber}-{DateTime.Now:yyyyMMdd-HHmm}.dmdiag";
+        string? path = Views.FileDialogs.PickSave(
+            Strings.Get("DiagSaveTitle"), Strings.Get("DiagFileFilter"), ".dmdiag", defaultName);
+        if (path is null) return;   // 사용자가 취소
+
+        // 진단 대상 디스크에는 저장할 수 없습니다.
+        if (IsOnDisk(path, target))
+        {
+            DiagnosticFailed = true;
+            DiagnosticSaved = true;
+            DiagnosticMessage = Strings.Get("DiagNotOnTarget");
+            return;
+        }
+
+        IsCollectingDiagnostic = true;
+        try
+        {
+            var collector = new DiagnosticCollector(_diskService, _loggerFactory.CreateLogger<MainViewModel>());
+            var report = await Task.Run(() => collector.CollectAsync(target.DeviceNumber, DiagIncludeDetails));
+            await collector.SaveAsync(report, path);
+
+            long size = new FileInfo(path).Length;
+            DiagnosticFailed = false;
+            DiagnosticSaved = true;
+            DiagnosticMessage = Strings.Format("DiagSavedFmt", path, size / 1024.0);
+            _logger.LogInformation("진단 리포트 저장: 디스크 {Number} → {Path} ({Size:N0} bytes)",
+                target.DeviceNumber, path, size);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "진단 리포트 저장에 실패했습니다.");
+            DiagnosticFailed = true;
+            DiagnosticSaved = true;
+            DiagnosticMessage = Strings.Format("DiagFailFmt", ex.Message);
+        }
+        finally
+        {
+            IsCollectingDiagnostic = false;
+        }
+    }
+
+    /// <summary>저장 경로가 진단 대상 디스크 위인지 — 드라이브 문자로 대조합니다.</summary>
+    private static bool IsOnDisk(string path, DiskInfo disk)
+    {
+        string root = Path.GetPathRoot(Path.GetFullPath(path)) ?? "";
+        if (root.Length == 0) return false;
+
+        return disk.Partitions.Any(p =>
+            p.DriveLetter is { } letter &&
+            root.StartsWith(letter, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

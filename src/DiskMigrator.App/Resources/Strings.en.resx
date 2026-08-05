@@ -295,4 +295,14 @@
   <data name="ProposalKindBootRepair" xml:space="preserve"><value>Boot repair</value></data>
   <data name="ProposalKindClone" xml:space="preserve"><value>Clone</value></data>
   <data name="ProposalKindBackup" xml:space="preserve"><value>Backup</value></data>
+  <data name="DiagNotOnTarget" xml:space="preserve"><value>That location is on the disk being diagnosed. Choose a USB drive or another disk — a report must never be written to the disk it describes.</value></data>
+  <data name="DiagSaveBtn" xml:space="preserve"><value>Save diagnostic report</value></data>
+  <data name="DiagIncludeHint" xml:space="preserve"><value>Masked by default. This file is meant to be shown to someone else.</value></data>
+  <data name="DiagFileFilter" xml:space="preserve"><value>Diagnostic report (*.dmdiag)|*.dmdiag</value></data>
+  <data name="DiagSavedFmt" xml:space="preserve"><value>Saved to {0} ({1:N0} KB). On a working PC, show this file to Claude — or send it to us.</value></data>
+  <data name="DiagSaveTitle" xml:space="preserve"><value>Save diagnostic report</value></data>
+  <data name="DiagSaveHint" xml:space="preserve"><value>Gathers this disk's boot information into a single file. The disk is not modified. Take the file to another PC to get help.</value></data>
+  <data name="DiagFailFmt" xml:space="preserve"><value>Could not save the report: {0}</value></data>
+  <data name="DiagCollecting" xml:space="preserve"><value>Collecting… reading only, nothing is written to the disk.</value></data>
+  <data name="DiagIncludeDetails" xml:space="preserve"><value>Include disk serials and volume names</value></data>
 </root>
