@@ -2618,7 +2618,10 @@ public sealed partial class MainViewModel : ObservableObject
             var builder = new WinPeMediaBuilder(_loggerFactory.CreateLogger<WinPeMediaBuilder>());
             builder.Progress += (step, f) => { PeStatus = step; PeProgress = 5 + f * 60; };
             // DISM 실행이 스레드를 붙잡으므로 UI가 굳지 않게 백그라운드에서 돌립니다.
-            var build = await Task.Run(() => builder.BuildAsync(ingredients, appExe, workRoot, _peCts.Token));
+            // PE 미디어 안의 폴더·exe 이름도 제품명을 따릅니다 — 수동 버전이 만든 USB와
+            // 섞이지 않아야 어느 앱의 것인지 알 수 있습니다.
+            var build = await Task.Run(() =>
+                builder.BuildAsync(ingredients, appExe, workRoot, AppIdentity.ProductName, _peCts.Token));
             if (!build.Success)
             {
                 PeStatus = build.Message;

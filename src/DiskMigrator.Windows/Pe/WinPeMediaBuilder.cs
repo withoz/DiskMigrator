@@ -48,10 +48,17 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
     public event Action<string, double>? Progress;
 
     /// <param name="ingredients">재료 탐지 결과(<see cref="WinPeIngredientsReport.AllFound"/>여야 함).</param>
+    /// <param name="ingredients">재료 탐지 결과(<see cref="WinPeIngredientsReport.AllFound"/>여야 함).</param>
     /// <param name="appExePath">주입할 자체 포함 단일 exe(publish 산출물).</param>
     /// <param name="workRoot">작업 폴더(이 안에만 씀). 완성 미디어는 <c>{workRoot}\media</c>.</param>
+    /// <param name="appFolderName">
+    /// PE 미디어 안에 앱을 넣을 폴더·exe 이름. 제품마다 달라야 합니다 —
+    /// DiskMigrator와 DiskMigrator-X가 같은 이름을 쓰면 한 USB에 둘을 넣을 수 없고,
+    /// 만들어 둔 USB가 어느 앱의 것인지도 알 수 없습니다.
+    /// </param>
     public async Task<WinPeBuildResult> BuildAsync(
-        WinPeIngredientsReport ingredients, string appExePath, string workRoot, CancellationToken ct = default)
+        WinPeIngredientsReport ingredients, string appExePath, string workRoot,
+        string appFolderName = "DiskMigrator", CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(ingredients);
         if (!ingredients.AllFound)
@@ -98,10 +105,10 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
             bool committed = false;
             try
             {
-                Report(L.T("DiskMigrator 앱 넣기", "Injecting the DiskMigrator app"), 0.48);
-                string appDir = Path.Combine(mount, "DiskMigrator");
+                Report(L.T($"{appFolderName} 앱 넣기", $"Injecting the {appFolderName} app"), 0.48);
+                string appDir = Path.Combine(mount, appFolderName);
                 Directory.CreateDirectory(appDir);
-                CopyFile(appExePath, Path.Combine(appDir, "DiskMigrator.exe"));
+                CopyFile(appExePath, Path.Combine(appDir, $"{appFolderName}.exe"));
 
                 // 부팅 순서: 장치 인식(wpeinit) → 우리 앱 → 폴백 셸.
                 // winpeshl.ini는 [LaunchApps]의 항목을 차례로 실행하며 마지막이 끝나면 재부팅합니다.
@@ -109,7 +116,7 @@ public sealed class WinPeMediaBuilder(ILogger? logger = null)
                 File.WriteAllText(winpeshl,
                     "[LaunchApps]\r\n" +
                     "wpeinit\r\n" +
-                    "%SYSTEMDRIVE%\\DiskMigrator\\DiskMigrator.exe\r\n" +
+                    $"%SYSTEMDRIVE%\\{appFolderName}\\{appFolderName}.exe\r\n" +
                     "cmd.exe\r\n",
                     new UTF8Encoding(false));
 
