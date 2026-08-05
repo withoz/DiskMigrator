@@ -46,6 +46,34 @@ public class ReadOnlyIsolationTests
     }
 
     /// <summary>
+    /// <see cref="IDiskService"/>의 위험한 메서드들이 읽기 통로로 새어 나오지 않았는지
+    /// <b>이름을 직접 지목해</b> 확인합니다.
+    /// </summary>
+    /// <remarks>
+    /// 이 목록은 추측이 아닙니다. <c>OpenWriteExclusive</c>는 주석에 "대상 디스크의 기존 데이터를
+    /// 파괴합니다"라고 적혀 있고, <c>SafeRemoveAsync</c>는 볼륨을 내리고 디스크를 오프라인으로 바꿉니다.
+    /// 진단 도구가 이런 것에 닿을 수 있으면 계획서 §4의 첫 원칙이 무너집니다.
+    /// </remarks>
+    [Fact]
+    public void 위험한_메서드는_읽기_통로에_없다()
+    {
+        var readerMembers = typeof(IDiskReader).GetMembers().Select(m => m.Name).ToHashSet(StringComparer.Ordinal);
+
+        foreach (string dangerous in new[]
+        {
+            nameof(IDiskService.OpenWriteExclusive),   // 디스크를 파괴할 수 있는 핸들
+            nameof(IDiskService.RefreshDiskProperties),
+            nameof(IDiskService.SafeRemoveAsync),      // 볼륨 디스마운트·오프라인 전환
+        })
+        {
+            Assert.DoesNotContain(dangerous, readerMembers);
+        }
+
+        // 반대로 읽기에 필요한 것은 있어야 합니다.
+        Assert.Contains(nameof(IDiskService.EnumerateDisksAsync), readerMembers);
+    }
+
+    /// <summary>
     /// 진단 도구가 참조하는 필드에 쓰기 서비스가 숨어 있지 않아야 합니다.
     /// (생성자만 보면 뒤에서 정적 접근으로 끌어오는 경우를 놓칩니다.)
     /// </summary>
