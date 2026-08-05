@@ -102,6 +102,62 @@ public sealed class Mapping(bool includeSensitive = false)
     public BootDriverDto ToDto(Core.Registry.BootDriverEntry d) =>
         new(d.ServiceName, d.Group, d.ImagePath, d.ResolvedPath, d.FileExists, d.FileSizeBytes);
 
+    /// <summary>ESP 감사 결과를 DTO로. 서명 발급자의 '의미'를 문장으로 붙입니다.</summary>
+    public EspAuditDto ToDto(Core.Registry.EspAuditResult r)
+    {
+        string summary = !r.Uefi
+            ? "No EFI System Partition contents were found — this looks like a BIOS/MBR layout, not UEFI."
+            : !r.BootManagerPresent
+                ? "The boot manager (bootmgfw.efi) is MISSING from the ESP — the firmware has nothing to start."
+                : !r.BcdPresent
+                    ? "The boot manager is present but the BCD store is missing — it will not know what to boot."
+                    : r.Signature?.Authority == Core.Registry.SigningAuthority.Ca2023
+                        ? "Boot files are complete, but the boot manager is signed by the 2023 CA — older boards " +
+                          "may not carry that certificate and can fail Secure Boot verification silently."
+                        : r.ForeignBootFolders.Count > 0
+                            ? $"Boot files are complete. Note {r.ForeignBootFolders.Count} non-Microsoft boot " +
+                              $"folder(s) left on the ESP: {string.Join(", ", r.ForeignBootFolders)}."
+                            : "Boot files are complete and the boot manager is signed by a widely trusted authority.";
+
+        return new EspAuditDto(
+            Uefi: r.Uefi,
+            BootManagerPresent: r.BootManagerPresent,
+            FallbackPresent: r.FallbackPresent,
+            BcdPresent: r.BcdPresent,
+            Signature: r.Signature is null ? null : ToDto(r.Signature),
+            KeyFiles: r.KeyFiles.Select(f => new EspFileDto(f.RelativePath, f.SizeBytes, f.LastWriteUtc)).ToList(),
+            TotalFileCount: r.TotalFileCount,
+            TotalSizeBytes: r.TotalSizeBytes,
+            ForeignBootFolders: r.ForeignBootFolders,
+            Summary: summary);
+    }
+
+    /// <summary>
+    /// 서명 정보를 DTO로 — 발급자 문자열만 주면 Claude가 그 의미를 스스로 추측해야 하므로,
+    /// <b>구형 보드에서 무엇을 뜻하는지</b>를 함께 담습니다.
+    /// </summary>
+    public SignatureDto ToDto(Core.Registry.BootManagerSignature s)
+    {
+        string meaning = s.Authority switch
+        {
+            Core.Registry.SigningAuthority.Pca2011 =>
+                "Microsoft Windows Production PCA 2011 — trusted by practically every UEFI board, including " +
+                "old ones. This is what you want on a disk destined for older hardware.",
+
+            Core.Registry.SigningAuthority.Ca2023 =>
+                "Windows UEFI CA 2023 — boards released before 2023 may not carry this certificate in their " +
+                "Secure Boot database. Verification then fails, and some firmware simply hangs with no error. " +
+                "If the target PC is older, either disable Secure Boot or use a 2011-signed boot manager.",
+
+            Core.Registry.SigningAuthority.OtherMicrosoft =>
+                "Signed by Microsoft, but not one of the two well-known boot authorities. Worth a closer look.",
+
+            _ => "The signing authority could not be identified. Treat Secure Boot compatibility as unknown.",
+        };
+
+        return new SignatureDto(s.Issuer, s.Authority, s.NotBefore, s.NotAfter, meaning);
+    }
+
     /// <summary>빠른 시작 상태를 DTO로. 요약에 "무슨 일이 벌어지는지"를 적습니다.</summary>
     public FastStartupDto ToDto(Core.Registry.FastStartupStateResult r)
     {

@@ -61,6 +61,49 @@ public sealed class ReadOnlyTools(
         return (windowsRoot, null);
     }
 
+    [McpServerTool(Name = "audit_esp")]
+    [Description(
+        "Audit the EFI System Partition: which boot files are present (boot manager, the fallback " +
+        "EFI\\Boot\\bootx64.efi path, the BCD store), and — importantly — WHICH CERTIFICATE signed " +
+        "the boot manager. A boot manager signed by the 2023 UEFI CA can fail Secure Boot on boards " +
+        "made before 2023, and some firmware then hangs with no error at all. Also reports non-Microsoft " +
+        "boot folders left on the ESP by other tools. Use this when a disk has correct-looking boot " +
+        "configuration but still will not start on older hardware.")]
+    public async Task<ToolResult<EspAuditDto>> AuditEspAsync(
+        [Description("Physical disk number, as returned by list_disks.")] int deviceNumber,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var (disk, error) = await ResolveDiskAsync<EspAuditDto>(deviceNumber, ct);
+            if (error is not null) return error;
+
+            // ESP는 보통 드라이브 문자가 없습니다. 엔진이 볼륨 GUID 경로로 해석해 주므로
+            // 임시 마운트 없이 그대로 읽을 수 있습니다.
+            string? espRoot = Core.Registry.BootReadinessCheck.ResolveInput(disk!).SystemRoot;
+            if (espRoot is null)
+            {
+                return ToolResult<EspAuditDto>.Fail(
+                    ToolErrorCodes.InvalidArgument,
+                    "The boot partition on this disk could not be reached (no ESP, or the volume is not accessible).",
+                    "Check that the disk is online. On a BIOS/MBR disk there is no ESP — use check_boot_readiness instead.");
+            }
+
+            var result = await Task.Run(() => Core.Registry.EspAudit.Inspect(espRoot), ct);
+
+            _logger.LogInformation("MCP audit_esp({Number}) → mgr={Mgr} bcd={Bcd} 서명={Auth}",
+                deviceNumber, result.BootManagerPresent, result.BcdPresent,
+                result.Signature?.Authority ?? "(없음)");
+            return ToolResult<EspAuditDto>.Success(mapping.ToDto(result));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP audit_esp 실패.");
+            return ToolResult<EspAuditDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
     /// <summary>
     /// 권한을 확인하고 디스크를 찾습니다. 실패하면 그대로 돌려줄 수 있는 오류를 함께 냅니다.
     /// </summary>
