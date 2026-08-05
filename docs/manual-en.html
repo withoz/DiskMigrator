@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DiskMigrator User Manual</title>
+<title>DiskMigrator-X User Manual</title>
 <style>
   :root {
     --ink: #2b2622; --muted: #837b72; --line: #e6e0d8;
@@ -76,14 +76,14 @@
 
 <header style="display:block;">
   <div style="display:flex; align-items:center; gap:16px;">
-  <!-- 앱 헤더와 같은 락업: DM 마크(잉크색) | DISKMIGRATOR 자간 문자 + by 두 사이트 -->
-  <svg viewBox="56 95 256 165" width="92" height="59" aria-label="DiskMigrator" role="img" style="flex:none;"><path fill="#474540" fill-rule="evenodd" d="M 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/><path fill="#474540" d="M 268.87891,110.23633 217.88672,189.20117 196.9375,131.86914 A 18,18 0 0 0 173.85352,121.14063 18,18 0 0 0 163.125,144.22461 l 33.35937,91.29687 32.02735,3.58594 35.17773,-54.47656 -1.66211,46.72851 a 18,18 0 0 0 17.34766,18.62891 18,18 0 0 0 18.62891,-17.34766 l 3.98437,-111.99999 z"/></svg>
+  <!-- 앱 헤더와 같은 락업: DM 마크(잉크색) | DISKMIGRATOR-X 자간 문자 + by 두 사이트 -->
+  <svg viewBox="56 95 256 165" width="92" height="59" aria-label="DiskMigrator-X" role="img" style="flex:none;"><path fill="#474540" fill-rule="evenodd" d="M 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/><path fill="#474540" d="M 268.87891,110.23633 217.88672,189.20117 196.9375,131.86914 A 18,18 0 0 0 173.85352,121.14063 18,18 0 0 0 163.125,144.22461 l 33.35937,91.29687 32.02735,3.58594 35.17773,-54.47656 -1.66211,46.72851 a 18,18 0 0 0 17.34766,18.62891 18,18 0 0 0 18.62891,-17.34766 l 3.98437,-111.99999 z"/></svg>
   <div style="border-left:1px solid var(--line); padding-left:18px;">
-    <h1 style="letter-spacing:.30em; font-weight:500; color:#474540; margin:0 0 3px; font-size:21px;">DISKMIGRATOR</h1>
+    <h1 style="letter-spacing:.30em; font-weight:500; color:#474540; margin:0 0 3px; font-size:21px;">DISKMIGRATOR-X</h1>
     <p style="margin:0 0 5px; font-size:12.5px;">by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a></p>
   </div>
   </div>
-  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">User Manual — copy, back up, and restore an entire Windows disk (a beginner-friendly guide) <span class="badge">v1.4</span></p>
+  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">User Manual — copy, back up, and restore an entire Windows disk (a beginner-friendly guide) <span class="badge">v1.0.0</span></p>
 </header>
 
 <nav class="toc">
@@ -94,6 +94,7 @@
   <a href="#restore">③ Restore</a>
   <a href="#fixboot">④ Fix Boot</a>
   <a href="#bootusb">⑤ Boot USB</a>
+  <a href="#claude">Claude</a>
   <a href="#faq">FAQ</a>
   <a href="#terms">Glossary</a>
   <a href="manual.html">한국어</a>
@@ -169,6 +170,21 @@
   <li>If problems are found, click the <b>Repair Boot</b> button that appears — after repairing, the check runs again automatically</li>
 </ol>
 <div class="note">The disk this computer is currently booted from needs no fixing, so repairs are not applied to it. When the check says "ready to boot", put the disk back in its machine and try booting.</div>
+<div class="note"><b>If it says "This disk is offline"</b>, the check did not fail — it <b>could not run</b>.
+  Windows has not mounted that disk's volumes, so the boot files cannot be read at all. Bring the disk online
+  as the message explains, then check again. Until then the result means <b>"not verified", not "no problems"</b>.</div>
+
+<h3 style="margin:22px 0 8px;">Save diagnostic report — to show someone else</h3>
+<div class="card">
+  <p>When the result is hard to make sense of, or you want help, <b>Save diagnostic report</b> gathers this disk's
+  boot information into a <b>single file</b>. The disk is only read, never modified.</p>
+  <p>Copy the file to another computer on a USB stick and show it to Claude, or send it to us.
+  <b>This matters most on a computer that will not boot</b> — that machine has no internet and no Claude,
+  but you can start it from the ⑤ Boot USB and press this one button to capture everything needed.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• Disk serials and volume names are <b>masked by default</b> — this file is meant to be shown to someone else.<br>
+  • The report <b>cannot be saved onto the disk being diagnosed</b>. Pick a USB stick or another disk.<br>
+  • Save it <b>before and after</b> a repair to compare what actually changed.</p>
+</div>
 
 <h2 id="bootusb">⑤ Boot USB — step by step</h2>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Make an <b>emergency USB</b> ahead of time, to rescue a computer whose Windows won't start at all.
@@ -180,11 +196,53 @@ Nothing extra to install — it is built entirely from materials already inside 
   <li>Click <b>Create Boot USB</b> → done in a few minutes</li>
 </ol>
 <div class="card">
-  <p><b>How to use it:</b> when a computer won't start, plug in this USB and power on — <b>DiskMigrator starts automatically</b>.
+  <p><b>How to use it:</b> when a computer won't start, plug in this USB and power on — <b>DiskMigrator-X starts automatically</b>.
   From there you can restore a backup image, clone a disk, or repair the boot configuration, just like normal.</p>
   <p style="color:var(--muted); font-size:13.5px;">• If the computer doesn't boot from the USB, press the boot-menu key while powering on (F12, F8, ESC, etc., depending on the maker) and pick the USB.<br>
   • Making it <b>in advance</b> is the whole point — once a PC is dead, you'd have to build the USB on another computer.</p>
 </div>
+
+<h2 id="claude">Claude connection — asking what to do</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">
+  Lets <b>Claude read this app's diagnostics directly</b>. Turn it on under <b>Claude</b> at the top right.
+  <b>It is off by default.</b></p>
+<div class="card">
+  <p><b>What it gives you.</b> You can just say "my disk won't boot" and Claude reads the boot files, drivers and
+  boot traces itself, then tells you <b>where it stopped</b>. You do not have to interpret the check results.</p>
+  <ol class="steps">
+    <li>Click <b>Open connection</b></li>
+    <li>Copy the <b>address and token</b> into Claude's MCP settings</li>
+    <li>Ask Claude — "have a look at why this disk won't boot"</li>
+  </ol>
+  <p style="color:var(--muted); font-size:13.5px;">You only paste the address and token <b>once</b> — they stay the same
+  after restarting the app. If you think the token leaked, click <b>Issue a new token</b> (then paste the new one into Claude).</p>
+</div>
+
+<div class="warn"><b>⚠ Claude cannot change a disk.</b> It only reads.
+  Cloning, backup, restore and boot repair are still done <b>by you, in this window</b>.</div>
+
+<div class="card">
+  <p><b>What happens when Claude suggests something.</b> A <b>suggestion card</b> appears at the top of the window,
+  saying what it proposes, from which disk to which, and why.</p>
+  <p>• <b>Apply</b> only <b>fills in the selection.</b> Nothing runs.<br>
+  • For anything that erases a disk (clone, restore) you must still <b>type the target model name</b> before it can start.
+  <b>Claude cannot do that for you.</b><br>
+  • You always press Start yourself.</p>
+  <p style="color:var(--muted); font-size:13.5px;">If you don't like it, click <b>Ignore</b>. Cards disappear on their own
+  after 10 minutes, or if the disks change.</p>
+</div>
+
+<div class="card">
+  <p><b>Seeing what Claude looked at.</b> Below the Claude panel there is a <b>call list</b> — when, which tool,
+  and on what.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• <b>Read</b> — the disk was only read.<br>
+  • <b>Suggestion</b> — a card was put on screen. Nothing ran.<br>
+  • <b>Red text</b> — the call was refused (for example, trying to touch the Windows disk you are using right now).</p>
+</div>
+
+<div class="note"><b>Privacy.</b> Disk serials and volume names are <b>masked by default</b>.
+  Diagnostics end up in the conversation log, so turn on "also send" only when needed.
+  The connection works <b>inside this computer only</b> (nothing outside can reach it) and closes with the app.</div>
 
 <h2>Booting from the copied disk</h2>
 <div class="card">
@@ -232,9 +290,9 @@ Nothing extra to install — it is built entirely from materials already inside 
 </div>
 
 <footer>
-  DiskMigrator v1.4 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · Download: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator-X v1.0.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · Download: github.com/withoz/DiskMigrator/releases ·
   Contact: <a href="mailto:withoz1111@gmail.com" style="color:var(--accent); text-decoration:none;">withoz1111@gmail.com</a><br>
-  If something goes wrong, send us the log files in <code>C:\Users\&lt;you&gt;\AppData\Local\DiskMigrator\logs</code>.
+  If something goes wrong, send us the log files in <code>C:\Users\&lt;you&gt;\AppData\Local\DiskMigrator-X\logs</code>.
 </footer>
 
 </div>

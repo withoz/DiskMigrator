@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DiskMigrator 사용설명서</title>
+<title>DiskMigrator-X 사용설명서</title>
 <style>
   :root {
     --ink: #2b2622; --muted: #837b72; --line: #e6e0d8;
@@ -76,14 +76,14 @@
 
 <header style="display:block;">
   <div style="display:flex; align-items:center; gap:16px;">
-  <!-- 앱 헤더와 같은 락업: DM 마크(잉크색) | DISKMIGRATOR 자간 문자 + by 두 사이트 -->
-  <svg viewBox="56 95 256 165" width="92" height="59" aria-label="DiskMigrator" role="img" style="flex:none;"><path fill="#474540" fill-rule="evenodd" d="M 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/><path fill="#474540" d="M 268.87891,110.23633 217.88672,189.20117 196.9375,131.86914 A 18,18 0 0 0 173.85352,121.14063 18,18 0 0 0 163.125,144.22461 l 33.35937,91.29687 32.02735,3.58594 35.17773,-54.47656 -1.66211,46.72851 a 18,18 0 0 0 17.34766,18.62891 18,18 0 0 0 18.62891,-17.34766 l 3.98437,-111.99999 z"/></svg>
+  <!-- 앱 헤더와 같은 락업: DM 마크(잉크색) | DISKMIGRATOR-X 자간 문자 + by 두 사이트 -->
+  <svg viewBox="56 95 256 165" width="92" height="59" aria-label="DiskMigrator-X" role="img" style="flex:none;"><path fill="#474540" fill-rule="evenodd" d="M 95.984375,107.03125 h 50.031255 c 42.9432,0 69.21758,31.95561 69.17612,61.12102 -0.0446,31.36872 -17.96704,62.86336 -69.17612,62.86336 H 95.984375 c -13.254834,0 -24,-10.74517 -24,-24 v -75.98438 c 0,-13.25483 10.745166,-24 24,-24 z m 14.000005,32.67188 h 36.03125 c 28,0 37.68751,16.98437 37.68751,29.98437 0,13 -9.68751,28.65626 -37.68751,28.65626 h -36.03125 z"/><path fill="#474540" d="M 268.87891,110.23633 217.88672,189.20117 196.9375,131.86914 A 18,18 0 0 0 173.85352,121.14063 18,18 0 0 0 163.125,144.22461 l 33.35937,91.29687 32.02735,3.58594 35.17773,-54.47656 -1.66211,46.72851 a 18,18 0 0 0 17.34766,18.62891 18,18 0 0 0 18.62891,-17.34766 l 3.98437,-111.99999 z"/></svg>
   <div style="border-left:1px solid var(--line); padding-left:18px;">
-    <h1 style="letter-spacing:.30em; font-weight:500; color:#474540; margin:0 0 3px; font-size:21px;">DISKMIGRATOR</h1>
+    <h1 style="letter-spacing:.30em; font-weight:500; color:#474540; margin:0 0 3px; font-size:21px;">DISKMIGRATOR-X</h1>
     <p style="margin:0 0 5px; font-size:12.5px;">by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a></p>
   </div>
   </div>
-  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">사용설명서 — 윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 (컴퓨터 초보자용 안내) <span class="badge">v1.4</span></p>
+  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">사용설명서 — 윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 (컴퓨터 초보자용 안내) <span class="badge">v1.0.0</span></p>
 </header>
 
 <nav class="toc">
@@ -94,6 +94,7 @@
   <a href="#restore">③ 복원</a>
   <a href="#fixboot">④ 부팅 복구</a>
   <a href="#bootusb">⑤ 부팅 USB</a>
+  <a href="#claude">Claude 연결</a>
   <a href="#faq">FAQ</a>
   <a href="#terms">용어 설명</a>
   <a href="manual-en.html">English</a>
@@ -169,6 +170,21 @@
   <li>문제가 발견되면 나타나는 <b>부팅 복구</b> 버튼 누르기 — 고친 뒤 자동으로 다시 검사됩니다</li>
 </ol>
 <div class="note">지금 컴퓨터가 부팅에 쓰고 있는 디스크는 고칠 필요가 없어 복구가 적용되지 않습니다. 검사 결과에 "부팅 준비됨"이 나오면 디스크를 다시 장착해 부팅해 보세요.</div>
+<div class="note"><b>"이 디스크는 오프라인입니다"가 나오면</b> 검사가 실패한 것이 아니라 <b>검사를 할 수 없었던</b> 것입니다.
+  윈도우가 그 디스크의 볼륨을 연결하지 않아 부팅 파일을 읽지 못한 상태입니다. 안내대로 디스크를 온라인으로
+  바꾼 뒤 다시 검사하세요. 그 전까지의 결과는 <b>"문제 없음"이 아니라 "확인 못 함"</b>입니다.</div>
+
+<h3 style="margin:22px 0 8px;">진단 리포트 저장 — 다른 사람에게 보여주기</h3>
+<div class="card">
+  <p>검사 결과가 이해되지 않거나 도움을 받고 싶을 때, <b>진단 리포트 저장</b> 버튼을 누르면
+  그 디스크의 부팅 관련 정보를 <b>파일 하나로</b> 모아 줍니다. 디스크는 수정하지 않고 읽기만 합니다.</p>
+  <p>저장한 파일을 USB로 다른 컴퓨터에 옮겨 Claude에게 보여주거나 저희에게 보내면 됩니다.
+  <b>부팅이 안 되는 컴퓨터에서 특히 쓸모 있습니다</b> — 그 컴퓨터에는 인터넷도 Claude도 없지만,
+  ⑤ 부팅 USB로 부팅해 이 버튼만 누르면 필요한 정보가 전부 담깁니다.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• 디스크 시리얼·볼륨 이름은 <b>기본적으로 가려서</b> 담습니다. 남에게 보여줄 파일이기 때문입니다.<br>
+  • 리포트는 <b>진단 대상 디스크에는 저장할 수 없습니다</b>. USB나 다른 디스크를 고르세요.<br>
+  • 고치기 <b>전과 후</b> 두 번 저장해 두면 무엇이 바뀌었는지 비교할 수 있습니다.</p>
+</div>
 
 <h2 id="bootusb">⑤ 부팅 USB — 따라하기</h2>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">윈도우가 아예 켜지지 않는 컴퓨터를 구조하기 위한 <b>비상용 USB</b>를 미리 만들어 둡니다.
@@ -180,11 +196,53 @@
   <li><b>부팅 USB 만들기</b> → 몇 분 뒤 완료됩니다</li>
 </ol>
 <div class="card">
-  <p><b>쓰는 방법:</b> 컴퓨터가 안 켜질 때 이 USB를 꽂고 켜면 <b>DiskMigrator가 자동으로 실행</b>됩니다.
+  <p><b>쓰는 방법:</b> 컴퓨터가 안 켜질 때 이 USB를 꽂고 켜면 <b>DiskMigrator-X가 자동으로 실행</b>됩니다.
   거기서 백업해 둔 이미지 복원, 디스크 클론, 부팅 복구를 그대로 쓸 수 있습니다.</p>
   <p style="color:var(--muted); font-size:13.5px;">• USB로 부팅이 안 되면 컴퓨터를 켤 때 부팅 메뉴 키(제조사마다 F12·F8·ESC 등)를 눌러 USB를 선택하세요.<br>
   • 미리 만들어 두는 것이 핵심입니다 — 고장 난 뒤에는 다른 컴퓨터에서 만들어야 합니다.</p>
 </div>
+
+<h2 id="claude">Claude 연결 — 무엇을 해야 할지 물어보기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">
+  이 앱의 진단을 <b>Claude가 직접 읽게</b> 하는 기능입니다. 화면 오른쪽 위 <b>Claude 연결</b>에서 켭니다.
+  <b>기본은 꺼져 있습니다.</b></p>
+<div class="card">
+  <p><b>무엇이 좋아지나요.</b> "디스크가 안 켜져요"라고만 말해도, Claude가 부팅 파일·드라이버·부팅 흔적을
+  직접 읽어 <b>어디서 멈췄는지</b> 짚어 줍니다. 화면의 검사 결과를 사람이 해석하지 않아도 됩니다.</p>
+  <ol class="steps">
+    <li><b>연결 통로 열기</b> 누르기</li>
+    <li>나오는 <b>주소와 토큰</b>을 복사해 Claude의 MCP 설정에 넣기</li>
+    <li>Claude에게 물어보기 — "이 디스크가 왜 부팅이 안 되는지 봐 줘"</li>
+  </ol>
+  <p style="color:var(--muted); font-size:13.5px;">주소와 토큰은 <b>한 번만</b> 넣으면 됩니다. 앱을 다시 켜도 같은 값이 유지됩니다.
+  토큰이 샜다고 생각되면 <b>새 토큰 발급</b>을 누르세요(그때는 Claude 설정에 다시 넣어야 합니다).</p>
+</div>
+
+<div class="warn"><b>⚠ Claude는 디스크를 바꾸지 못합니다.</b> 읽기만 합니다.
+  복제·백업·복원·부팅 복구는 <b>지금까지처럼 이 화면에서 사용자가 직접</b> 합니다.</div>
+
+<div class="card">
+  <p><b>Claude가 제안하면 어떻게 되나요.</b> 화면 위쪽에 <b>제안 카드</b>가 뜹니다. 카드에는 무엇을 하자는
+  것인지, 어느 디스크에서 어디로인지, 왜 그런지가 적혀 있습니다.</p>
+  <p>• <b>적용</b>을 누르면 <b>선택만 채워집니다.</b> 실행되지 않습니다.<br>
+  • 디스크를 지우는 작업(복제·복원)은 그 뒤에도 <b>대상 모델명을 직접 입력</b>해야 시작할 수 있습니다.
+  이 입력은 <b>Claude가 대신할 수 없습니다.</b><br>
+  • 시작 버튼은 언제나 사용자가 누릅니다.</p>
+  <p style="color:var(--muted); font-size:13.5px;">마음에 들지 않으면 <b>무시</b>를 누르세요. 카드는 10분이 지나거나
+  디스크 구성이 바뀌면 저절로 사라집니다.</p>
+</div>
+
+<div class="card">
+  <p><b>Claude가 무엇을 봤는지 확인하기.</b> Claude 연결 패널 아래에 <b>호출 목록</b>이 있습니다.
+  언제 어떤 도구가 무엇을 대상으로 불렸는지 그대로 보입니다.</p>
+  <p style="color:var(--muted); font-size:13.5px;">• <b>읽기</b> — 디스크를 읽기만 했습니다.<br>
+  • <b>제안</b> — 화면에 카드를 띄웠습니다. 실행된 것은 없습니다.<br>
+  • <b>붉은 글씨</b> — 거절된 호출입니다(예: 지금 쓰는 윈도우 디스크를 건드리려 한 경우).</p>
+</div>
+
+<div class="note"><b>개인정보.</b> 디스크 시리얼·볼륨 이름은 <b>기본적으로 가려서</b> 보냅니다.
+  진단 내용은 대화 기록에 남으므로, 필요할 때만 "함께 보내기"를 켜세요.
+  통로는 <b>이 컴퓨터 안에서만</b> 통하며(외부에서 접근 불가), 앱을 닫으면 함께 닫힙니다.</div>
 
 <h2>복사한 디스크로 부팅하기</h2>
 <div class="card">
@@ -232,9 +290,9 @@
 </div>
 
 <footer>
-  DiskMigrator v1.4 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · 다운로드: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator-X v1.0.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · 다운로드: github.com/withoz/DiskMigrator/releases ·
   문의: <a href="mailto:withoz1111@gmail.com" style="color:var(--accent); text-decoration:none;">withoz1111@gmail.com</a><br>
-  문제가 생기면 <code>C:\Users\사용자\AppData\Local\DiskMigrator\logs</code> 폴더의 로그 파일과 함께 문의하세요.
+  문제가 생기면 <code>C:\Users\사용자\AppData\Local\DiskMigrator-X\logs</code> 폴더의 로그 파일과 함께 문의하세요.
 </footer>
 
 </div>
