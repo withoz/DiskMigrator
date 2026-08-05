@@ -156,6 +156,16 @@ public sealed class Mapping(bool includeSensitive = false)
             "and is a rough order of magnitude, not a promise.",
         };
 
+        // 스냅샷 없이 계획하면 파티션별로 나눌 이유가 없어 디스크 전체가 한 구간이 됩니다.
+        // 그 사실을 말하지 않으면 "구간 1개"가 정보 부족이나 오류처럼 보입니다.
+        if (preview.Regions.Count == 1 && source.Partitions.Count > 1)
+        {
+            caveats.Add(
+                $"Planned as one whole-disk region. Without a snapshot there is no reason to split it per " +
+                $"partition, so the {source.Partitions.Count} partitions on the source do not appear separately " +
+                "here — that is expected, not a missing detail. Use inspect_disk to see the layout.");
+        }
+
         if (!fits)
         {
             caveats.Add($"The layout does not fit: it needs {SizeFormatter.Format(neededEnd)} but the target " +
