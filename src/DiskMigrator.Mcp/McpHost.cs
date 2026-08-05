@@ -76,6 +76,14 @@ public sealed class McpHost(IDiskService diskService, ILoggerFactory? loggerFact
             diskService,
             (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<Windows.Jobs.ImageInspector>()));
 
+        builder.Services.AddSingleton(new Windows.Jobs.DiagnosticCollector(
+
+            diskService,
+
+            (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<Windows.Jobs.DiagnosticCollector>()));
+
+        
+
         builder.Services.AddSingleton<ReadOnlyTools>();
 
         builder.Services

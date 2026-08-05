@@ -21,6 +21,7 @@ public sealed class ReadOnlyTools(
     IDiskReader diskService,
     Mapping mapping,
     Windows.Jobs.ImageInspector imageInspector,
+    Windows.Jobs.DiagnosticCollector diagnosticCollector,
     ILogger<ReadOnlyTools>? logger = null)
 {
     private readonly ILogger _logger = logger ?? (ILogger)NullLogger.Instance;
@@ -60,6 +61,113 @@ public sealed class ReadOnlyTools(
         }
 
         return (windowsRoot, null);
+    }
+
+    [McpServerTool(Name = "save_diagnostic")]
+    [Description(
+        "Collect EVERY boot diagnostic for a disk into a single file. This is how you help a PC that " +
+        "will not boot at all: on that machine there is no Claude, so the user runs this from the " +
+        "recovery USB, copies the file to a working PC, and you read it there. Collection is read-only — " +
+        "nothing is written to the diagnosed disk. Also use it BEFORE and AFTER a repair so you can " +
+        "prove with diff_diagnostics whether anything actually changed.")]
+    public async Task<ToolResult<DiagnosticSavedDto>> SaveDiagnosticAsync(
+        [Description("Physical disk number to diagnose.")] int deviceNumber,
+        [Description("Where to write the report, e.g. E:\\before.dmdiag")] string path,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return ToolResult<DiagnosticSavedDto>.Fail(ToolErrorCodes.InvalidArgument, "No output path was given.");
+
+            var (disk, error) = await ResolveDiskAsync<DiagnosticSavedDto>(deviceNumber, ct);
+            if (error is not null) return error;
+
+            var report = await diagnosticCollector.CollectAsync(deviceNumber, mapping.IncludeSensitive, ct);
+            await diagnosticCollector.SaveAsync(report, path, ct);
+
+            var info = new FileInfo(path);
+            _logger.LogInformation("MCP save_diagnostic({Number}) → {Path} ({Size:N0} bytes)",
+                deviceNumber, path, info.Length);
+
+            return ToolResult<DiagnosticSavedDto>.Success(
+                new DiagnosticSavedDto(path, info.Length, report.CollectedUtc, report.Summary));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP save_diagnostic 실패.");
+            return ToolResult<DiagnosticSavedDto>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "load_diagnostic")]
+    [Description(
+        "Read a diagnostic report saved by save_diagnostic — typically collected on a PC that cannot " +
+        "boot and carried over on a USB stick. Gives you the whole picture at once: disk layout, boot " +
+        "checks, boot-start drivers, hibernation state, ESP contents with the boot manager's signing " +
+        "authority, and how far the last boot attempt got.")]
+    public async Task<ToolResult<Windows.Jobs.DiagnosticReport>> LoadDiagnosticAsync(
+        [Description("Path to the .dmdiag report file.")] string path,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return ToolResult<Windows.Jobs.DiagnosticReport>.Fail(
+                    ToolErrorCodes.FileNotFound, $"No file at {path}.",
+                    "Check the path — reports made by this app end in .dmdiag.");
+            }
+
+            var report = await diagnosticCollector.LoadAsync(path, ct);
+            _logger.LogInformation("MCP load_diagnostic({Path}) → 수집 {When:u}", path, report.CollectedUtc);
+            return ToolResult<Windows.Jobs.DiagnosticReport>.Success(report);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP load_diagnostic 실패.");
+            return ToolResult<Windows.Jobs.DiagnosticReport>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "diff_diagnostics")]
+    [Description(
+        "Compare two diagnostic reports to see what a repair actually changed. Use this after any " +
+        "boot repair: if the disk still fails, first find out whether the repair reached the disk at all. " +
+        "A result of NO CHANGES is itself a strong finding — it means the cause lies outside the disk " +
+        "(firmware, hardware, or the target PC), not in its configuration.")]
+    public async Task<ToolResult<Windows.Jobs.DiagnosticDiffResult>> DiffDiagnosticsAsync(
+        [Description("Path to the earlier report (before the change).")] string beforePath,
+        [Description("Path to the later report (after the change).")] string afterPath,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            foreach (string p in new[] { beforePath, afterPath })
+            {
+                if (!File.Exists(p))
+                {
+                    return ToolResult<Windows.Jobs.DiagnosticDiffResult>.Fail(
+                        ToolErrorCodes.FileNotFound, $"No file at {p}.");
+                }
+            }
+
+            var before = await diagnosticCollector.LoadAsync(beforePath, ct);
+            var after = await diagnosticCollector.LoadAsync(afterPath, ct);
+            var diff = Windows.Jobs.DiagnosticDiff.Compare(before, after);
+
+            _logger.LogInformation("MCP diff_diagnostics → 차이 {Count}건 (같은 디스크={Same})",
+                diff.Changes.Count, diff.SameDisk);
+            return ToolResult<Windows.Jobs.DiagnosticDiffResult>.Success(diff);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MCP diff_diagnostics 실패.");
+            return ToolResult<Windows.Jobs.DiagnosticDiffResult>.Fail(ToolErrorCodes.Internal, ex.Message);
+        }
     }
 
     [McpServerTool(Name = "check_hardware_compatibility")]
