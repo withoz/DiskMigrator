@@ -19,9 +19,7 @@ public partial class App : Application
     private static readonly TimeSpan MinimumSplashTime = TimeSpan.FromSeconds(1.5);
 
     /// <summary>이번 실행의 로그 파일 경로. 결과 화면에서 사용자에게 보여줍니다.</summary>
-    public static string LogDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DiskMigrator", "logs");
+    public static string LogDirectory { get; } = AppIdentity.LogDirectory;
 
     /// <summary>
     /// 이번 실행의 UI 언어를 정합니다. 우선순위: 저장된 사용자 선택(LanguagePreference) >
@@ -111,10 +109,11 @@ public partial class App : Application
 
         _loggerFactory = new SerilogLoggerFactory(Log.Logger);
 
-        // 버전을 함께 남깁니다 — 사용자가 로그를 보내왔을 때 어느 빌드인지 특정할 수 없으면
-        // 이미 고친 결함을 다시 쫓게 됩니다.
+        // 제품명과 버전을 함께 남깁니다 — 사용자가 로그를 보내왔을 때 어느 앱의 어느 빌드인지
+        // 특정할 수 없으면 이미 고친 결함을 다시 쫓게 됩니다. 수동 버전과 함께 설치되므로
+        // 제품명이 특히 중요합니다.
         var asmVer = typeof(App).Assembly.GetName().Version;
-        Log.Information("=== DiskMigrator v{Version} 시작 (OS {Os}, {Bits}bit) ===",
+        Log.Information("=== " + AppIdentity.ProductName + " v{Version} 시작 (OS {Os}, {Bits}bit) ===",
             asmVer is null ? "?" : $"{asmVer.Major}.{asmVer.Minor}.{asmVer.Build}",
             Environment.OSVersion.VersionString,
             Environment.Is64BitProcess ? 64 : 32);
@@ -230,7 +229,7 @@ public partial class App : Application
             catch (Exception ex) { Log.Warning(ex, "Claude 연결 통로 정리 중 오류"); }
         }
 
-        Log.Information("=== DiskMigrator 종료 (코드 {Code}) ===", e.ApplicationExitCode);
+        Log.Information("=== " + AppIdentity.ProductName + " 종료 (코드 {Code}) ===", e.ApplicationExitCode);
         Log.CloseAndFlush();
         _loggerFactory?.Dispose();
 

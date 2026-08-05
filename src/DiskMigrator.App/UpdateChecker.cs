@@ -23,10 +23,34 @@ public static class UpdateChecker
 {
     private const string Repo = "withoz/DiskMigrator";
 
+    /// <summary>
+    /// DiskMigrator-X에는 아직 <b>자기 릴리스 채널이 없습니다.</b> 확인을 하지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// <c>releases/latest</c>는 저장소의 최신 릴리스 하나를 돌려줍니다 — 지금은 <b>수동 버전</b>의
+    /// 것입니다. 그대로 두면 X가 *"새 버전이 있습니다 1.4.2"* 라고 안내하고, 누르면 사용자가
+    /// <b>다른 제품</b>을 내려받습니다(2026-08-05 실기에서 그대로 재현됨).
+    ///
+    /// <para>버전을 1.0.0으로 맞춰도 해결되지 않습니다. 태그 비교상 1.0.0 &lt; 1.4.x 이므로
+    /// <b>영원히</b> "새 버전이 있다"가 됩니다.</para>
+    ///
+    /// <para>X를 릴리스할 때 X 전용 태그 접두사(예: <c>x-v1.0.0</c>)로 채널을 나누고, 그 접두사만
+    /// 골라 비교하도록 이 클래스를 고친 뒤 이 스위치를 끄십시오. 그때까지는 잘못된 안내를
+    /// 하느니 하지 않는 편이 낫습니다.</para>
+    /// </remarks>
+    /// <remarks>
+    /// <c>const</c>가 아니라 <c>static readonly</c>입니다 — <c>const false</c>로 두면 아래 코드가
+    /// 전부 "도달 불가"(CS0162)로 잡힙니다. 그 코드는 지울 것이 아니라 채널이 생기면 다시 쓸
+    /// 것이므로 남겨 둡니다.
+    /// </remarks>
+    private static readonly bool HasOwnReleaseChannel = false;
+
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     public static async Task<UpdateInfo> CheckAsync(Version current, CancellationToken ct = default)
     {
+        if (!HasOwnReleaseChannel) return new(false, null, null);
+
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DM_NO_UPDATE_CHECK")))
             return new(false, null, null);
 

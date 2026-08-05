@@ -328,8 +328,15 @@
                     <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1,0,0,0"
                             Padding="14,0,0,0" VerticalAlignment="Center">
                         <StackPanel>
-                            <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
-                                       FontSize="16.5" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                            <!-- 워드마크 뒤의 -X는 수동 버전과 한눈에 구분되어야 하므로 강조합니다.
+                                 두 앱이 같은 PC에 함께 설치되며, 어느 창을 보고 있는지 모르면
+                                 "Claude 연결이 안 보인다" 같은 혼란이 생깁니다. -->
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="D&#x2009;I&#x2009;S&#x2009;K&#x2009;M&#x2009;I&#x2009;G&#x2009;R&#x2009;A&#x2009;T&#x2009;O&#x2009;R"
+                                           FontSize="16.5" FontWeight="Normal" Foreground="{StaticResource Muted}" />
+                                <TextBlock Text="-X" FontSize="16.5" FontWeight="Bold" Margin="3,0,0,0"
+                                           Foreground="{StaticResource Accent}" />
+                            </StackPanel>
                             <!-- 제작사 링크 — 클릭하면 기본 브라우저로 엽니다(무료 도구의 유일한 보상 창구).
                                  스플래시·설명서와 같은 두 사이트 표기, 각각 따로 클릭됩니다. -->
                             <StackPanel Orientation="Horizontal" Margin="1,2,0,0">

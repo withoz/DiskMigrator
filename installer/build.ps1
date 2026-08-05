@@ -4,7 +4,7 @@
 #   1. 최신 앱을 단일 exe로 publish
 #   2. 앱 exe에 코드 서명 (인증서가 설정된 경우 — sign.ps1, 없으면 건너뜀)
 #   3. EULA 본문을 UTF-8 BOM 텍스트로 변환(설치 마법사 라이선스 단계가 한글을 올바로 표시)
-#   4. Inno Setup(ISCC.exe)으로 컴파일 → installer\output\DiskMigrator-Setup-v<버전>.exe
+#   4. Inno Setup(ISCC.exe)으로 컴파일 → installer\output\DiskMigrator-X-Setup-v<버전>.exe
 #   5. 설치 exe에 코드 서명 (인증서가 설정된 경우)
 #
 # 코드 서명은 인증서 환경변수(DM_SIGN_PFX 또는 DM_SIGN_THUMBPRINT)가 있을 때만 동작하고,
@@ -16,7 +16,7 @@ $ErrorActionPreference = 'Stop'
 $installerDir = $PSScriptRoot
 $root = Split-Path -Parent $installerDir
 
-$appExe = "$root\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish\DiskMigrator.App.exe"
+$appExe = "$root\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish\DiskMigratorX.exe"
 
 Write-Host "[1/5] 앱 publish (단일 exe)..." -ForegroundColor Cyan
 dotnet publish "$root\src\DiskMigrator.App\DiskMigrator.App.csproj" -c Release -r win-x64 --nologo -v m

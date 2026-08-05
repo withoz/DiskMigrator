@@ -24,8 +24,7 @@ public static class EulaAcceptance
     public const string Version = "1.0";
 
     private static string MarkerPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DiskMigrator",
+        AppIdentity.DataDirectory,
         $"eula-accepted-v{Version}.txt");
 
     /// <summary>이 사용자가 현재 버전의 EULA에 이미 동의했는지.</summary>

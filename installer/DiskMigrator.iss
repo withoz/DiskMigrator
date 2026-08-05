@@ -1,4 +1,4 @@
-﻿; DiskMigrator 설치 프로그램 (Inno Setup 6)
+; DiskMigrator 설치 프로그램 (Inno Setup 6)
 ;
 ; 빌드: installer\build.ps1 을 실행하면 최신 앱을 publish → 라이선스 생성 → 이 스크립트를
 ;       ISCC로 컴파일해 installer\output\DiskMigrator-Setup-v<버전>.exe 를 만듭니다.
@@ -6,15 +6,22 @@
 ; 이 앱은 단일 자체 포함 exe(런타임 미설치 PC에서도 실행)라 설치 구성이 단순합니다:
 ; exe 한 개를 Program Files에 넣고, 시작 메뉴 바로가기와 제거 프로그램을 만듭니다.
 
-#define AppName "DiskMigrator"
-#define AppVersion "1.4.1"
+; ⚠ 이 설치본은 수동 버전 DiskMigrator와 **함께** 설치됩니다 — 대체하지 않습니다.
+;   제품명·설치 경로·exe 이름·AppId를 전부 달리해야 두 앱이 공존합니다.
+
+#define AppName "DiskMigrator-X"
+#define AppVersion "1.0.0"
 #define AppPublisher "DiskMigrator"
-#define AppExeName "DiskMigrator.exe"
+#define AppExeName "DiskMigratorX.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"
 
 [Setup]
 ; AppId는 업그레이드·제거를 같은 제품으로 묶는 고정 키입니다. 절대 바꾸지 마십시오.
-AppId={{3937A695-EE14-4187-B133-0FA5A3631038}
+;
+; ⚠ 수동 버전(3937A695-…)과 **반드시 달라야** 합니다. 같으면 Windows가 두 제품을 하나로 보고,
+;   DiskMigrator-X를 설치하는 순간 사용자의 DiskMigrator v1.4.x가 업그레이드로 덮여 사라집니다.
+;   "기존 버전을 계속 쓸 수 있어야 한다"는 이 프로젝트의 전제가 그 한 줄에서 무너집니다.
+AppId={{0816A1C6-539A-459E-8937-26CD06F713DC}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
@@ -25,7 +32,7 @@ DisableProgramGroupPage=yes
 ; 설치 마법사에서 EULA 동의 단계를 띄웁니다(build.ps1이 UTF-8 BOM으로 생성).
 LicenseFile=EULA-license.txt
 OutputDir=output
-OutputBaseFilename=DiskMigrator-Setup-v{#AppVersion}
+OutputBaseFilename={#AppName}-Setup-v{#AppVersion}
 SetupIconFile=..\src\DiskMigrator.App\AppIcon.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2/max
@@ -46,7 +53,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#PublishDir}\DiskMigrator.App.exe"; DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
+Source: "{#PublishDir}\DiskMigratorX.exe"; DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
 ; 사용설명서(단일 HTML, 영어·한국어) — 시작 메뉴에서 바로 열 수 있게 함께 설치합니다.
 ; 두 파일은 서로 언어 링크로 연결되므로 같은 폴더에 나란히 있어야 합니다.
 Source: "..\docs\manual.html"; DestDir: "{app}"; DestName: "manual.html"; Flags: ignoreversion

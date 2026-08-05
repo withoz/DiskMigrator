@@ -51,7 +51,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
-  <data name="AppTitle" xml:space="preserve"><value>DiskMigrator — 디스크 클론</value></data>
+  <data name="AppTitle" xml:space="preserve"><value>DiskMigrator-X — 디스크 클론</value></data>
   <data name="ResizeHandleTooltip" xml:space="preserve"><value>끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)</value></data>
   <data name="NotAdminBadge" xml:space="preserve"><value>관리자 권한 아님 — 클론을 실행할 수 없습니다</value></data>
   <data name="Step1Title" xml:space="preserve"><value>디스크 선택</value></data>
