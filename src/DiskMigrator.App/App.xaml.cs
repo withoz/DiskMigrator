@@ -222,6 +222,14 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Claude 연결 통로를 닫습니다 — 앱이 사라졌는데 포트만 잡혀 있으면 안 됩니다.
+        // 종료 경로라 실패해도 계속 진행합니다.
+        if (MainWindow?.DataContext is ViewModels.MainViewModel vm)
+        {
+            try { vm.ShutdownMcpAsync().GetAwaiter().GetResult(); }
+            catch (Exception ex) { Log.Warning(ex, "Claude 연결 통로 정리 중 오류"); }
+        }
+
         Log.Information("=== DiskMigrator 종료 (코드 {Code}) ===", e.ApplicationExitCode);
         Log.CloseAndFlush();
         _loggerFactory?.Dispose();

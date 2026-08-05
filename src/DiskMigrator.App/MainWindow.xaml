@@ -363,6 +363,40 @@
                 </StackPanel>
 
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <!-- Claude 연결 — 작업 모드가 아니라 설정에 가까우므로 모드 탭에 넣지 않고 헤더에 둡니다.
+                         점 색으로 통로가 열려 있는지 한눈에 보입니다. -->
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Assistant"
+                            Cursor="Hand" Margin="0,0,16,0" VerticalAlignment="Center"
+                            Background="Transparent" BorderThickness="0" Padding="8,4">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,7,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource BorderBrushSoft}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding McpRunning}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{loc:Loc ModeAssistant}" FontSize="12.5" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAssistantMode}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+
                     <!-- 언어 전환: 한국어 · English. 고른 언어는 저장되고 창이 즉시 새 언어로 다시 그려집니다.
                          전환=창 재생성이므로 작업 중(클론·백업·복원·부팅 USB)에는 비활성화합니다 —
                          진행 화면이 사라지고 작업이 화면 없이 남는 사고를 막습니다. -->
@@ -1192,6 +1226,61 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </StackPanel>
+            </StackPanel>
+
+            <!-- ===== Claude 연결 (로컬 MCP 통로) =====
+                 기본은 꺼짐입니다 — 디스크를 읽는 통로를 사용자 모르게 열어두지 않습니다. -->
+            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+                        Visibility="{Binding IsAssistantMode, Converter={StaticResource BoolToVisibility}}">
+
+                <TextBlock Text="{loc:Loc McpTitle}" Style="{StaticResource SubHeading}" Margin="0,4,0,6" />
+                <TextBlock Text="{loc:Loc McpIntro}" Style="{StaticResource Caption}"
+                           TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                <!-- 켜기 전에 정해야 합니다 — 이미 나간 정보는 되돌릴 수 없으므로,
+                     통로가 열려 있는 동안에는 바꾸지 못하게 잠급니다. -->
+                <CheckBox IsChecked="{Binding McpShareDetails}"
+                          Content="{loc:Loc McpShareDetails}" Margin="0,0,0,2">
+                    <CheckBox.Style>
+                        <Style TargetType="CheckBox">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding McpRunning}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </CheckBox.Style>
+                </CheckBox>
+                <TextBlock Text="{loc:Loc McpShareDetailsHint}" Style="{StaticResource Caption}"
+                           TextWrapping="Wrap" Margin="24,0,0,14" />
+
+                <Button Command="{Binding ToggleMcpCommand}" Content="{Binding McpToggleLabel}"
+                        HorizontalAlignment="Left" Padding="18,9" Margin="0,0,0,12"
+                        Style="{StaticResource AccentButton}" />
+
+                <TextBlock Text="{Binding McpStatusText}" Style="{StaticResource Caption}"
+                           TextWrapping="Wrap" Margin="0,0,0,10"
+                           Visibility="{Binding McpStatusText, Converter={StaticResource NullToVisibility}}" />
+
+                <!-- 통로가 열렸을 때만 주소·토큰을 보여 줍니다. -->
+                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="8" Padding="14"
+                        Visibility="{Binding McpRunning, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc McpUrlLabel}" Style="{StaticResource Caption}" />
+                        <TextBox Text="{Binding McpUrl, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,10"
+                                 BorderThickness="0" Background="Transparent" />
+
+                        <TextBlock Text="{loc:Loc McpTokenLabel}" Style="{StaticResource Caption}" />
+                        <TextBox Text="{Binding McpToken, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,12"
+                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+
+                        <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
+                                HorizontalAlignment="Left" Padding="14,7" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- ===== 부팅 USB 모드 (WinPE 응급 USB 만들기) ===== -->

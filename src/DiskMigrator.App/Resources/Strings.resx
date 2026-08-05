@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -291,4 +291,4 @@
   <data name="CloseRunningMsg1" xml:space="preserve"><value>클론이 진행 중입니다.</value></data>
   <data name="CloseRunningMsg2" xml:space="preserve"><value>지금 닫으면 대상 디스크는 불완전한 상태로 남고, 그 디스크의 데이터를 사용할 수 없습니다.</value></data>
   <data name="CloseRunningMsg3" xml:space="preserve"><value>정말 닫으시겠습니까?</value></data>
-</root>
+<data name="McpCopied" xml:space="preserve"><value>주소와 토큰을 복사했습니다.</value></data><data name="McpCopyButton" xml:space="preserve"><value>주소·토큰 복사</value></data><data name="McpFailFmt" xml:space="preserve"><value>연결 통로 오류: {0}</value></data><data name="McpIntro" xml:space="preserve"><value>이 컴퓨터 안에서만 통하는 통로를 엽니다. Claude가 디스크 상태·부팅 구성·백업 이미지를 직접 읽고 무엇이 문제인지 짚어 줍니다. 읽기만 하며, 디스크를 바꾸는 일은 지금까지처럼 이 화면에서 사용자가 직접 합니다.</value></data><data name="McpRunningHint" xml:space="preserve"><value>통로가 열렸습니다. 아래 주소와 토큰을 Claude의 MCP 설정에 넣으십시오. 앱을 닫으면 통로도 함께 닫힙니다.</value></data><data name="McpShareDetails" xml:space="preserve"><value>디스크 시리얼·볼륨 이름도 함께 보내기</value></data><data name="McpShareDetailsHint" xml:space="preserve"><value>기본은 가려서 보냅니다. 진단 내용은 대화 기록에 남으므로 필요할 때만 켜십시오.</value></data><data name="McpStart" xml:space="preserve"><value>연결 통로 열기</value></data><data name="McpStop" xml:space="preserve"><value>연결 통로 닫기</value></data><data name="McpStoppedHint" xml:space="preserve"><value>통로를 닫았습니다. 다시 열면 새 토큰이 발급됩니다.</value></data><data name="McpTitle" xml:space="preserve"><value>Claude가 이 앱의 진단을 읽게 하기</value></data><data name="McpTokenLabel" xml:space="preserve"><value>토큰</value></data><data name="McpUrlLabel" xml:space="preserve"><value>주소</value></data><data name="ModeAssistant" xml:space="preserve"><value>Claude 연결</value></data></root>

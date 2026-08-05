@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -58,6 +58,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DiskMigrator.Core\DiskMigrator.Core.csproj" />
+    <ProjectReference Include="..\DiskMigrator.Mcp\DiskMigrator.Mcp.csproj" />
     <ProjectReference Include="..\DiskMigrator.Windows\DiskMigrator.Windows.csproj" />
   </ItemGroup>
 

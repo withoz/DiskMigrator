@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -291,4 +291,4 @@
   <data name="CloseRunningMsg1" xml:space="preserve"><value>A clone is in progress.</value></data>
   <data name="CloseRunningMsg2" xml:space="preserve"><value>If you close now, the target disk will be left incomplete and its data will be unusable.</value></data>
   <data name="CloseRunningMsg3" xml:space="preserve"><value>Are you sure you want to close?</value></data>
-</root>
+<data name="McpCopied" xml:space="preserve"><value>Address and token copied.</value></data><data name="McpCopyButton" xml:space="preserve"><value>Copy address and token</value></data><data name="McpFailFmt" xml:space="preserve"><value>Connection error: {0}</value></data><data name="McpIntro" xml:space="preserve"><value>Opens a channel that works only inside this computer. Claude can read disk state, boot configuration and backup images directly, and point out what is wrong. It only reads — changing a disk is still something you do here, yourself.</value></data><data name="McpRunningHint" xml:space="preserve"><value>The connection is open. Put the address and token below into Claude's MCP settings. Closing the app closes the connection too.</value></data><data name="McpShareDetails" xml:space="preserve"><value>Also send disk serials and volume names</value></data><data name="McpShareDetailsHint" xml:space="preserve"><value>Masked by default. Diagnostics end up in the conversation log, so turn this on only when needed.</value></data><data name="McpStart" xml:space="preserve"><value>Open connection</value></data><data name="McpStop" xml:space="preserve"><value>Close connection</value></data><data name="McpStoppedHint" xml:space="preserve"><value>Connection closed. Opening it again issues a new token.</value></data><data name="McpTitle" xml:space="preserve"><value>Let Claude read this app's diagnostics</value></data><data name="McpTokenLabel" xml:space="preserve"><value>Token</value></data><data name="McpUrlLabel" xml:space="preserve"><value>Address</value></data><data name="ModeAssistant" xml:space="preserve"><value>Claude</value></data></root>

@@ -41,6 +41,8 @@ public enum AppMode
     FixBoot,
     /// <summary>부팅 USB(WinPE) 만들기 — 안 켜지는 PC를 구조하는 응급 도구.</summary>
     BootUsb,
+    /// <summary>Claude 연결 — 이 앱의 진단을 Claude가 읽을 수 있게 여는 로컬 통로.</summary>
+    Assistant,
 }
 
 [SupportedOSPlatform("windows")]
@@ -119,6 +121,97 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>VSS 가용성을 한 번이라도 진단했는지(첫 진단에서만 옵션 기본값을 정하기 위함).</summary>
     private bool _snapshotAvailabilityKnown;
 
+    // --- Claude 연결 (로컬 MCP 통로) --------------------------------------
+
+    private DiskMigrator.Mcp.McpHost? _mcpHost;
+
+    /// <summary>연결 통로가 열려 있는지.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(McpToggleLabel))]
+    private bool _mcpRunning;
+
+    /// <summary>Claude 설정에 넣을 주소. 꺼져 있으면 빈 문자열.</summary>
+    [ObservableProperty] private string _mcpUrl = "";
+
+    /// <summary>접근 토큰. 꺼져 있으면 빈 문자열.</summary>
+    [ObservableProperty] private string _mcpToken = "";
+
+    /// <summary>안내·오류 문구.</summary>
+    [ObservableProperty] private string _mcpStatusText = "";
+
+    /// <summary>
+    /// 디스크 시리얼·볼륨 레이블을 가리지 않고 보낼지. <b>기본은 가립니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 진단 결과는 대화 기록에 남습니다. 사용자가 의도치 않게 공유하는 일을 막으려면
+    /// 가리는 쪽이 기본이어야 하고, 필요할 때만 사용자가 직접 켜야 합니다.
+    /// </remarks>
+    [ObservableProperty] private bool _mcpShareDetails;
+
+    public string McpToggleLabel => McpRunning
+        ? Strings.Get("McpStop")
+        : Strings.Get("McpStart");
+
+    /// <summary>연결 통로를 켜고 끕니다.</summary>
+    [RelayCommand]
+    private async Task ToggleMcpAsync()
+    {
+        try
+        {
+            if (_mcpHost is { IsRunning: true })
+            {
+                await _mcpHost.StopAsync();
+                McpRunning = false;
+                McpUrl = "";
+                McpToken = "";
+                McpStatusText = Strings.Get("McpStoppedHint");
+                _logger.LogInformation("Claude 연결 통로를 닫았습니다.");
+                return;
+            }
+
+            _mcpHost ??= new DiskMigrator.Mcp.McpHost(_diskService, _loggerFactory);
+            var status = await _mcpHost.StartAsync(McpShareDetails);
+
+            McpRunning = status.Running;
+            McpUrl = status.Url ?? "";
+            McpToken = status.Token ?? "";
+            McpStatusText = Strings.Get("McpRunningHint");
+            _logger.LogInformation("Claude 연결 통로를 열었습니다: {Url}", status.Url);
+        }
+        catch (Exception ex)
+        {
+            // 통로를 못 열어도 앱의 다른 기능은 그대로 쓸 수 있어야 합니다.
+            _logger.LogError(ex, "Claude 연결 통로 전환에 실패했습니다.");
+            McpRunning = false;
+            McpStatusText = Strings.Format("McpFailFmt", ex.Message);
+        }
+    }
+
+    /// <summary>주소와 토큰을 클립보드로 복사합니다 — 손으로 옮겨 적지 않게.</summary>
+    [RelayCommand]
+    private void CopyMcpSettings()
+    {
+        if (!McpRunning) return;
+        try
+        {
+            System.Windows.Clipboard.SetText($"{McpUrl}\nAuthorization: Bearer {McpToken}");
+            McpStatusText = Strings.Get("McpCopied");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "클립보드 복사에 실패했습니다.");
+            McpStatusText = Strings.Format("McpFailFmt", ex.Message);
+        }
+    }
+
+    /// <summary>앱을 닫을 때 통로를 정리합니다.</summary>
+    public async Task ShutdownMcpAsync()
+    {
+        if (_mcpHost is null) return;
+        await _mcpHost.DisposeAsync();
+        _mcpHost = null;
+    }
+
     // --- 상태 -------------------------------------------------------------
 
     // CanStart는 계산 속성이라 PropertyChanged만으로는 버튼이 다시 평가되지 않습니다.
@@ -146,6 +239,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsRestoreMode))]
     [NotifyPropertyChangedFor(nameof(IsFixBootMode))]
     [NotifyPropertyChangedFor(nameof(IsBootUsbMode))]
+    [NotifyPropertyChangedFor(nameof(IsAssistantMode))]
     [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
     private AppMode _mode = AppMode.Clone;
 
@@ -154,6 +248,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsRestoreMode => Mode == AppMode.Restore;
     public bool IsFixBootMode => Mode == AppMode.FixBoot;
     public bool IsBootUsbMode => Mode == AppMode.BootUsb;
+    public bool IsAssistantMode => Mode == AppMode.Assistant;
 
     /// <summary>
     /// 완료 화면의 부팅 관련 후속 작업(부팅 검사·복구 등)을 보일지. 클론·복원 성공 시 보이고
