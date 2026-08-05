@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Claude 연계(MCP) 계층.
+
+    앱 안에서 도는 로컬 MCP 서버입니다. 엔진(Core/Windows)을 호출할 뿐,
+    안전 판정을 다시 구현하지 않습니다 — docs/MCP-PLAN.md §4 안전 원칙.
+
+    의존 방향은 단방향입니다: Mcp → Core/Windows. Core/Windows는 MCP를 모릅니다.
+    그래야 master(수동 버전)와의 차이가 최소로 유지됩니다.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DiskMigrator.Core\DiskMigrator.Core.csproj" />
+    <ProjectReference Include="..\DiskMigrator.Windows\DiskMigrator.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

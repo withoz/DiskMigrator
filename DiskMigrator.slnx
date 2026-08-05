@@ -2,10 +2,12 @@
   <Folder Name="/src/">
     <Project Path="src/DiskMigrator.App/DiskMigrator.App.csproj" />
     <Project Path="src/DiskMigrator.Core/DiskMigrator.Core.csproj" />
+    <Project Path="src/DiskMigrator.Mcp/DiskMigrator.Mcp.csproj" />
     <Project Path="src/DiskMigrator.Windows/DiskMigrator.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DiskMigrator.Core.Tests/DiskMigrator.Core.Tests.csproj" />
+    <Project Path="tests/DiskMigrator.Mcp.Tests/DiskMigrator.Mcp.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/DiskMigrator.Cli/DiskMigrator.Cli.csproj" />
@@ -13,3 +15,4 @@
     <Project Path="tools/DiskMigrator.VhdTest/DiskMigrator.VhdTest.csproj" />
   </Folder>
 </Solution>
+
