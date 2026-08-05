@@ -190,12 +190,16 @@ public sealed partial class MainViewModel : ObservableObject
 
                 // 제안이 오거나 사라지면 카드를 보이고 숨깁니다. MCP 스레드에서 오는
                 // 이벤트이므로 UI 스레드로 넘겨야 합니다.
+                //
+                // ⚠ 반드시 BeginInvoke(비동기)입니다. Invoke는 MCP 스레드가 UI를 기다리게
+                //   하는데, 앱을 닫을 때 UI 스레드는 ShutdownMcpAsync를 동기로 기다립니다.
+                //   그 순간 처리 중인 호출이 있으면 서로를 기다려 앱이 멈춥니다.
+                //   화면 갱신은 몇 밀리초 늦어도 되지만, 교착은 강제 종료 말고 길이 없습니다.
                 _proposalStore.Changed += (_, e) =>
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() => Proposal = e.Current);
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => Proposal = e.Current);
 
-                // 호출 기록은 MCP 스레드에서 오므로 UI 스레드로 넘겨야 합니다.
                 _mcpActivityLog.Recorded += (_, a) =>
-                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
                         McpActivities.Insert(0, new McpActivityViewModel(a));
                         while (McpActivities.Count > DiskMigrator.Mcp.McpActivityLog.Capacity)

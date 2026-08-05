@@ -130,7 +130,7 @@ public sealed class McpHost(
         // "localhost"나 "*" 같은 문자열은 환경에 따라 모든 인터페이스에 붙을 수 있습니다.
         // 지난번 포트를 먼저 시도합니다 — 주소가 그대로여야 Claude 설정을 다시 고치지 않습니다.
         // 그 포트가 이미 쓰이고 있으면 평소대로 빈 포트를 찾습니다.
-        _port = FindFreePort(reuse?.Port);
+        _port = await FindFreePortAsync(reuse?.Port, ct);
         builder.Services.Configure<KestrelServerOptions>(k => k.Listen(IPAddress.Loopback, _port));
 
         var app = builder.Build();
@@ -217,7 +217,12 @@ public sealed class McpHost(
     /// 먼저 시도할 포트(지난번에 쓰던 것). 비어 있으면 그대로 씁니다 — 주소가 유지되어야
     /// 사용자가 Claude 설정을 다시 고치지 않습니다.
     /// </param>
-    private static int FindFreePort(int? preferFirst = null)
+    /// <remarks>
+    /// ⚠ <b>기다림은 반드시 비동기여야 합니다.</b> 이 메서드는 <see cref="StartAsync"/>의 첫
+    /// <c>await</c>보다 앞에 있어, 부른 스레드에서 그대로 돕니다 — 앱에서는 UI 스레드입니다.
+    /// <c>Thread.Sleep</c>을 쓰면 통로를 닫고 바로 다시 열 때 화면이 2초 얼어붙습니다.
+    /// </remarks>
+    private static async Task<int> FindFreePortAsync(int? preferFirst, CancellationToken ct)
     {
         // 통로를 닫고 곧바로 다시 열면 방금 쓰던 포트가 아직 풀리지 않았을 수 있습니다.
         // 그때 다른 번호로 옮겨 가면 주소가 바뀌어 사용자가 Claude 설정을 다시 고쳐야 합니다.
@@ -227,7 +232,7 @@ public sealed class McpHost(
             for (int attempt = 0; attempt < 10; attempt++)
             {
                 if (IsFree(first)) return first;
-                Thread.Sleep(200);
+                await Task.Delay(200, ct);
             }
         }
 
