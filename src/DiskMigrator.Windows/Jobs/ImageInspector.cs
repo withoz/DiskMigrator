@@ -44,6 +44,86 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
 {
     private readonly ILogger _logger = logger ?? NullLogger.Instance;
 
+    /// <summary>
+    /// 이미지를 <b>읽기 전용으로 부착한 채</b> 원하는 검사를 돌리고, 끝나면 분리합니다.
+    /// </summary>
+    /// <remarks>
+    /// 부팅 진단(<c>BootReadinessCheck</c>·<c>BootDriverInventory</c>·<c>EspAudit</c> 등)은
+    /// 모두 <see cref="DiskInfo"/>를 받습니다 — 물리 디스크든 부착된 이미지든 구분하지 않습니다.
+    /// 그런데 그 도구들을 이미지에 대고 쓸 방법이 없어서, <b>"이 백업으로 복원하면 부팅될까"</b>에
+    /// 답하려면 먼저 복원해야 했습니다. 사용자가 피하고 싶은 바로 그 위험입니다.
+    ///
+    /// <para>부착된 이미지는 그동안 정식 디스크 번호를 가지므로, 여기서 그 <see cref="DiskInfo"/>를
+    /// 넘겨주면 기존 진단이 <b>그대로</b> 돕니다. 새로 만들 엔진이 없습니다.</para>
+    ///
+    /// <para><b>부착은 읽기 전용입니다.</b> 이미지는 수정되지 않으며, 콜백이 예외를 던져도
+    /// 분리는 보장됩니다.</para>
+    /// </remarks>
+    /// <returns>부착·인식에 실패하면 <c>default</c>. 실패 이유는 <paramref name="failure"/>에 담습니다.</returns>
+    public async Task<T?> WithAttachedDiskAsync<T>(
+        string imagePath, Func<DiskInfo, T> body, Action<string>? failure = null,
+        CancellationToken ct = default)
+    {
+        var info = new FileInfo(imagePath);
+        if (!info.Exists || info.Length < (1L << 20))
+        {
+            failure?.Invoke(L.T("이미지 파일이 아닙니다(없거나 너무 작습니다).",
+                                "Not an image file (missing or too small)."));
+            return default;
+        }
+
+        return await Task.Run(() =>
+        {
+            VirtualDisk vhd;
+            try
+            {
+                vhd = VirtualDisk.OpenAndAttach(imagePath, readOnly: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "이미지 부착 실패: {Path}", imagePath);
+                failure?.Invoke(L.T($"이미지를 부착하지 못했습니다 — 손상되었을 수 있습니다. ({ex.Message})",
+                                    $"The image could not be attached — it may be corrupted. ({ex.Message})"));
+                return default;
+            }
+
+            using (vhd)
+            {
+                var disk = ResolveAttachedDisk(vhd, ct);
+                if (disk is null)
+                {
+                    failure?.Invoke(L.T("부착된 이미지에서 파티션을 인식하지 못했습니다.",
+                                        "No partitions were recognized on the attached image."));
+                    return default;
+                }
+                return body(disk);
+            }
+        }, ct);
+    }
+
+    /// <summary>
+    /// 부착된 이미지의 <see cref="DiskInfo"/>를 얻습니다.
+    /// </summary>
+    /// <remarks>
+    /// 부착 직후에는 볼륨 연결이 늦을 수 있어 몇 번 다시 열거합니다 — 한 번만 보고 포기하면
+    /// 멀쩡한 이미지를 "파티션 없음"으로 판정합니다.
+    /// </remarks>
+    private DiskInfo? ResolveAttachedDisk(VirtualDisk vhd, CancellationToken ct)
+    {
+        DiskInfo? disk = null;
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            Thread.Sleep(700);
+            var disks = diskService.EnumerateDisksAsync(ct).GetAwaiter().GetResult();
+            disk = disks.FirstOrDefault(d => d.DeviceNumber == vhd.DiskNumber);
+            if (disk is not null && disk.Partitions.Count > 0 &&
+                disk.Partitions.Any(p => p.FileSystem is not null))
+                break;
+        }
+        return disk is { Partitions.Count: > 0 } ? disk : null;
+    }
+
     public async Task<ImageInspectionReport> InspectAsync(string imagePath, CancellationToken ct = default)
     {
         var items = new List<ImageCheckItem>();
@@ -88,19 +168,9 @@ public sealed class ImageInspector(IDiskService diskService, ILogger? logger = n
                 L.T("부착 성공 (읽기 전용).", "Attached successfully (read-only).")));
 
             // 3) 파티션 테이블 — 부착 직후엔 볼륨 연결이 늦을 수 있어 몇 번 다시 열거합니다.
-            DiskInfo? disk = null;
-            for (int attempt = 0; attempt < 4; attempt++)
-            {
-                ct.ThrowIfCancellationRequested();
-                Thread.Sleep(700);
-                var disks = diskService.EnumerateDisksAsync(ct).GetAwaiter().GetResult();
-                disk = disks.FirstOrDefault(d => d.DeviceNumber == vhd.DiskNumber);
-                if (disk is not null && disk.Partitions.Count > 0 &&
-                    disk.Partitions.Any(p => p.FileSystem is not null))
-                    break;
-            }
+            var disk = ResolveAttachedDisk(vhd, ct);
 
-            if (disk is null || disk.Partitions.Count == 0)
+            if (disk is null)
             {
                 items.Add(new(L.T("파티션 테이블", "Partition table"), false, L.T(
                     "부착된 이미지에서 파티션을 인식하지 못했습니다 — 파티션 테이블이 손상되었을 수 있습니다.",
