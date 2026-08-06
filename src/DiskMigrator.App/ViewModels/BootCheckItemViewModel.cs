@@ -1,4 +1,5 @@
 using System.Windows.Media;
+using DiskMigrator.Core.Localization;
 using DiskMigrator.Core.Registry;
 
 namespace DiskMigrator.App.ViewModels;
@@ -19,10 +20,12 @@ public sealed class BootCheckItemViewModel
 
         (Mark, StatusBrush) = (item.Passed, item.Severity) switch
         {
-            (true, _) => ("통과", Pass),
-            (false, BootCheckSeverity.Fatal) => ("실패", Fail),
-            (false, _) => ("경고", Warn),
-            (null, _) => ("확인 불가", Skip),
+            // 배지 문구도 화면 언어를 따라야 합니다 — 영어로 쓰는 사용자에게 이 네 개만
+            // 한국어로 남아 있었습니다. 같은 앱의 PeFileDialog 방식(L.T)을 따릅니다.
+            (true, _) => (L.T("통과", "Pass"), Pass),
+            (false, BootCheckSeverity.Fatal) => (L.T("실패", "Fail"), Fail),
+            (false, _) => (L.T("경고", "Warning"), Warn),
+            (null, _) => (L.T("확인 불가", "Not verified"), Skip),
         };
     }
 
