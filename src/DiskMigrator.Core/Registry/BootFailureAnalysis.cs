@@ -39,6 +39,7 @@ public static class BootFailureAnalysis
     public const string CodeThirdPartyBootDriver = "THIRD_PARTY_BOOT_DRIVER";
     public const string CodeOutsideDisk = "CAUSE_OUTSIDE_DISK";
     public const string CodeDiskOffline = "DISK_OFFLINE";
+    public const string CodeUnverified = "ESSENTIAL_CHECKS_UNVERIFIED";
 
     /// <summary>
     /// 1단계 진단 결과들을 받아 원인을 추립니다 — 순수 함수라 테스트로 고정할 수 있습니다.
@@ -81,6 +82,27 @@ public static class BootFailureAnalysis
                 "The disk is offline — no boot conclusion can be drawn until it is online. " +
                 "Do not treat the unverified checks below as faults.",
                 checks);
+        }
+
+        // 오프라인이 아니어도 치명 항목을 확인하지 못하는 경우가 있습니다 — 파일시스템이
+        // 손상돼 Windows가 그 볼륨을 마운트하지 못하면 \Windows를 아예 찾을 수 없습니다.
+        //
+        // 그 상태에서 곁가지 소견(예: 부팅 관리자 서명)이 "가장 유력한 원인"으로 올라가면
+        // 사용자는 Secure Boot를 끄러 가고, 진짜 문제인 손상은 그대로 남습니다.
+        // 실기에서 실제로 그렇게 나왔습니다(손상된 백업 이미지, 2026-08-06).
+        var unverified = boot?.Items
+            .Where(i => i.Severity == BootCheckSeverity.Fatal && i.Passed is null)
+            .ToList() ?? [];
+
+        if (unverified.Count > 0)
+        {
+            causes.Add(new(CodeUnverified, "Certain",
+                "These essential checks could not be performed: " +
+                string.Join(", ", unverified.Select(i => i.Name)) +
+                ". This is 'not verified', not 'not a problem' — the usual reason is that the volume could " +
+                "not be mounted, for example because its filesystem is damaged.",
+                "Find out why the volume cannot be mounted first. For an image, run inspect_image; " +
+                "for a disk, check that it is online. Findings below are side observations, not the cause."));
         }
 
         // --- 확정적인 것부터 -------------------------------------------------
@@ -169,6 +191,11 @@ public static class BootFailureAnalysis
                   "rather than the disk — start with check_hardware_compatibility."
                 : "Nothing conclusive was found. Some diagnostics could not run — check that the disk is online " +
                   "and its volumes are reachable, then run them again."
+            // 확인하지 못한 항목이 있으면 "가장 유력한 원인"이라는 말 자체가 성립하지 않습니다.
+            // 본체를 못 본 채로 곁가지를 원인이라 부르면 사용자를 엉뚱한 데로 보냅니다.
+            : causes[0].Code == CodeUnverified
+                ? $"Essential checks could not be performed ({unverified.Count}), so no cause can be named yet. " +
+                  "Resolve that first — the other findings are side observations, not conclusions."
             : causes[0].Confidence == "Certain"
                 ? $"Most likely cause: {causes[0].Code}. This one is conclusive — fix it first."
                 : $"Most likely cause: {causes[0].Code} ({causes[0].Confidence.ToLowerInvariant()} confidence), " +

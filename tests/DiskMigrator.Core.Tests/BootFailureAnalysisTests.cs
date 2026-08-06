@@ -79,6 +79,55 @@ public class BootFailureAnalysisTests
         Assert.Contains("offline", r.Verdict, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// 확인하지 못한 치명 항목이 있으면, 곁가지 소견을 "가장 유력한 원인"으로 내세우면 안 됩니다.
+    /// </summary>
+    /// <remarks>
+    /// 2026-08-06 손상된 백업 이미지에서 실제로 나온 결과입니다. NTFS가 손상돼 Windows 볼륨을
+    /// 마운트하지 못했는데(= 본체를 아예 못 봄), 판정은 부팅 관리자 서명(Low)을 원인으로
+    /// 내세웠습니다. 사용자는 Secure Boot를 끄러 가고 진짜 문제인 손상은 그대로 남습니다.
+    ///
+    /// <para>오프라인 디스크에서 고친 것과 <b>같은 종류</b>인데, 그때는 오프라인만 막고
+    /// "확인 못 한 치명 항목" 일반은 그대로 두었습니다.</para>
+    /// </remarks>
+    [Fact]
+    public void 확인_못_한_치명_항목이_있으면_곁가지를_원인으로_내세우지_않는다()
+    {
+        // Windows 볼륨을 확인하지 못했고(치명·null), ESP 서명만 곁가지로 잡힌 상황
+        var items = new List<BootCheckItem>
+        {
+            new("Windows 볼륨", null, BootCheckSeverity.Fatal, "볼륨을 마운트하지 못했습니다"),
+        };
+
+        var r = BootFailureAnalysis.Analyze(
+            boot: new BootReadinessReport(items),
+            drivers: null, fastStartup: null, trace: null,
+            esp: Esp(authority: SigningAuthority.Ca2023));
+
+        // 확인 못 한 것이 맨 앞에 와야 합니다.
+        Assert.Equal(BootFailureAnalysis.CodeUnverified, r.Causes[0].Code);
+        Assert.Equal("Certain", r.Causes[0].Confidence);
+        Assert.Contains("Windows 볼륨", r.Causes[0].Finding);
+
+        // 판정이 곁가지를 원인이라 부르면 안 됩니다.
+        Assert.DoesNotContain("Most likely cause", r.Verdict, StringComparison.Ordinal);
+        Assert.Contains("could not be performed", r.Verdict, StringComparison.OrdinalIgnoreCase);
+
+        // 곁가지 소견 자체는 남아 있어야 합니다 — 지우면 근거가 사라집니다.
+        Assert.Contains(r.Causes, c => c.Code == BootFailureAnalysis.CodeSignature2023);
+    }
+
+    /// <summary>확인이 다 된 경우에는 예전처럼 원인을 지목해야 합니다.</summary>
+    [Fact]
+    public void 확인이_다_됐으면_원인을_지목한다()
+    {
+        var r = BootFailureAnalysis.Analyze(
+            Boot(true), Drivers("stornvme"), Fast(false), Trace(BootProgress.BootloaderOnly), Esp());
+
+        Assert.DoesNotContain(r.Causes, c => c.Code == BootFailureAnalysis.CodeUnverified);
+        Assert.Contains("Most likely cause", r.Verdict, StringComparison.Ordinal);
+    }
+
     /// <summary>온라인이면 지금까지의 판단이 그대로여야 합니다 — 기본값이 판단을 바꾸면 안 됩니다.</summary>
     [Fact]
     public void 온라인이면_기존_판단이_그대로다()
