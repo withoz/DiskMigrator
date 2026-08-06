@@ -1,8 +1,8 @@
-DiskMigrator End User License Agreement (EULA)
+DiskMigrator-X End User License Agreement (EULA)
 Version 1.0
 
 IMPORTANT — PLEASE READ CAREFULLY.
-By installing, running, or using DiskMigrator ("the Software"), you agree to all
+By installing, running, or using DiskMigrator-X ("the Software"), you agree to all
 of the terms of this Agreement. If you do not agree, do not use the Software.
 
 
