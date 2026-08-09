@@ -137,6 +137,19 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>접근 토큰. 꺼져 있으면 빈 문자열.</summary>
     [ObservableProperty] private string _mcpToken = "";
 
+    /// <summary>
+    /// 토큰이 실린 주소 — <b>Claude 앱의 커넥터 추가 화면용</b>.
+    /// </summary>
+    /// <remarks>
+    /// 그 화면에는 헤더를 넣을 칸이 없고 주소와 OAuth 항목만 있습니다. 우리는 OAuth를 쓰지
+    /// 않으므로, 화면으로 연결하려는 사용자는 인증에 막힙니다 — 명령을 칠 줄 아는 사람만
+    /// 쓸 수 있게 되는 셈입니다. 이 주소 한 줄이면 그 화면에서도 연결됩니다.
+    ///
+    /// <para><b>이 줄에는 열쇠가 들어 있습니다.</b> 화면에서도 그렇게 알리고, 로그에는
+    /// 남지 않게 막아 두었습니다.</para>
+    /// </remarks>
+    [ObservableProperty] private string _mcpConnectorUrl = "";
+
     /// <summary>안내·오류 문구.</summary>
     [ObservableProperty] private string _mcpStatusText = "";
 
@@ -179,6 +192,7 @@ public sealed partial class MainViewModel : ObservableObject
                 McpRunning = false;
                 McpUrl = "";
                 McpToken = "";
+                McpConnectorUrl = "";
                 McpStatusText = Strings.Get("McpStoppedHint");
                 _logger.LogInformation("Claude 연결 통로를 닫았습니다.");
                 return;
@@ -222,6 +236,7 @@ public sealed partial class MainViewModel : ObservableObject
             McpRunning = status.Running;
             McpUrl = status.Url ?? "";
             McpToken = status.Token ?? "";
+            McpConnectorUrl = status.ConnectorUrl ?? "";
             McpStatusText = Strings.Get(stored is null ? "McpRunningHint" : "McpRunningReusedHint");
 
             // 실제로 열린 포트를 보관합니다 — 지난번 포트가 막혀 다른 번호로 열렸을 수 있습니다.
@@ -277,6 +292,25 @@ public sealed partial class MainViewModel : ObservableObject
         {
             System.Windows.Clipboard.SetText($"{McpUrl}\nAuthorization: Bearer {McpToken}");
             McpStatusText = Strings.Get("McpCopied");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "클립보드 복사에 실패했습니다.");
+            McpStatusText = Strings.Format("McpFailFmt", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 토큰이 실린 주소만 복사합니다 — 커넥터 화면에 붙여 넣을 한 줄.
+    /// </summary>
+    [RelayCommand]
+    private void CopyMcpConnectorUrl()
+    {
+        if (!McpRunning) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(McpConnectorUrl);
+            McpStatusText = Strings.Get("McpConnectorCopied");
         }
         catch (Exception ex)
         {

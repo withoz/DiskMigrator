@@ -16,7 +16,14 @@ namespace DiskMigrator.Mcp;
 /// <param name="Running">지금 듣고 있는지.</param>
 /// <param name="Url">Claude 설정에 넣을 주소. 꺼져 있으면 null.</param>
 /// <param name="Token">접근 토큰. 꺼져 있으면 null.</param>
-public sealed record McpHostStatus(bool Running, string? Url, string? Token);
+/// <param name="Running">지금 듣고 있는지.</param>
+/// <param name="Url">주소(토큰 없음). 헤더로 인증하는 쪽에서 씁니다.</param>
+/// <param name="Token">접근 토큰.</param>
+/// <param name="ConnectorUrl">
+/// <b>토큰이 실린 주소.</b> Claude 앱의 커넥터 추가 화면처럼 헤더를 넣을 칸이 없는 곳에서 씁니다.
+/// 이 한 줄에 열쇠가 들어 있으므로 화면에서도 그렇게 알려야 합니다.
+/// </param>
+public sealed record McpHostStatus(bool Running, string? Url, string? Token, string? ConnectorUrl = null);
 
 /// <summary>
 /// 앱 안에서 도는 로컬 MCP 서버. 계획서 §5.1의 "앱이 MCP 서버를 품는다".
@@ -51,7 +58,10 @@ public sealed class McpHost(
 
     public McpHostStatus Status => _app is null
         ? new(false, null, null)
-        : new(true, $"http://127.0.0.1:{_port}/mcp", _token?.Value);
+        : new(true,
+              $"http://127.0.0.1:{_port}/mcp",
+              _token?.Value,
+              $"http://127.0.0.1:{_port}/mcp?key={_token?.Value}");
 
     /// <summary>
     /// 엔드포인트를 시작합니다. 이미 떠 있으면 현재 상태를 그대로 돌려줍니다.
@@ -72,11 +82,39 @@ public sealed class McpHost(
 
         _token = reuse is null ? AccessToken.Create() : AccessToken.FromStored(reuse.Token);
 
+        // 포트는 "비었는지 보고 → 묶는다" 사이에 틈이 있습니다. 그 사이 다른 프로세스가
+        // 가져가면 묶기가 실패합니다(실기·시험에서 실제로 발생). 확인만으로는 못 막으므로
+        // 실패하면 다음 포트로 넘어갑니다 — 확인이 아니라 성공이 근거입니다.
+        var tried = new List<int>();
+        for (int attempt = 0; attempt < MaxPortAttempts; attempt++)
+        {
+            int port = await FindFreePortAsync(attempt == 0 ? reuse?.Port : null, tried, ct);
+            tried.Add(port);
+
+            try
+            {
+                return await StartOnPortAsync(includeSensitive, port, ct);
+            }
+            catch (IOException ex) when (ex.InnerException is Microsoft.AspNetCore.Connections.AddressInUseException)
+            {
+                _logger.LogDebug("포트 {Port}는 묶는 순간 이미 쓰이고 있었습니다. 다음 포트를 시도합니다.", port);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"사용할 수 있는 포트를 찾지 못했습니다 ({PreferredPort}~{PreferredPort + MaxPortAttempts - 1}).");
+    }
+
+    /// <summary>정해진 포트 하나로 서버를 세웁니다. 그 포트가 막혀 있으면 예외가 납니다.</summary>
+    private async Task<McpHostStatus> StartOnPortAsync(bool includeSensitive, int port, CancellationToken ct)
+    {
         var builder = WebApplication.CreateSlimBuilder();
 
         // 앱의 로깅으로 넘깁니다 — 별도 콘솔이 없으므로 파일 로그가 유일한 증거입니다.
         builder.Logging.ClearProviders();
-        if (loggerFactory is not null) builder.Logging.AddProvider(new ForwardingLoggerProvider(loggerFactory));
+        // 토큰이 주소에 실릴 수 있으므로, 로그로 나가기 전에 그 값을 가립니다.
+        if (loggerFactory is not null)
+            builder.Logging.AddProvider(new RedactingLoggerProvider(loggerFactory, () => _token?.Value));
 
         // 진단 도구가 쓰는 것들. IDiskReader만 등록해 쓰기 서비스는 컨테이너에도 넣지 않습니다.
         builder.Services.AddSingleton<IDiskReader>(new DiskServiceReader(diskService));
@@ -130,15 +168,16 @@ public sealed class McpHost(
         // "localhost"나 "*" 같은 문자열은 환경에 따라 모든 인터페이스에 붙을 수 있습니다.
         // 지난번 포트를 먼저 시도합니다 — 주소가 그대로여야 Claude 설정을 다시 고치지 않습니다.
         // 그 포트가 이미 쓰이고 있으면 평소대로 빈 포트를 찾습니다.
-        _port = await FindFreePortAsync(reuse?.Port, ct);
-        builder.Services.Configure<KestrelServerOptions>(k => k.Listen(IPAddress.Loopback, _port));
+        builder.Services.Configure<KestrelServerOptions>(k => k.Listen(IPAddress.Loopback, port));
 
         var app = builder.Build();
 
         // 토큰 검사 — MCP 경로에 닿기 전에 막습니다.
         app.Use(async (ctx, next) =>
         {
-            string? presented = ExtractBearer(ctx.Request.Headers.Authorization);
+            string? presented = ExtractBearer(ctx.Request.Headers.Authorization)
+                                ?? ExtractQueryKey(ctx.Request.Query);
+
             if (_token is null || !_token.Matches(presented))
             {
                 _logger.LogWarning("MCP 인증 실패: {Path} ({Remote})",
@@ -156,11 +195,22 @@ public sealed class McpHost(
 
         app.MapMcp("/mcp");
 
-        await app.StartAsync(ct);
+        try
+        {
+            await app.StartAsync(ct);
+        }
+        catch
+        {
+            // 묶기에 실패했으면 이 인스턴스는 버립니다 — 남겨 두면 자원이 샙니다.
+            await app.DisposeAsync();
+            throw;
+        }
+
         _app = app;
+        _port = port;
 
         _logger.LogInformation("MCP 엔드포인트 시작: http://127.0.0.1:{Port}/mcp (토큰 {Preview})",
-            _port, _token.Preview);
+            _port, _token!.Preview);
         return Status;
     }
 
@@ -210,6 +260,19 @@ public sealed class McpHost(
             ? header["Bearer ".Length..].Trim()
             : null;
 
+    /// <summary>주소에 실려 온 토큰(<c>?key=…</c>).</summary>
+    /// <remarks>
+    /// 헤더가 정석이지만, <b>Claude 앱의 커넥터 추가 화면에는 헤더를 넣을 칸이 없습니다.</b>
+    /// 주소와 OAuth 항목만 받습니다. 우리는 OAuth를 쓰지 않으므로, 그 화면으로 연결하려는
+    /// 사용자는 인증에 막혀 아무것도 못 합니다 — 명령줄을 쓸 줄 아는 사람만 쓸 수 있는 셈입니다.
+    ///
+    /// <para>그래서 주소에 실린 토큰도 받습니다. 대신 <b>토큰이 로그에 남지 않도록</b>
+    /// <see cref="RedactingLoggerProvider"/>가 모든 로그에서 그 값을 지웁니다 — 주소는
+    /// 요청 로그에 그대로 찍히는데, 사용자가 문제 신고에 로그를 첨부하면 열쇠가 함께 나갑니다.</para>
+    /// </remarks>
+    private static string? ExtractQueryKey(IQueryCollection query) =>
+        query.TryGetValue("key", out var v) && v.Count > 0 ? v[0] : null;
+
     /// <summary>
     /// 비어 있는 포트를 찾습니다. 전부 막혀 있으면 예외를 던집니다.
     /// </summary>
@@ -222,12 +285,12 @@ public sealed class McpHost(
     /// <c>await</c>보다 앞에 있어, 부른 스레드에서 그대로 돕니다 — 앱에서는 UI 스레드입니다.
     /// <c>Thread.Sleep</c>을 쓰면 통로를 닫고 바로 다시 열 때 화면이 2초 얼어붙습니다.
     /// </remarks>
-    private static async Task<int> FindFreePortAsync(int? preferFirst, CancellationToken ct)
+    private static async Task<int> FindFreePortAsync(int? preferFirst, List<int> skip, CancellationToken ct)
     {
         // 통로를 닫고 곧바로 다시 열면 방금 쓰던 포트가 아직 풀리지 않았을 수 있습니다.
         // 그때 다른 번호로 옮겨 가면 주소가 바뀌어 사용자가 Claude 설정을 다시 고쳐야 합니다.
         // 잠깐 기다렸다 같은 포트를 다시 시도합니다 — 진짜 다른 앱이 쓰고 있으면 아래로 내려갑니다.
-        if (preferFirst is { } first)
+        if (preferFirst is { } first && !skip.Contains(first))
         {
             for (int attempt = 0; attempt < 10; attempt++)
             {
@@ -236,9 +299,10 @@ public sealed class McpHost(
             }
         }
 
+        // 이미 시도했다 실패한 포트는 건너뜁니다 — 같은 자리를 계속 두드리면 못 빠져나옵니다.
         for (int p = PreferredPort; p < PreferredPort + MaxPortAttempts; p++)
         {
-            if (IsFree(p)) return p;
+            if (!skip.Contains(p) && IsFree(p)) return p;
         }
         throw new InvalidOperationException(
             $"사용할 수 있는 포트를 찾지 못했습니다 ({PreferredPort}~{PreferredPort + MaxPortAttempts - 1}).");
@@ -415,5 +479,42 @@ public sealed class McpHost(
     {
         public ILogger CreateLogger(string categoryName) => factory.CreateLogger(categoryName);
         public void Dispose() { }
+    }
+
+    /// <summary>
+    /// 로그에 찍히는 <b>토큰을 가립니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 주소로도 인증할 수 있게 되면서(<c>?key=…</c>) 토큰이 요청 URL에 실립니다. ASP.NET은
+    /// 요청 URL을 그대로 로그에 남기므로, 그 파일을 문제 신고에 첨부하면 <b>열쇠가 함께 나갑니다.</b>
+    ///
+    /// <para>이 감싸개는 남기기 직전에 토큰 문자열을 <c>key=…</c>로 바꿉니다. 헤더로 온 경우에도
+    /// 실수로 찍힐 여지를 함께 막습니다. 값을 아는 쪽에서 지우는 것이 가장 확실합니다.</para>
+    /// </remarks>
+    private sealed class RedactingLoggerProvider(ILoggerFactory factory, Func<string?> secret) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) =>
+            new RedactingLogger(factory.CreateLogger(categoryName), secret);
+
+        public void Dispose() { }
+
+        private sealed class RedactingLogger(ILogger inner, Func<string?> secret) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => inner.BeginScope(state);
+
+            public bool IsEnabled(LogLevel level) => inner.IsEnabled(level);
+
+            public void Log<TState>(
+                LogLevel level, EventId id, TState state, Exception? ex, Func<TState, Exception?, string> formatter)
+            {
+                inner.Log(level, id, state, ex, (s, e) =>
+                {
+                    string text = formatter(s, e);
+                    if (secret() is { Length: > 0 } t && text.Contains(t, StringComparison.Ordinal))
+                        text = text.Replace(t, "…", StringComparison.Ordinal);
+                    return text;
+                });
+            }
+        }
     }
 }

@@ -317,4 +317,8 @@
   <data name="McpActRead" xml:space="preserve"><value>Read</value></data>
   <data name="McpActCancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="VerdictDiskOffline" xml:space="preserve"><value>This disk is OFFLINE, so its volumes are not mounted and nothing could be checked. Bring it online first (Disk Management, or diskpart: select disk N -&gt; online disk), then check again.</value></data>
+  <data name="McpConnectorCopy" xml:space="preserve"><value>Copy address (with token)</value></data>
+  <data name="McpConnectorCopied" xml:space="preserve"><value>Copied the address with the token. Paste it into the address field of the Add connector screen.</value></data>
+  <data name="McpConnectorHint" xml:space="preserve"><value>Claude's Add connector screen has no field for a token. Pasting this one address is enough. It contains your key — do not show it to anyone.</value></data>
+  <data name="McpConnectorLabel" xml:space="preserve"><value>Address for the settings screen (contains the token)</value></data>
 </root>

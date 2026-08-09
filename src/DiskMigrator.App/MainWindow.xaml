@@ -1395,7 +1395,19 @@
                                  FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,12"
                                  BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
 
+                        <!-- Claude 앱의 커넥터 추가 화면에는 토큰 칸이 없습니다. 주소와 OAuth 항목만
+                             받으므로, 헤더로 인증하는 우리 방식으로는 그 화면에서 연결이 안 됩니다.
+                             토큰을 실은 주소 한 줄이면 됩니다. -->
+                        <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,14,0,0" />
+                        <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,4"
+                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                        <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,10" />
+
                         <StackPanel Orientation="Horizontal">
+                            <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
+                                    Style="{StaticResource AccentButton}" Padding="14,7" Margin="0,0,8,0" />
                             <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
                                     Padding="14,7" />
                             <!-- 토큰은 이제 다음 실행까지 유지됩니다. 새로 발급하는 것은
