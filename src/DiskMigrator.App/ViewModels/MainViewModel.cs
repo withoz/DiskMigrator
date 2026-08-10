@@ -138,17 +138,34 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _mcpToken = "";
 
     /// <summary>
-    /// 토큰이 실린 주소 — <b>Claude 앱의 커넥터 추가 화면용</b>.
+    /// 토큰이 실린 주소 — 헤더를 못 보내는 도구에서 씁니다.
     /// </summary>
     /// <remarks>
-    /// 그 화면에는 헤더를 넣을 칸이 없고 주소와 OAuth 항목만 있습니다. 우리는 OAuth를 쓰지
-    /// 않으므로, 화면으로 연결하려는 사용자는 인증에 막힙니다 — 명령을 칠 줄 아는 사람만
-    /// 쓸 수 있게 되는 셈입니다. 이 주소 한 줄이면 그 화면에서도 연결됩니다.
+    /// ⚠ <b>Claude 앱의 "커스텀 커넥터 추가" 화면에서는 쓸 수 없습니다.</b> 그 화면은
+    /// 주소가 <c>https</c>로 시작할 것을 요구하는데, 이 통로는 이 컴퓨터 안에서만 통하는
+    /// 평문 <c>http</c>라 등록 자체가 거절됩니다(2026-08-10 실기 확인).
     ///
-    /// <para><b>이 줄에는 열쇠가 들어 있습니다.</b> 화면에서도 그렇게 알리고, 로그에는
-    /// 남지 않게 막아 두었습니다.</para>
+    /// <para>처음에는 "그 화면에 토큰 칸이 없어서 막힌다"고 보고 이 주소를 만들었는데,
+    /// 실제로 넣어 보니 토큰 이전에 프로토콜에서 막혔습니다. 진단이 절반만 맞았던 것입니다.
+    /// 기능 자체는 서버에서 정상 동작하므로(HTTP 200 확인) 남겨 두되, <b>용도를 사실대로</b>
+    /// 적습니다.</para>
+    ///
+    /// <para><b>이 줄에는 열쇠가 들어 있습니다.</b> 로그에는 남지 않게 막아 두었습니다.</para>
     /// </remarks>
     [ObservableProperty] private string _mcpConnectorUrl = "";
+
+    /// <summary>
+    /// 실제로 연결되는 방법 — 그대로 붙여 넣어 실행하는 명령 한 줄.
+    /// </summary>
+    /// <remarks>
+    /// 앱은 지금까지 "Claude의 MCP 설정에 넣으십시오"라고만 했습니다. <b>어디에 어떻게
+    /// 넣는지는 말하지 않았습니다.</b> 컴퓨터를 잘 모르는 사용자가 대상인데, 실제로 설정
+    /// 화면을 열어 본 사용자가 그 앞에서 멈췄습니다.
+    ///
+    /// <para>이 한 줄이 유일하게 확인된 방법입니다(실기: <c>claude-code 2.1.223</c>이
+    /// 서버에 붙은 것을 로그로 확인).</para>
+    /// </remarks>
+    [ObservableProperty] private string _mcpAddCommand = "";
 
     /// <summary>안내·오류 문구.</summary>
     [ObservableProperty] private string _mcpStatusText = "";
@@ -193,6 +210,7 @@ public sealed partial class MainViewModel : ObservableObject
                 McpUrl = "";
                 McpToken = "";
                 McpConnectorUrl = "";
+                McpAddCommand = "";
                 McpStatusText = Strings.Get("McpStoppedHint");
                 _logger.LogInformation("Claude 연결 통로를 닫았습니다.");
                 return;
@@ -237,6 +255,12 @@ public sealed partial class MainViewModel : ObservableObject
             McpUrl = status.Url ?? "";
             McpToken = status.Token ?? "";
             McpConnectorUrl = status.ConnectorUrl ?? "";
+
+            // 실제로 되는 방법을 그대로 쓸 수 있게 만들어 둡니다 — 사용자가 조립하지 않아도 되게.
+            McpAddCommand = status.Running
+                ? $"claude mcp add --transport http diskmigrator-x {status.Url} " +
+                  $"--header \"Authorization: Bearer {status.Token}\""
+                : "";
             McpStatusText = Strings.Get(stored is null ? "McpRunningHint" : "McpRunningReusedHint");
 
             // 실제로 열린 포트를 보관합니다 — 지난번 포트가 막혀 다른 번호로 열렸을 수 있습니다.
@@ -300,9 +324,24 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// 토큰이 실린 주소만 복사합니다 — 커넥터 화면에 붙여 넣을 한 줄.
-    /// </summary>
+    /// <summary>연결 명령 한 줄을 복사합니다 — 확인된 유일한 방법.</summary>
+    [RelayCommand]
+    private void CopyMcpAddCommand()
+    {
+        if (!McpRunning) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(McpAddCommand);
+            McpStatusText = Strings.Get("McpCommandCopied");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "클립보드 복사에 실패했습니다.");
+            McpStatusText = Strings.Format("McpFailFmt", ex.Message);
+        }
+    }
+
+    /// <summary>토큰이 실린 주소만 복사합니다 — 헤더를 못 보내는 도구용.</summary>
     [RelayCommand]
     private void CopyMcpConnectorUrl()
     {

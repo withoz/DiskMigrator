@@ -1395,21 +1395,37 @@
                                  FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,12"
                                  BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
 
-                        <!-- Claude 앱의 커넥터 추가 화면에는 토큰 칸이 없습니다. 주소와 OAuth 항목만
-                             받으므로, 헤더로 인증하는 우리 방식으로는 그 화면에서 연결이 안 됩니다.
-                             토큰을 실은 주소 한 줄이면 됩니다. -->
-                        <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,14,0,0" />
-                        <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,4"
+                        <!-- ⚠ Claude 앱의 "커스텀 커넥터 추가" 화면은 쓸 수 없습니다. 그 화면은 주소가
+                             https로 시작할 것을 요구하는데, 이 통로는 이 컴퓨터 안에서만 통하는
+                             http이기 때문입니다(2026-08-10 실기에서 거절 확인).
+                             확인된 방법은 아래 명령 한 줄뿐이므로 그것을 맨 앞에 둡니다. -->
+                        <TextBlock Text="{loc:Loc McpCommandLabel}" Style="{StaticResource SubHeading}"
+                                   FontWeight="Bold" Margin="0,18,0,0" />
+                        <TextBox Text="{Binding McpAddCommand, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,4,0,4"
                                  BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
-                        <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
+                        <TextBlock Text="{loc:Loc McpCommandHint}" Style="{StaticResource Micro}"
                                    TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,10" />
 
                         <StackPanel Orientation="Horizontal">
-                            <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
+                            <Button Command="{Binding CopyMcpAddCommandCommand}" Content="{loc:Loc McpCommandCopy}"
                                     Style="{StaticResource AccentButton}" Padding="14,7" Margin="0,0,8,0" />
                             <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
+                                    Padding="14,7" Margin="0,0,8,0" />
+                            <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
                                     Padding="14,7" />
+                        </StackPanel>
+
+                        <!-- 헤더를 못 보내는 도구를 위한 참고용. 화면 설정에서는 쓸 수 없다는 것을
+                             문구에 분명히 적습니다 — 그러지 않으면 또 막다른 길로 보냅니다. -->
+                        <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,16,0,0" />
+                        <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,2,0,4"
+                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                        <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" />
+
+                        <StackPanel Orientation="Horizontal" Visibility="Collapsed">
                             <!-- 토큰은 이제 다음 실행까지 유지됩니다. 새로 발급하는 것은
                                  사용자가 명시적으로 정할 일이라 별도 버튼으로 둡니다. -->
                             <Button Command="{Binding ResetMcpTokenCommand}" Content="{loc:Loc McpResetToken}"

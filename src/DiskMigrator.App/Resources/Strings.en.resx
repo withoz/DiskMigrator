@@ -319,6 +319,10 @@
   <data name="VerdictDiskOffline" xml:space="preserve"><value>This disk is OFFLINE, so its volumes are not mounted and nothing could be checked. Bring it online first (Disk Management, or diskpart: select disk N -&gt; online disk), then check again.</value></data>
   <data name="McpConnectorCopy" xml:space="preserve"><value>Copy address (with token)</value></data>
   <data name="McpConnectorCopied" xml:space="preserve"><value>Copied the address with the token. Paste it into the address field of the Add connector screen.</value></data>
-  <data name="McpConnectorHint" xml:space="preserve"><value>Claude's Add connector screen has no field for a token. Pasting this one address is enough. It contains your key — do not show it to anyone.</value></data>
-  <data name="McpConnectorLabel" xml:space="preserve"><value>Address for the settings screen (contains the token)</value></data>
+  <data name="McpConnectorHint" xml:space="preserve"><value>For tools that cannot send a header and must carry the token in the address. It does not work in Claude's settings screen. This line contains your key — do not show it to anyone.</value></data>
+  <data name="McpConnectorLabel" xml:space="preserve"><value>Address with the token (for reference)</value></data>
+  <data name="McpCommandLabel" xml:space="preserve"><value>Command to connect Claude (this is the way that works)</value></data>
+  <data name="McpCommandCopied" xml:space="preserve"><value>Copied the connect command. Paste and run it in a command window.</value></data>
+  <data name="McpCommandHint" xml:space="preserve"><value>Copy it with the button below, then paste and run it in a command window. Adding it as a connector in Claude's settings screen does not work — that screen only accepts https addresses, and this channel is plain http because it works inside this computer only.</value></data>
+  <data name="McpCommandCopy" xml:space="preserve"><value>Copy connect command</value></data>
 </root>

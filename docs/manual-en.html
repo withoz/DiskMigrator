@@ -211,9 +211,14 @@ Nothing extra to install — it is built entirely from materials already inside 
   boot traces itself, then tells you <b>where it stopped</b>. You do not have to interpret the check results.</p>
   <ol class="steps">
     <li>Click <b>Open connection</b></li>
-    <li>Copy the <b>address and token</b> into Claude's MCP settings</li>
+    <li>Click <b>Copy connect command</b> — one line with everything already filled in</li>
+    <li><b>Paste and run it</b> in a command window (terminal)</li>
     <li>Ask Claude — "have a look at why this disk won't boot"</li>
   </ol>
+  <div class="warn"><b>⚠ Claude's settings screen cannot connect to this.</b>
+    The "Add custom connector" screen requires the address to start with <code>https</code>, but this
+    channel is plain <code>http</code> because it works inside this computer only, so it is rejected.
+    Use the command above.</div>
   <p style="color:var(--muted); font-size:13.5px;">You only paste the address and token <b>once</b> — they stay the same
   after restarting the app. If you think the token leaked, click <b>Issue a new token</b> (then paste the new one into Claude).</p>
 </div>
