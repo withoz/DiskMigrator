@@ -394,12 +394,22 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Claude Code가 없어 이 기능을 못 쓰는 경우 — 무엇을 하면 되는지 알려 줍니다.</summary>
     public bool AskNeedsClaudeCode => _bridgePath is not null && !ClaudeRunner.IsAvailable;
 
-    /// <summary>지금까지 받은 답.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAskAnswer))]
-    private string _askAnswer = "";
+    /// <summary>주고받은 대화. 오래된 것이 위입니다.</summary>
+    public ObservableCollection<ChatMessageViewModel> ChatMessages { get; } = [];
 
-    public bool HasAskAnswer => AskAnswer.Length > 0;
+    public bool HasChat => ChatMessages.Count > 0;
+
+    /// <summary>입력 상자에 쓰고 있는 것.</summary>
+    [ObservableProperty] private string _chatInput = "";
+
+    /// <summary>
+    /// 이어 가고 있는 대화의 표시. null이면 다음 질문이 새 대화입니다.
+    /// </summary>
+    /// <remarks>
+    /// 이것이 없으면 "그럼 그건 왜 그래?"가 통하지 않습니다 — Claude가 앞의 질문을 모르니
+    /// 방금 읽은 디스크를 처음부터 다시 읽고, 사용자는 같은 답을 두 번 받습니다.
+    /// </remarks>
+    private string? _chatSessionId;
 
     /// <summary>지금 무엇을 하고 있는지 — 몇 분 걸리므로 가만히 있으면 멈춘 줄 압니다.</summary>
     [ObservableProperty] private string _askProgress = "";
@@ -418,7 +428,40 @@ public sealed partial class MainViewModel : ObservableObject
     /// 가장 하지 말아야 할 일입니다.
     /// </remarks>
     [RelayCommand]
-    private async Task AskClaudeAsync()
+    private Task AskClaudeAsync() => SendToClaudeAsync(BuildQuestion(IsKorean));
+
+    /// <summary>입력 상자에 쓴 것을 보냅니다 — 이어지는 질문.</summary>
+    [RelayCommand]
+    private Task SendChatAsync()
+    {
+        string text = ChatInput.Trim();
+        if (text.Length == 0) return Task.CompletedTask;
+
+        ChatInput = "";
+        return SendToClaudeAsync(text);
+    }
+
+    /// <summary>
+    /// 대화를 처음부터 다시 시작합니다.
+    /// </summary>
+    /// <remarks>
+    /// 이야기가 길어지면 앞의 내용에 끌려 엉뚱한 답이 나올 수 있고, 디스크를 바꿔 꽂았는데
+    /// Claude가 아까 본 것을 기억하고 있으면 더 나쁩니다. 끊는 방법이 있어야 합니다.
+    /// </remarks>
+    [RelayCommand]
+    private void NewChat()
+    {
+        _chatSessionId = null;
+        ChatMessages.Clear();
+        OnPropertyChanged(nameof(HasChat));
+        AskProgress = "";
+    }
+
+    private static bool IsKorean =>
+        System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko";
+
+    /// <summary>질문 하나를 보내고 답을 대화에 붙입니다.</summary>
+    private async Task SendToClaudeAsync(string question)
     {
         if (_bridgePath is not { } bridge || AskBusy) return;
 
@@ -428,12 +471,11 @@ public sealed partial class MainViewModel : ObservableObject
             if (!McpRunning) return;           // 사유는 이미 화면에 있습니다.
         }
 
-        bool korean = System.Globalization.CultureInfo.CurrentUICulture
-            .TwoLetterISOLanguageName == "ko";
-
         AskBusy = true;
-        AskAnswer = "";
         AskProgress = Strings.Get("AskStarting");
+
+        ChatMessages.Add(new ChatMessageViewModel(IsUser: true, question));
+        OnPropertyChanged(nameof(HasChat));
 
         _askCts = new CancellationTokenSource();
 
@@ -443,13 +485,24 @@ public sealed partial class MainViewModel : ObservableObject
                 AskProgress = Strings.Format("AskWorkingFmt", tool));
 
             var result = await ClaudeRunner.AskAsync(
-                BuildQuestion(korean), bridge, korean, progress, _askCts.Token);
+                question, bridge, IsKorean, _chatSessionId, progress, _askCts.Token);
 
-            AskAnswer = result.Ok ? result.Text : "";
-            AskProgress = result.Ok ? "" : Strings.Format("AskFailedFmt", result.Error ?? "");
+            // 대화 표시는 실패한 차례에서도 받아 둡니다 — 그래야 다음 질문이 이어집니다.
+            if (result.SessionId is { Length: > 0 } id) _chatSessionId = id;
 
-            _logger.LogInformation("앱 안에서 물어보기: {Result}",
-                result.Ok ? "답 받음" : $"실패 — {result.Error}");
+            if (result.Ok)
+            {
+                ChatMessages.Add(new ChatMessageViewModel(IsUser: false, result.Text));
+                AskProgress = "";
+            }
+            else
+            {
+                AskProgress = Strings.Format("AskFailedFmt", result.Error ?? "");
+            }
+
+            _logger.LogInformation("앱 안에서 물어보기: {Result} (대화 {Session})",
+                result.Ok ? "답 받음" : $"실패 — {result.Error}",
+                _chatSessionId is null ? "새로" : "이어 씀");
         }
         catch (OperationCanceledException)
         {
@@ -466,6 +519,7 @@ public sealed partial class MainViewModel : ObservableObject
             _askCts?.Dispose();
             _askCts = null;
             AskBusy = false;
+            OnPropertyChanged(nameof(HasChat));
         }
     }
 

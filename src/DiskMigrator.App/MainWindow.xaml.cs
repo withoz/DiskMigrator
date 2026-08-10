@@ -15,6 +15,22 @@ public partial class MainWindow : Window
         InitializeComponent();
         UpdateLanguageToggle();
         FitToScreen();
+        DataContextChanged += FollowChat;
+    }
+
+    /// <summary>
+    /// 대화에 새 줄이 붙으면 화면을 아래로 따라 내립니다.
+    /// </summary>
+    /// <remarks>
+    /// 답이 길면 새로 온 줄이 화면 밖에 남습니다. 사용자는 답이 안 왔다고 생각하고 다시
+    /// 누르거나 앱을 닫습니다 — 목록에서 선택 항목이 화면 밖에 남던 것과 같은 문제입니다.
+    /// </remarks>
+    private void FollowChat(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not MainViewModel vm) return;
+
+        vm.ChatMessages.CollectionChanged += (_, _) =>
+            Dispatcher.BeginInvoke(() => ChatScroll?.ScrollToEnd());
     }
 
     /// <summary>화면이 이보다 좁으면 UI를 비율 축소합니다 — 설계 기준 창 크기.</summary>

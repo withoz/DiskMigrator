@@ -8,8 +8,12 @@ namespace DiskMigrator.App;
 /// <summary>Claude에게 한 번 물어본 결과.</summary>
 /// <param name="Ok">답을 받았는지.</param>
 /// <param name="Text">사용자에게 보여 줄 답. 실패하면 빈 문자열.</param>
+/// <param name="SessionId">
+/// 이 대화의 표시. <b>다음 질문에 되넘겨야</b> "그럼 그건 왜 그래?"가 통합니다 — 없으면
+/// 매번 처음 만난 사람처럼 답해, 방금 읽은 디스크를 또 읽습니다.
+/// </param>
 /// <param name="Error">실패 사유(원문). 우리가 번역할 수 없는 남의 문구입니다.</param>
-public sealed record ClaudeAnswer(bool Ok, string Text, string? Error = null);
+public sealed record ClaudeAnswer(bool Ok, string Text, string? SessionId = null, string? Error = null);
 
 /// <summary>
 /// 앱 안에서 <b>Claude에게 직접 물어봅니다</b> — 사용자가 창을 옮겨 다니지 않아도 되게.
@@ -43,6 +47,9 @@ public static class ClaudeRunner
     /// <param name="question">사용자 말로 된 질문.</param>
     /// <param name="bridgePath">중계기 실행 파일 — 이것을 통해 우리 도구에 닿습니다.</param>
     /// <param name="korean">답을 한국어로 받을지.</param>
+    /// <param name="resume">
+    /// 이어 갈 대화의 표시(<see cref="ClaudeAnswer.SessionId"/>). null이면 새 대화입니다.
+    /// </param>
     /// <param name="progress">지금 무엇을 하고 있는지 — 화면에 그대로 보여 줍니다.</param>
     /// <remarks>
     /// 오래 걸립니다(디스크를 실제로 읽습니다). 진행 상황을 보여 주지 않으면 사용자는
@@ -52,11 +59,12 @@ public static class ClaudeRunner
         string question,
         string bridgePath,
         bool korean,
+        string? resume = null,
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
         string? claude = ClaudeRegistration.FindOnPath("claude");
-        if (claude is null) return new(false, "", "claude not found");
+        if (claude is null) return new(false, "", Error: "claude not found");
 
         var psi = new ProcessStartInfo(claude)
         {
@@ -72,23 +80,24 @@ public static class ClaudeRunner
             WorkingDirectory = NeutralFolder(),
         };
 
-        foreach (string a in BuildArguments(question, bridgePath, korean)) psi.ArgumentList.Add(a);
+        foreach (string a in BuildArguments(question, bridgePath, korean, resume)) psi.ArgumentList.Add(a);
 
         using var process = new Process { StartInfo = psi };
-        if (!process.Start()) return new(false, "", "could not start");
+        if (!process.Start()) return new(false, "", Error: "could not start");
 
         // 표준오류는 따로 끝까지 읽습니다. 안 읽으면 파이프가 차는 순간 상대가 멈춥니다.
         var errorTask = process.StandardError.ReadToEndAsync(ct);
 
         string answer = "";
         string? failure = null;
+        string? session = null;
 
         try
         {
             while (await process.StandardOutput.ReadLineAsync(ct) is { } line)
             {
                 if (line.Length == 0) continue;
-                Interpret(line, progress, ref answer, ref failure);
+                Interpret(line, progress, ref answer, ref failure, ref session);
             }
 
             await process.WaitForExitAsync(ct);
@@ -101,10 +110,11 @@ public static class ClaudeRunner
             throw;
         }
 
-        if (answer.Length > 0 && failure is null) return new(true, answer);
+        if (answer.Length > 0 && failure is null) return new(true, answer, session);
 
         string stderr = await errorTask;
-        return new(false, answer, failure ?? FirstMeaningfulLine(stderr) ?? $"exit {process.ExitCode}");
+        return new(false, answer, session,
+            failure ?? FirstMeaningfulLine(stderr) ?? $"exit {process.ExitCode}");
     }
 
     /// <summary>실제로 넘기는 인자들.</summary>
@@ -112,9 +122,14 @@ public static class ClaudeRunner
     /// <c>--bare</c>는 쓰지 않습니다 — 그 모드는 사용자의 로그인을 읽지 않고 API 열쇠를
     /// 요구하므로, 구독을 그대로 쓰겠다는 이 설계의 전제가 무너집니다.
     /// </remarks>
-    internal static IReadOnlyList<string> BuildArguments(string question, string bridgePath, bool korean) =>
+    internal static IReadOnlyList<string> BuildArguments(
+        string question, string bridgePath, bool korean, string? resume = null) =>
     [
         "-p", question,
+
+        // 이어지는 질문이면 같은 대화로 붙입니다 — 없으면 "그건 왜 그래?"가 통하지 않고,
+        // 방금 읽은 디스크를 처음부터 다시 읽습니다.
+        .. resume is { Length: > 0 } ? new[] { "--resume", resume } : [],
 
         // 한 줄씩 나오는 대로 받아 화면에 옮깁니다 — 다 끝난 뒤에만 보여 주면 몇 분간
         // 아무 일도 없는 것처럼 보입니다.
@@ -166,13 +181,19 @@ public static class ClaudeRunner
     /// 모르는 종류는 <b>그냥 넘깁니다.</b> 형식이 늘어나는 것은 정상이고, 모르는 줄에
     /// 걸려 넘어지면 답을 통째로 잃습니다.
     /// </remarks>
-    private static void Interpret(string line, IProgress<string>? progress, ref string answer, ref string? failure)
+    private static void Interpret(
+        string line, IProgress<string>? progress, ref string answer, ref string? failure, ref string? session)
     {
         try
         {
             using var doc = JsonDocument.Parse(line);
             var root = doc.RootElement;
             string type = root.TryGetProperty("type", out var t) ? t.GetString() ?? "" : "";
+
+            // 대화 표시는 여러 줄에 실려 옵니다. 보이는 대로 잡아 둡니다 — 이것을 놓치면
+            // 다음 질문이 새 대화가 되어 사용자는 "왜 못 알아듣지?" 하게 됩니다.
+            if (root.TryGetProperty("session_id", out var sid) && sid.ValueKind == JsonValueKind.String)
+                session = sid.GetString();
 
             switch (type)
             {

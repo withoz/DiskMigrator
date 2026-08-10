@@ -1368,33 +1368,82 @@
                         <TextBlock Text="{loc:Loc AskHint}" Style="{StaticResource Micro}"
                                    TextWrapping="Wrap" MaxWidth="620" Margin="0,4,0,10" />
 
-                        <StackPanel Orientation="Horizontal">
-                            <Button Command="{Binding AskClaudeCommand}" Content="{loc:Loc AskButton}"
-                                    HorizontalAlignment="Left" Padding="18,9"
-                                    Style="{StaticResource AccentButton}"
-                                    Visibility="{Binding AskBusy, Converter={StaticResource InverseBoolToVisibility}}" />
-                            <Button Command="{Binding CancelAskCommand}" Content="{loc:Loc AskCancel}"
-                                    HorizontalAlignment="Left" Padding="18,9"
-                                    Visibility="{Binding AskBusy, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
+                        <!-- 첫 질문은 버튼 하나로. 빈 입력 상자만 있으면 초보자는 무엇을
+                             물어야 할지 몰라 그대로 닫습니다. 대화가 시작되면 사라집니다. -->
+                        <Button Command="{Binding AskClaudeCommand}" Content="{loc:Loc AskButton}"
+                                HorizontalAlignment="Left" Padding="18,9"
+                                Style="{StaticResource AccentButton}"
+                                Visibility="{Binding HasChat, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                        <!-- 주고받은 이야기. 새 줄이 붙으면 화면이 따라 내려갑니다(코드 비하인드). -->
+                        <Border Background="{StaticResource Surface}" CornerRadius="6" Padding="12"
+                                MaxHeight="380" Margin="0,4,0,0"
+                                Visibility="{Binding HasChat, Converter={StaticResource BoolToVisibility}}">
+                            <ScrollViewer x:Name="ChatScroll" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding ChatMessages}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,14">
+                                                <!-- 누가 한 말인지 -->
+                                                <TextBlock Text="{Binding Who}" FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="{StaticResource Muted}" Margin="0,0,0,3" />
+                                                <!-- TextBox라 사용자가 답을 골라 복사할 수 있습니다. -->
+                                                <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True"
+                                                         BorderThickness="0" Background="Transparent"
+                                                         TextWrapping="Wrap" FontSize="13" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
 
                         <TextBlock Text="{Binding AskProgress}" Style="{StaticResource Caption}"
                                    TextWrapping="Wrap" Margin="0,10,0,0"
                                    Visibility="{Binding AskProgress, Converter={StaticResource NullToVisibility}}" />
 
-                        <!-- 답은 길 수 있습니다. 읽기 위해 창을 늘려야 한다면 실패입니다. -->
-                        <TextBlock Text="{loc:Loc AskAnswerLabel}" Style="{StaticResource Caption}"
-                                   Margin="0,14,0,4"
-                                   Visibility="{Binding HasAskAnswer, Converter={StaticResource BoolToVisibility}}" />
-                        <Border Background="{StaticResource Surface}" CornerRadius="6" Padding="12"
-                                MaxHeight="320"
-                                Visibility="{Binding HasAskAnswer, Converter={StaticResource BoolToVisibility}}">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <TextBox Text="{Binding AskAnswer, Mode=OneWay}" IsReadOnly="True"
-                                         BorderThickness="0" Background="Transparent"
-                                         TextWrapping="Wrap" FontSize="13" />
-                            </ScrollViewer>
-                        </Border>
+                        <!-- 이어서 묻기. 대화가 시작된 뒤에만 나옵니다. -->
+                        <Grid Margin="0,10,0,0"
+                              Visibility="{Binding HasChat, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0" Text="{Binding ChatInput, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="False" Padding="8,7" FontSize="13">
+                                <!-- 답을 기다리는 동안에는 잠급니다 — 두 질문이 겹치면 앞의 것이
+                                     끝나기 전에 뒤의 것이 같은 대화에 끼어들어 순서가 엉킵니다. -->
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding AskBusy}" Value="True">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                                <!-- 엔터로도 보냅니다 — 버튼을 찾아 마우스를 옮기지 않게. -->
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding SendChatCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+
+                            <Button Grid.Column="1" Command="{Binding SendChatCommand}" Content="{loc:Loc ChatSend}"
+                                    Padding="14,7" Margin="8,0,0,0" Style="{StaticResource AccentButton}"
+                                    Visibility="{Binding AskBusy, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Grid.Column="1" Command="{Binding CancelAskCommand}" Content="{loc:Loc AskCancel}"
+                                    Padding="14,7" Margin="8,0,0,0"
+                                    Visibility="{Binding AskBusy, Converter={StaticResource BoolToVisibility}}" />
+
+                            <Button Grid.Column="2" Command="{Binding NewChatCommand}" Content="{loc:Loc ChatNew}"
+                                    Padding="14,7" Margin="8,0,0,0" />
+                        </Grid>
+
+                        <TextBlock Text="{loc:Loc ChatInputHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,6,0,0"
+                                   Visibility="{Binding HasChat, Converter={StaticResource BoolToVisibility}}" />
 
                         <TextBlock Text="{loc:Loc AskDisclaimer}" Style="{StaticResource Micro}"
                                    TextWrapping="Wrap" MaxWidth="620" Margin="0,10,0,0" />

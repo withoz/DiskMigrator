@@ -357,6 +357,10 @@
   <data name="AskCancelled" xml:space="preserve"><value>중단했습니다.</value></data>
   <data name="AskFailedFmt" xml:space="preserve"><value>물어보지 못했습니다 — {0}</value></data>
   <data name="AskAnswerLabel" xml:space="preserve"><value>Claude의 답</value></data>
+  <data name="ChatYou" xml:space="preserve"><value>나</value></data>
+  <data name="ChatSend" xml:space="preserve"><value>보내기</value></data>
+  <data name="ChatNew" xml:space="preserve"><value>새 대화</value></data>
+  <data name="ChatInputHint" xml:space="preserve"><value>이어서 물어보셔도 됩니다 — "그건 왜 그래?", "지금 복제해도 돼?" 처럼요. 앞의 이야기를 기억합니다. 디스크를 바꿔 꽂으셨다면 [새 대화]로 처음부터 시작하십시오.</value></data>
   <data name="AskNeedsClaudeCode" xml:space="preserve"><value>여기서 바로 물어보려면 Claude Code가 이 컴퓨터에 있어야 합니다. 없어도 괜찮습니다 — 아래 [Claude에 연결하기]로 Claude 창에서 물어보시면 됩니다.</value></data>
   <data name="AskDisclaimer" xml:space="preserve"><value>Claude는 읽기만 합니다. 복제·백업·복원·부팅 복구는 지금까지처럼 이 화면에서 직접 하십시오.</value></data>
 </root>

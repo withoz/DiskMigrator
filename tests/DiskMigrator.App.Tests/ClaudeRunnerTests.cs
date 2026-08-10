@@ -82,6 +82,33 @@ public class ClaudeRunnerTests
     }
 
     [Fact]
+    public void 첫_질문에는_이어갈_대화가_없다()
+    {
+        Assert.DoesNotContain("--resume", Args());
+    }
+
+    [Fact]
+    public void 이어지는_질문은_같은_대화에_붙인다()
+    {
+        // 이게 빠지면 "그건 왜 그래?"가 통하지 않는다. 실패하지 않고 더 나쁜 일이 생긴다 —
+        // 앞의 이야기를 모른 채 방금 읽은 디스크를 처음부터 다시 읽고, 같은 답을 또 준다.
+        var args = ClaudeRunner.BuildArguments(
+            "그건 왜 그래?", @"C:\x\bridge.exe", korean: true, resume: "sess-123");
+
+        int i = args.ToList().IndexOf("--resume");
+        Assert.True(i >= 0);
+        Assert.Equal("sess-123", args[i + 1]);
+    }
+
+    [Fact]
+    public void 빈_대화_표시는_붙이지_않는다()
+    {
+        // 빈 문자열을 그대로 넘기면 "그런 대화 없음"으로 실패합니다.
+        Assert.DoesNotContain("--resume",
+            ClaudeRunner.BuildArguments("무엇이든", @"C:\x\b.exe", korean: true, resume: ""));
+    }
+
+    [Fact]
     public void 구독_로그인을_쓰는_모드로_부른다()
     {
         // --bare는 로그인을 읽지 않고 API 열쇠를 요구합니다. 그 한 줄이면 "사용자가 이미
