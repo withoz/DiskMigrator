@@ -14,6 +14,7 @@
 #define AppPublisher "DiskMigrator"
 #define AppExeName "DiskMigratorX.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"
+#define BridgeDir "..\src\DiskMigrator.Bridge\bin\Release\net8.0-windows\win-x64\publish"
 
 [Setup]
 ; AppId는 업그레이드·제거를 같은 제품으로 묶는 고정 키입니다. 절대 바꾸지 마십시오.
@@ -54,6 +55,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\DiskMigratorX.exe"; DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
+; Claude 데스크톱 앱과 이어 주는 중계기.
+;
+; ⚠ 앱 exe 옆에, 이 이름 그대로 있어야 합니다. 앱의 [Claude에 연결하기] 버튼이 자기
+;   실행 파일이 있는 폴더에서 이 이름을 찾아 Claude 설정에 그 경로를 적어 두기 때문입니다.
+;   빠지면 그 버튼이 아예 나타나지 않고, 사용자는 다시 명령 창을 열어야 합니다.
+Source: "{#BridgeDir}\DiskMigratorX.Bridge.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; 사용설명서(단일 HTML, 영어·한국어) — 시작 메뉴에서 바로 열 수 있게 함께 설치합니다.
 ; 두 파일은 서로 언어 링크로 연결되므로 같은 폴더에 나란히 있어야 합니다.
 Source: "..\docs\manual.html"; DestDir: "{app}"; DestName: "manual.html"; Flags: ignoreversion

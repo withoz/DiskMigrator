@@ -1355,6 +1355,26 @@
                 <TextBlock Text="{loc:Loc McpIntro}" Style="{StaticResource Caption}"
                            TextWrapping="Wrap" Margin="0,0,0,14" />
 
+                <!-- ===== 버튼 한 번으로 연결 =====
+                     여기가 이 화면의 첫 번째 답이어야 합니다. 그전에는 사용자가 명령을 복사해
+                     명령 프롬프트를 열고 붙여 넣어야 했고, 초보자는 거기서 멈췄습니다.
+                     중계기 파일이 없으면(개발 중 단독 실행 등) 아예 보이지 않습니다 —
+                     눌러도 아무 일이 없는 버튼은 앱 전체를 의심하게 만듭니다. -->
+                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16"
+                        Visibility="{Binding CanConnectToClaude, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc McpConnectLabel}" Style="{StaticResource SubHeading}"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="{loc:Loc McpConnectHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,4,0,10" />
+                        <Button x:Name="ConnectToClaudeButton" Click="ConnectToClaude_Click"
+                                Content="{loc:Loc McpConnectButton}"
+                                HorizontalAlignment="Left" Padding="18,9"
+                                Style="{StaticResource AccentButton}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- 켜기 전에 정해야 합니다 — 이미 나간 정보는 되돌릴 수 없으므로,
                      통로가 열려 있는 동안에는 바꾸지 못하게 잠급니다. -->
                 <CheckBox IsChecked="{Binding McpShareDetails}"
@@ -1399,31 +1419,37 @@
                              https로 시작할 것을 요구하는데, 이 통로는 이 컴퓨터 안에서만 통하는
                              http이기 때문입니다(2026-08-10 실기에서 거절 확인).
                              확인된 방법은 아래 명령 한 줄뿐이므로 그것을 맨 앞에 둡니다. -->
-                        <TextBlock Text="{loc:Loc McpCommandLabel}" Style="{StaticResource SubHeading}"
-                                   FontWeight="Bold" Margin="0,18,0,0" />
-                        <TextBox Text="{Binding McpAddCommand, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" FontSize="12" Margin="0,4,0,4"
-                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
-                        <TextBlock Text="{loc:Loc McpCommandHint}" Style="{StaticResource Micro}"
-                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,10" />
+                        <!-- 손으로 연결하는 방법은 접어 둡니다. 버튼이 생기기 전에는 이것이
+                             유일한 길이었지만, 이제는 버튼이 안 될 때의 대비책입니다.
+                             펼쳐 둔 채로 두면 초보자가 "이걸 해야 하나" 하고 다시 멈춥니다. -->
+                        <Expander Header="{loc:Loc McpAdvancedLabel}" IsExpanded="False" Margin="0,18,0,0">
+                          <StackPanel Margin="0,10,0,0">
+                            <TextBlock Text="{loc:Loc McpCommandLabel}" Style="{StaticResource Caption}" />
+                            <TextBox Text="{Binding McpAddCommand, Mode=OneWay}" IsReadOnly="True"
+                                     FontFamily="Consolas" FontSize="12" Margin="0,4,0,4"
+                                     BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Loc McpCommandHint}" Style="{StaticResource Micro}"
+                                       TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,10" />
 
-                        <StackPanel Orientation="Horizontal">
-                            <Button Command="{Binding CopyMcpAddCommandCommand}" Content="{loc:Loc McpCommandCopy}"
-                                    Style="{StaticResource AccentButton}" Padding="14,7" Margin="0,0,8,0" />
-                            <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
-                                    Padding="14,7" Margin="0,0,8,0" />
-                            <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
-                                    Padding="14,7" />
-                        </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding CopyMcpAddCommandCommand}" Content="{loc:Loc McpCommandCopy}"
+                                        Padding="14,7" Margin="0,0,8,0" />
+                                <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
+                                        Padding="14,7" Margin="0,0,8,0" />
+                                <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
+                                        Padding="14,7" />
+                            </StackPanel>
 
-                        <!-- 헤더를 못 보내는 도구를 위한 참고용. 화면 설정에서는 쓸 수 없다는 것을
-                             문구에 분명히 적습니다 — 그러지 않으면 또 막다른 길로 보냅니다. -->
-                        <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,16,0,0" />
-                        <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" FontSize="12" Margin="0,2,0,4"
-                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
-                        <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
-                                   TextWrapping="Wrap" MaxWidth="620" />
+                            <!-- 헤더를 못 보내는 도구를 위한 참고용. 화면 설정에서는 쓸 수 없다는 것을
+                                 문구에 분명히 적습니다 — 그러지 않으면 또 막다른 길로 보냅니다. -->
+                            <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,16,0,0" />
+                            <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
+                                     FontFamily="Consolas" FontSize="12" Margin="0,2,0,4"
+                                     BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
+                                       TextWrapping="Wrap" MaxWidth="620" />
+                          </StackPanel>
+                        </Expander>
 
                         <StackPanel Orientation="Horizontal" Visibility="Collapsed">
                             <!-- 토큰은 이제 다음 실행까지 유지됩니다. 새로 발급하는 것은

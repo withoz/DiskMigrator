@@ -325,4 +325,27 @@
   <data name="McpCommandCopied" xml:space="preserve"><value>연결 명령을 복사했습니다. 명령 창에 붙여 넣고 실행하십시오.</value></data>
   <data name="McpCommandHint" xml:space="preserve"><value>아래 버튼으로 복사한 뒤, 명령 창에 붙여 넣고 실행하십시오. Claude 앱의 설정 화면에서 커넥터로 추가하는 방법은 쓸 수 없습니다 — 그 화면은 https 주소만 받는데, 이 통로는 이 컴퓨터 안에서만 통하는 http이기 때문입니다.</value></data>
   <data name="McpCommandCopy" xml:space="preserve"><value>연결 명령 복사</value></data>
+  <data name="McpConnectButton" xml:space="preserve"><value>Claude에 연결하기</value></data>
+  <data name="McpConnectLabel" xml:space="preserve"><value>가장 쉬운 방법 — 버튼 한 번</value></data>
+  <data name="McpConnectHint" xml:space="preserve"><value>이 버튼을 누르면 앱이 Claude 쪽에 우리를 대신 등록합니다. 명령 창을 열 필요도, 주소나 토큰을 옮겨 적을 필요도 없습니다. 무엇을 고칠지 먼저 보여 드리고, 원래 설정은 사본으로 남깁니다.</value></data>
+  <data name="McpConnectNoBridge" xml:space="preserve"><value>연결에 필요한 파일(DiskMigratorX.Bridge.exe)이 앱 옆에 없습니다. 설치본으로 다시 설치하시면 함께 들어갑니다. 그때까지는 아래 명령 방식을 쓰십시오.</value></data>
+  <data name="McpConnectTargetDesktop" xml:space="preserve"><value>Claude 데스크톱 앱</value></data>
+  <data name="McpConnectTargetCode" xml:space="preserve"><value>Claude Code (명령줄)</value></data>
+  <data name="McpConnectDesktopDone" xml:space="preserve"><value>등록했습니다. Claude를 완전히 종료했다가 다시 켜십시오.</value></data>
+  <data name="McpConnectCodeDone" xml:space="preserve"><value>등록했습니다. 열려 있는 창은 다시 시작해야 보입니다.</value></data>
+  <data name="McpConnectNotInstalled" xml:space="preserve"><value>이 컴퓨터에 없어 건너뛰었습니다.</value></data>
+  <data name="McpConnectFailedFmt" xml:space="preserve"><value>등록하지 못했습니다 — {0}</value></data>
+  <data name="McpConnectConfirmTitle" xml:space="preserve"><value>Claude에 연결하기</value></data>
+  <data name="McpConnectConfirmBodyFmt" xml:space="preserve"><value>Claude가 이 앱과 이야기할 수 있도록, Claude 쪽 설정에 이 앱을 등록합니다.
+
+고칠 파일:
+{0}
+
+등록할 프로그램:
+{1}
+
+원래 설정은 같은 자리에 .bak 사본으로 남깁니다. 토큰은 설정 파일에 적지 않습니다.
+
+계속할까요?</value></data>
+  <data name="McpAdvancedLabel" xml:space="preserve"><value>수동으로 연결하기 (버튼이 안 될 때)</value></data>
 </root>

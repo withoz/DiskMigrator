@@ -17,14 +17,21 @@ $installerDir = $PSScriptRoot
 $root = Split-Path -Parent $installerDir
 
 $appExe = "$root\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish\DiskMigratorX.exe"
+$bridgeExe = "$root\src\DiskMigrator.Bridge\bin\Release\net8.0-windows\win-x64\publish\DiskMigratorX.Bridge.exe"
 
 Write-Host "[1/5] 앱 publish (단일 exe)..." -ForegroundColor Cyan
 dotnet publish "$root\src\DiskMigrator.App\DiskMigrator.App.csproj" -c Release -r win-x64 --nologo -v m
 if ($LASTEXITCODE -ne 0) { throw "publish 실패 (exit $LASTEXITCODE)" }
 
+# Claude 데스크톱 앱은 표준입출력으로 켜지는 프로그램만 등록할 수 있는데, 앱 본체는
+# 관리자 권한을 요구해 그 방식으로 켤 수 없습니다. 그래서 권한을 올리지 않는 중계기를
+# 함께 만들어 앱 옆에 둡니다 — 빠지면 [Claude에 연결하기] 버튼이 사라집니다.
+dotnet publish "$root\src\DiskMigrator.Bridge\DiskMigrator.Bridge.csproj" -c Release -r win-x64 --nologo -v m
+if ($LASTEXITCODE -ne 0) { throw "중계기 publish 실패 (exit $LASTEXITCODE)" }
+
 Write-Host "[2/5] 앱 exe 코드 서명..." -ForegroundColor Cyan
 # 앱 exe를 설치 프로그램에 넣기 전에 서명합니다 — 그래야 설치된 실행 파일도 서명됩니다.
-$appSigned = & "$installerDir\sign.ps1" -Files @($appExe)
+$appSigned = & "$installerDir\sign.ps1" -Files @($appExe, $bridgeExe)
 
 Write-Host "[3/5] 라이선스 파일 생성 (UTF-8 BOM)..." -ForegroundColor Cyan
 $eula = Get-Content "$root\src\DiskMigrator.App\Resources\EULA.txt" -Raw -Encoding UTF8

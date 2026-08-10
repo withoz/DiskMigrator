@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DiskMigrator.Mcp\DiskMigrator.Mcp.csproj" />
+    <!-- 중계기는 진짜 서버에 붙여 봐야 확인됩니다 — 그 둘을 한 시험 안에서 만납니다. -->
+    <ProjectReference Include="..\..\src\DiskMigrator.Bridge\DiskMigrator.Bridge.csproj" />
   </ItemGroup>
 
 </Project>

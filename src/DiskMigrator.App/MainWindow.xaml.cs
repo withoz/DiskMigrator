@@ -89,6 +89,46 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// [Claude에 연결하기] — <b>고칠 것을 보여 주고 동의를 받은 뒤에만</b> 등록합니다.
+    /// </summary>
+    /// <remarks>
+    /// "Claude 설정 파일을 앱이 자동으로 손대지 않는다"는 것이 이 제품의 원칙입니다. 버튼
+    /// 하나로 끝나게 만들면서도 그 원칙을 지키는 방법은, <b>무엇을 어디에 쓸지 먼저 보여
+    /// 주는 것</b>입니다 — 확인 없이 남의 설정 파일을 여는 앱이 되어서는 안 됩니다.
+    ///
+    /// <para>확인 대화상자를 뷰모델이 아니라 여기서 띄우는 것은 이 앱의 기존 방식입니다
+    /// (창을 닫을 때의 확인과 같은 자리).</para>
+    /// </remarks>
+    private async void ConnectToClaude_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        var answer = MessageBox.Show(
+            this,
+            Strings.Format("McpConnectConfirmBodyFmt",
+                MainViewModel.ClaudeDesktopConfigPath,
+                ClaudeRegistration.FindBridge() ?? ClaudeRegistration.BridgeFileName),
+            Strings.Get("McpConnectConfirmTitle"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.Yes);
+
+        if (answer != MessageBoxResult.Yes) return;
+
+        // 등록하는 동안 다시 눌러 두 번 돌지 않게 잠급니다 — 설정 파일을 동시에 쓰면
+        // 한쪽이 다른 쪽을 덮습니다.
+        ConnectToClaudeButton.IsEnabled = false;
+        try
+        {
+            await vm.ConnectToClaudeCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            ConnectToClaudeButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
     /// 클론이 도는 중에 창을 닫으면 대상 디스크가 반쯤 쓰인 상태로 남습니다.
     /// 프로세스가 죽으면 볼륨 잠금도 함께 풀려 Windows가 깨진 파일 시스템을
     /// 마운트하려 들 수 있으므로, 사용자에게 한 번 더 묻습니다.

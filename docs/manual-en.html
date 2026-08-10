@@ -210,17 +210,21 @@ Nothing extra to install — it is built entirely from materials already inside 
   <p><b>What it gives you.</b> You can just say "my disk won't boot" and Claude reads the boot files, drivers and
   boot traces itself, then tells you <b>where it stopped</b>. You do not have to interpret the check results.</p>
   <ol class="steps">
-    <li>Click <b>Open connection</b></li>
-    <li>Click <b>Copy connect command</b> — one line with everything already filled in</li>
-    <li><b>Paste and run it</b> in a command window (terminal)</li>
+    <li>Click <b>Connect to Claude</b> — it shows what will be changed, then click <b>Yes</b></li>
+    <li><b>Quit Claude completely and start it again</b></li>
     <li>Ask Claude — "have a look at why this disk won't boot"</li>
   </ol>
-  <div class="warn"><b>⚠ Claude's settings screen cannot connect to this.</b>
-    The "Add custom connector" screen requires the address to start with <code>https</code>, but this
+  <p style="color:var(--muted); font-size:13.5px;">No command window, no copying addresses or tokens.
+  The app registers itself in Claude's settings for you. Your original settings are kept as a
+  <code>.bak</code> copy in the same place, and <b>the token is never written into the settings file.</b></p>
+  <p style="color:var(--muted); font-size:13.5px;">You only register <b>once</b>. The app does need to be
+  <b>running</b> for Claude to see your disks — closing the app closes the channel.</p>
+  <div class="warn"><b>⚠ Claude's "Add custom connector" screen cannot connect to this.</b>
+    It requires the address to start with <code>https</code>, but this
     channel is plain <code>http</code> because it works inside this computer only, so it is rejected.
-    Use the command above.</div>
-  <p style="color:var(--muted); font-size:13.5px;">You only paste the address and token <b>once</b> — they stay the same
-  after restarting the app. If you think the token leaked, click <b>Issue a new token</b> (then paste the new one into Claude).</p>
+    Use the button above.</div>
+  <p style="color:var(--muted); font-size:13.5px;">If the button is missing or does not work, open
+  <b>Connect manually</b> to copy a one-line command you can run in a command window instead.</p>
 </div>
 
 <div class="warn"><b>⚠ Claude cannot change a disk.</b> It only reads.

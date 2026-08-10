@@ -307,6 +307,81 @@ public sealed partial class MainViewModel : ObservableObject
         _logger.LogInformation("MCP 토큰을 새로 발급했습니다.");
     }
 
+    /// <summary>
+    /// 중계기 실행 파일이 앱 옆에 있는지 — 없으면 [Claude에 연결하기]를 보이지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// 개발 중에 앱만 따로 실행하는 경우처럼, 중계기 없이 앱이 도는 상황이 있습니다.
+    /// 그때 버튼을 보여 주면 눌러도 아무 일이 없어 사용자가 앱을 의심하게 됩니다.
+    /// 한 번만 확인해 두고 그대로 씁니다 — 실행 중에 파일이 생기지는 않습니다.
+    /// </remarks>
+    public bool CanConnectToClaude => _bridgePath is not null;
+
+    private readonly string? _bridgePath = ClaudeRegistration.FindBridge();
+
+    /// <summary>Claude 설정 파일의 경로 — 확인 대화상자에서 무엇을 고칠지 보여 줍니다.</summary>
+    public static string ClaudeDesktopConfigPath => ClaudeRegistration.DesktopConfigPath;
+
+    /// <summary>
+    /// <b>Claude 쪽에 우리를 등록합니다</b> — 사용자가 명령 창을 열지 않아도 되게.
+    /// </summary>
+    /// <remarks>
+    /// 이 버튼이 생기기 전에는 연결하려면 명령을 복사해 명령 프롬프트에 붙여 넣어야 했습니다.
+    /// 그것이 이 제품에서 가장 많은 사람이 멈추는 자리였습니다.
+    ///
+    /// <para><b>확인은 화면 쪽에서 받습니다</b>(MainWindow) — 남의 설정 파일을 고치기 전에
+    /// 무엇을 쓸지 보여 주고 동의를 받습니다. 여기까지 왔다는 것은 이미 동의했다는 뜻입니다.</para>
+    ///
+    /// <para>등록만으로는 대화가 되지 않습니다 — 통로가 열려 있어야 하므로, 닫혀 있으면
+    /// 먼저 엽니다. 사용자가 두 버튼의 관계를 이해할 필요가 없어야 합니다.</para>
+    /// </remarks>
+    [RelayCommand]
+    private async Task ConnectToClaudeAsync()
+    {
+        if (_bridgePath is not { } bridge)
+        {
+            McpStatusText = Strings.Get("McpConnectNoBridge");
+            return;
+        }
+
+        if (!McpRunning)
+        {
+            await ToggleMcpAsync();
+            if (!McpRunning) return;           // 통로를 못 열었습니다. 사유는 이미 화면에 있습니다.
+        }
+
+        // 파일을 쓰고 다른 프로그램을 실행합니다 — UI 스레드에서 하면 화면이 멈춥니다.
+        var results = await Task.Run(() => new[]
+        {
+            ClaudeRegistration.RegisterDesktopApp(bridge),
+            ClaudeRegistration.RegisterClaudeCode(bridge),
+        });
+
+        McpStatusText = string.Join("\n", results.Select(DescribeRegistration));
+
+        foreach (var r in results)
+            _logger.LogInformation("Claude 등록 {Target}: {Status} {Detail}", r.Target, r.Status, r.Detail);
+    }
+
+    /// <summary>등록 결과 한 건을 사용자 언어의 한 줄로.</summary>
+    private static string DescribeRegistration(ClaudeRegistrationResult r)
+    {
+        string where = Strings.Get(r.Target == ClaudeTarget.DesktopApp
+            ? "McpConnectTargetDesktop"
+            : "McpConnectTargetCode");
+
+        string what = r.Status switch
+        {
+            ClaudeRegistrationStatus.Registered => Strings.Get(r.Target == ClaudeTarget.DesktopApp
+                ? "McpConnectDesktopDone"
+                : "McpConnectCodeDone"),
+            ClaudeRegistrationStatus.NotInstalled => Strings.Get("McpConnectNotInstalled"),
+            _ => Strings.Format("McpConnectFailedFmt", r.Detail ?? ""),
+        };
+
+        return $"• {where} — {what}";
+    }
+
     /// <summary>주소와 토큰을 클립보드로 복사합니다 — 손으로 옮겨 적지 않게.</summary>
     [RelayCommand]
     private void CopyMcpSettings()
