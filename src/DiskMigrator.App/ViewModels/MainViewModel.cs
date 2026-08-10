@@ -479,6 +479,11 @@ public sealed partial class MainViewModel : ObservableObject
 
         _askCts = new CancellationTokenSource();
 
+        // ⚠ 값을 넣기 <b>전에</b> 기록해 둡니다. 아래에서 _chatSessionId를 채운 뒤에 보면
+        //   첫 질문까지 "이어 씀"으로 찍혀, 나중에 "왜 대화가 안 이어지지?"를 쫓을 때
+        //   로그가 거짓말을 합니다(2026-08-10 실기에서 실제로 그렇게 찍혔습니다).
+        bool resumed = _chatSessionId is { Length: > 0 };
+
         try
         {
             var progress = new Progress<string>(tool =>
@@ -502,7 +507,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             _logger.LogInformation("앱 안에서 물어보기: {Result} (대화 {Session})",
                 result.Ok ? "답 받음" : $"실패 — {result.Error}",
-                _chatSessionId is null ? "새로" : "이어 씀");
+                resumed ? "이어 씀" : "새로 시작");
         }
         catch (OperationCanceledException)
         {
