@@ -348,4 +348,15 @@ The original settings are kept as a .bak copy in the same place. The token is ne
 
 Continue?</value></data>
   <data name="McpAdvancedLabel" xml:space="preserve"><value>Connect manually (if the button does not work)</value></data>
+  <data name="AskTitle" xml:space="preserve"><value>Ask right here</value></data>
+  <data name="AskHint" xml:space="preserve"><value>No switching windows. Press this and Claude reads your disks with this app's tools and writes what is wrong right here. If you have picked a disk, it looks at that one. This can take a few minutes.</value></data>
+  <data name="AskButton" xml:space="preserve"><value>Tell me what is wrong</value></data>
+  <data name="AskCancel" xml:space="preserve"><value>Stop</value></data>
+  <data name="AskStarting" xml:space="preserve"><value>Calling Claude…</value></data>
+  <data name="AskWorkingFmt" xml:space="preserve"><value>Looking… ({0})</value></data>
+  <data name="AskCancelled" xml:space="preserve"><value>Stopped.</value></data>
+  <data name="AskFailedFmt" xml:space="preserve"><value>Could not ask — {0}</value></data>
+  <data name="AskAnswerLabel" xml:space="preserve"><value>Claude's answer</value></data>
+  <data name="AskNeedsClaudeCode" xml:space="preserve"><value>Asking from here needs Claude Code on this computer. That is fine if you do not have it — use [Connect to Claude] below and ask from the Claude window instead.</value></data>
+  <data name="AskDisclaimer" xml:space="preserve"><value>Claude only reads. Cloning, backup, restore and boot repair are still yours to do on this screen.</value></data>
 </root>

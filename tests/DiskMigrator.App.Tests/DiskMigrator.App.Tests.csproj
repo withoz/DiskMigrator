@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    앱 쪽 순수 로직만 시험합니다 — Claude 등록기와 호출기.
+
+    ⚠ 이 프로젝트는 <b>DiskMigrator.Mcp.Tests와 따로</b> 있어야 합니다. 그쪽은 중계기
+    (DiskMigrator.Bridge)를 참조하는데, 중계기는 앱의 AppIdentity·McpTokenStore를 소스로
+    링크해 자기 어셈블리 안에 갖고 있습니다. 한 시험 프로젝트가 앱과 중계기를 함께 참조하면
+    같은 이름의 형식이 두 어셈블리에 있어 어느 쪽인지 정하지 못합니다.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DiskMigrator.App\DiskMigrator.App.csproj" />
+  </ItemGroup>
+
+</Project>

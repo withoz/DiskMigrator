@@ -382,6 +382,124 @@ public sealed partial class MainViewModel : ObservableObject
         return $"• {where} — {what}";
     }
 
+    // --- 앱 안에서 바로 물어보기 -------------------------------------------
+    //
+    // 창을 두 개 열고 그 사이를 오가는 것이 이 제품에서 가장 큰 문턱이었습니다. 여기서는
+    // 사용자가 앱을 떠나지 않습니다 — 버튼을 누르면 앱이 뒤에서 Claude Code를 부르고,
+    // 답만 화면에 옮깁니다. 자세한 이유는 ClaudeRunner 주석에 있습니다.
+
+    /// <summary>이 컴퓨터에서 바로 물어볼 수 있는지 — 중계기와 Claude Code가 모두 있어야 합니다.</summary>
+    public bool CanAskClaude => _bridgePath is not null && ClaudeRunner.IsAvailable;
+
+    /// <summary>Claude Code가 없어 이 기능을 못 쓰는 경우 — 무엇을 하면 되는지 알려 줍니다.</summary>
+    public bool AskNeedsClaudeCode => _bridgePath is not null && !ClaudeRunner.IsAvailable;
+
+    /// <summary>지금까지 받은 답.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAskAnswer))]
+    private string _askAnswer = "";
+
+    public bool HasAskAnswer => AskAnswer.Length > 0;
+
+    /// <summary>지금 무엇을 하고 있는지 — 몇 분 걸리므로 가만히 있으면 멈춘 줄 압니다.</summary>
+    [ObservableProperty] private string _askProgress = "";
+
+    /// <summary>물어보는 중인지.</summary>
+    [ObservableProperty] private bool _askBusy;
+
+    private CancellationTokenSource? _askCts;
+
+    /// <summary>
+    /// Claude에게 "무엇이 문제인지" 한 번 물어봅니다.
+    /// </summary>
+    /// <remarks>
+    /// 통로가 닫혀 있으면 먼저 엽니다 — Claude는 중계기를 거쳐 이 앱의 통로로 들어오므로,
+    /// 통로가 없으면 도구를 하나도 쓰지 못하고 추측으로 답하게 됩니다. 그것이 이 앱이
+    /// 가장 하지 말아야 할 일입니다.
+    /// </remarks>
+    [RelayCommand]
+    private async Task AskClaudeAsync()
+    {
+        if (_bridgePath is not { } bridge || AskBusy) return;
+
+        if (!McpRunning)
+        {
+            await ToggleMcpAsync();
+            if (!McpRunning) return;           // 사유는 이미 화면에 있습니다.
+        }
+
+        bool korean = System.Globalization.CultureInfo.CurrentUICulture
+            .TwoLetterISOLanguageName == "ko";
+
+        AskBusy = true;
+        AskAnswer = "";
+        AskProgress = Strings.Get("AskStarting");
+
+        _askCts = new CancellationTokenSource();
+
+        try
+        {
+            var progress = new Progress<string>(tool =>
+                AskProgress = Strings.Format("AskWorkingFmt", tool));
+
+            var result = await ClaudeRunner.AskAsync(
+                BuildQuestion(korean), bridge, korean, progress, _askCts.Token);
+
+            AskAnswer = result.Ok ? result.Text : "";
+            AskProgress = result.Ok ? "" : Strings.Format("AskFailedFmt", result.Error ?? "");
+
+            _logger.LogInformation("앱 안에서 물어보기: {Result}",
+                result.Ok ? "답 받음" : $"실패 — {result.Error}");
+        }
+        catch (OperationCanceledException)
+        {
+            AskProgress = Strings.Get("AskCancelled");
+            _logger.LogInformation("앱 안에서 물어보기를 사용자가 중단했습니다.");
+        }
+        catch (Exception ex)
+        {
+            AskProgress = Strings.Format("AskFailedFmt", ex.Message);
+            _logger.LogError(ex, "앱 안에서 물어보기에 실패했습니다.");
+        }
+        finally
+        {
+            _askCts?.Dispose();
+            _askCts = null;
+            AskBusy = false;
+        }
+    }
+
+    /// <summary>물어보는 중이던 것을 중단합니다.</summary>
+    [RelayCommand]
+    private void CancelAsk() => _askCts?.Cancel();
+
+    /// <summary>
+    /// 실제로 넘길 질문. 사용자가 디스크를 골라 두었으면 그것을 짚어 줍니다.
+    /// </summary>
+    /// <remarks>
+    /// 고른 디스크가 있는데 "전체를 봐 달라"고만 하면, 정작 사용자가 걱정하는 디스크가
+    /// 답에 안 나올 수 있습니다.
+    /// </remarks>
+    private string BuildQuestion(bool korean)
+    {
+        string? focus = SelectedSource is { } s
+            ? $"#{s.Disk.DeviceNumber} {s.Disk.Model}"
+            : null;
+
+        if (korean)
+        {
+            return focus is null
+                ? "이 컴퓨터의 디스크를 도구로 살펴보고, 문제가 있으면 무엇이 문제인지 알려 줘."
+                : $"디스크 {focus}를 도구로 살펴보고, 문제가 있으면 무엇이 문제인지 알려 줘. " +
+                  "부팅이 안 되는 디스크라면 어디서 막혔는지도 짚어 줘.";
+        }
+
+        return focus is null
+            ? "Look at the disks in this computer with your tools and tell me what is wrong, if anything."
+            : $"Look at disk {focus} with your tools and tell me what is wrong, if anything. " +
+              "If it will not boot, point out where it stops.";
+    }
+
     /// <summary>주소와 토큰을 클립보드로 복사합니다 — 손으로 옮겨 적지 않게.</summary>
     [RelayCommand]
     private void CopyMcpSettings()

@@ -98,25 +98,29 @@ public static class ClaudeRegistration
     /// 것 하나뿐입니다(2026-08-10 확인). 파일의 다른 항목은 손대지 않습니다 — 사용자가
     /// 이미 등록해 둔 다른 서버와 설정이 함께 들어 있습니다.
     /// </remarks>
-    public static ClaudeRegistrationResult RegisterDesktopApp(string bridgePath)
+    public static ClaudeRegistrationResult RegisterDesktopApp(string bridgePath) =>
+        RegisterDesktopApp(bridgePath, DesktopConfigPath);
+
+    /// <summary>설정 파일 자리를 정해서 등록합니다 — 시험이 진짜 파일을 건드리지 않게.</summary>
+    internal static ClaudeRegistrationResult RegisterDesktopApp(string bridgePath, string configPath)
     {
         try
         {
             JsonObject root;
-            if (File.Exists(DesktopConfigPath))
+            if (File.Exists(configPath))
             {
-                string existing = File.ReadAllText(DesktopConfigPath);
+                string existing = File.ReadAllText(configPath);
                 root = (string.IsNullOrWhiteSpace(existing)
                     ? new JsonObject()
                     : JsonNode.Parse(existing) as JsonObject) ?? new JsonObject();
 
                 // 덮어쓰기 전에 원본을 남깁니다 — 우리 실수로 남의 설정을 잃게 할 수 없습니다.
-                File.Copy(DesktopConfigPath, DesktopConfigPath + ".bak", overwrite: true);
+                File.Copy(configPath, configPath + ".bak", overwrite: true);
             }
             else
             {
                 root = new JsonObject();
-                Directory.CreateDirectory(Path.GetDirectoryName(DesktopConfigPath)!);
+                Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
             }
 
             if (root["mcpServers"] is not JsonObject servers)
@@ -134,7 +138,7 @@ public static class ClaudeRegistration
             };
 
             File.WriteAllText(
-                DesktopConfigPath,
+                configPath,
                 root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 

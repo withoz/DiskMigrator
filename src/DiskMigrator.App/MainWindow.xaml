@@ -1355,6 +1355,58 @@
                 <TextBlock Text="{loc:Loc McpIntro}" Style="{StaticResource Caption}"
                            TextWrapping="Wrap" Margin="0,0,0,14" />
 
+                <!-- ===== 여기서 바로 물어보기 =====
+                     창을 두 개 열고 오가는 것이 이 제품에서 가장 큰 문턱이었습니다. 이 상자는
+                     앱을 떠나지 않고 답을 받는 길이라, 화면에서 가장 먼저 나와야 합니다.
+                     Claude 설정에 아무것도 등록하지 않아도 동작합니다(중계기를 그 자리에서 넘깁니다). -->
+                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
+                        BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16"
+                        Visibility="{Binding CanAskClaude, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Loc AskTitle}" Style="{StaticResource SubHeading}"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="{loc:Loc AskHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,4,0,10" />
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Command="{Binding AskClaudeCommand}" Content="{loc:Loc AskButton}"
+                                    HorizontalAlignment="Left" Padding="18,9"
+                                    Style="{StaticResource AccentButton}"
+                                    Visibility="{Binding AskBusy, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Command="{Binding CancelAskCommand}" Content="{loc:Loc AskCancel}"
+                                    HorizontalAlignment="Left" Padding="18,9"
+                                    Visibility="{Binding AskBusy, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding AskProgress}" Style="{StaticResource Caption}"
+                                   TextWrapping="Wrap" Margin="0,10,0,0"
+                                   Visibility="{Binding AskProgress, Converter={StaticResource NullToVisibility}}" />
+
+                        <!-- 답은 길 수 있습니다. 읽기 위해 창을 늘려야 한다면 실패입니다. -->
+                        <TextBlock Text="{loc:Loc AskAnswerLabel}" Style="{StaticResource Caption}"
+                                   Margin="0,14,0,4"
+                                   Visibility="{Binding HasAskAnswer, Converter={StaticResource BoolToVisibility}}" />
+                        <Border Background="{StaticResource Surface}" CornerRadius="6" Padding="12"
+                                MaxHeight="320"
+                                Visibility="{Binding HasAskAnswer, Converter={StaticResource BoolToVisibility}}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox Text="{Binding AskAnswer, Mode=OneWay}" IsReadOnly="True"
+                                         BorderThickness="0" Background="Transparent"
+                                         TextWrapping="Wrap" FontSize="13" />
+                            </ScrollViewer>
+                        </Border>
+
+                        <TextBlock Text="{loc:Loc AskDisclaimer}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Claude Code가 없으면 이 기능을 못 씁니다. 버튼을 숨기기만 하면 사용자는
+                     무엇이 빠졌는지 모른 채 지나갑니다 — 대신 할 수 있는 것을 알려 줍니다. -->
+                <TextBlock Text="{loc:Loc AskNeedsClaudeCode}" Style="{StaticResource Micro}"
+                           TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,14"
+                           Visibility="{Binding AskNeedsClaudeCode, Converter={StaticResource BoolToVisibility}}" />
+
                 <!-- ===== 버튼 한 번으로 연결 =====
                      여기가 이 화면의 첫 번째 답이어야 합니다. 그전에는 사용자가 명령을 복사해
                      명령 프롬프트를 열고 붙여 넣어야 했고, 초보자는 거기서 멈췄습니다.

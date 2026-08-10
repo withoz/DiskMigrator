@@ -348,4 +348,15 @@
 
 계속할까요?</value></data>
   <data name="McpAdvancedLabel" xml:space="preserve"><value>수동으로 연결하기 (버튼이 안 될 때)</value></data>
+  <data name="AskTitle" xml:space="preserve"><value>여기서 바로 물어보기</value></data>
+  <data name="AskHint" xml:space="preserve"><value>창을 옮겨 다니지 않아도 됩니다. 누르면 Claude가 이 앱의 도구로 디스크를 직접 읽고, 무엇이 문제인지 여기에 적어 줍니다. 디스크를 골라 두었으면 그 디스크를 봅니다. 몇 분 걸릴 수 있습니다.</value></data>
+  <data name="AskButton" xml:space="preserve"><value>무엇이 문제인지 봐 줘</value></data>
+  <data name="AskCancel" xml:space="preserve"><value>중단</value></data>
+  <data name="AskStarting" xml:space="preserve"><value>Claude를 부르는 중…</value></data>
+  <data name="AskWorkingFmt" xml:space="preserve"><value>살펴보는 중… ({0})</value></data>
+  <data name="AskCancelled" xml:space="preserve"><value>중단했습니다.</value></data>
+  <data name="AskFailedFmt" xml:space="preserve"><value>물어보지 못했습니다 — {0}</value></data>
+  <data name="AskAnswerLabel" xml:space="preserve"><value>Claude의 답</value></data>
+  <data name="AskNeedsClaudeCode" xml:space="preserve"><value>여기서 바로 물어보려면 Claude Code가 이 컴퓨터에 있어야 합니다. 없어도 괜찮습니다 — 아래 [Claude에 연결하기]로 Claude 창에서 물어보시면 됩니다.</value></data>
+  <data name="AskDisclaimer" xml:space="preserve"><value>Claude는 읽기만 합니다. 복제·백업·복원·부팅 복구는 지금까지처럼 이 화면에서 직접 하십시오.</value></data>
 </root>

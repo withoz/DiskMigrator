@@ -66,6 +66,12 @@
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
+  <!-- Claude 등록기·호출기는 남의 설정 파일을 고치고 남의 프로그램을 부릅니다. 그 두 가지는
+       눈으로 맞추면 안 되는 자리라, 시험이 내부 진입점을 볼 수 있게 열어 둡니다. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="DiskMigrator.App.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DiskMigrator.Core\DiskMigrator.Core.csproj" />
     <ProjectReference Include="..\DiskMigrator.Mcp\DiskMigrator.Mcp.csproj" />
