@@ -166,15 +166,11 @@
   <data name="RepairBootBtn" xml:space="preserve"><value>Repair boot</value></data>
   <data name="RepairBootTip" xml:space="preserve"><value>Fixes the boot settings and clears the hibernation image.</value></data>
   <data name="Repairing" xml:space="preserve"><value>Repairing…</value></data>
-  <data name="MakeBootableTitle" xml:space="preserve"><value>Make it boot on modern PCs (convert to GPT/UEFI)</value></data>
   <data name="MakeBootableDesc" xml:space="preserve"><value>This copy uses the old (BIOS) way, so it will not start on a UEFI-only PC.</value></data>
   <data name="ConvertUefiBtn" xml:space="preserve"><value>Convert to UEFI</value></data>
-  <data name="ConvertUefiTip" xml:space="preserve"><value>Converts to GPT and adds an EFI partition so it boots on UEFI.</value></data>
   <data name="Converting" xml:space="preserve"><value>Converting… (this can take a few minutes)</value></data>
-  <data name="SafeRemoveTitle" xml:space="preserve"><value>Safely remove the target USB</value></data>
   <data name="SafeRemoveDesc" xml:space="preserve"><value>Use this when Windows blocks removal with "device in use".</value></data>
   <data name="SafeRemoveBtn" xml:space="preserve"><value>Safely remove target</value></data>
-  <data name="SafeRemoveTip" xml:space="preserve"><value>Takes the disk offline and flushes the cache. Your data is untouched.</value></data>
   <data name="SafeRemoveBusy" xml:space="preserve"><value>Dismounting the target's volumes…</value></data>
   <data name="SafeRemoveDone" xml:space="preserve"><value>The target disk is now offline. You can safely unplug the USB.</value></data>
   <data name="SafeRemoveFailFmt" xml:space="preserve"><value>Safe removal failed: {0} — In Disk Management (diskmgmt.msc), right-click this disk, choose "Offline," then unplug it.</value></data>

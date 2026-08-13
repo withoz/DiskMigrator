@@ -166,15 +166,11 @@
   <data name="RepairBootBtn" xml:space="preserve"><value>부팅 복구</value></data>
   <data name="RepairBootTip" xml:space="preserve"><value>부팅 구성을 고치고 최대 절전 이미지를 지웁니다.</value></data>
   <data name="Repairing" xml:space="preserve"><value>복구 중...</value></data>
-  <data name="MakeBootableTitle" xml:space="preserve"><value>요즘 PC에서 부팅되게 만들기 (GPT/UEFI 변환)</value></data>
   <data name="MakeBootableDesc" xml:space="preserve"><value>이 사본은 옛 방식(BIOS)이라 UEFI 전용 PC에서는 켜지지 않습니다.</value></data>
   <data name="ConvertUefiBtn" xml:space="preserve"><value>UEFI로 변환</value></data>
-  <data name="ConvertUefiTip" xml:space="preserve"><value>GPT로 바꾸고 EFI 파티션을 만들어 UEFI로 부팅되게 합니다.</value></data>
   <data name="Converting" xml:space="preserve"><value>변환 중... (몇 분 걸릴 수 있습니다)</value></data>
-  <data name="SafeRemoveTitle" xml:space="preserve"><value>대상 USB 안전하게 제거</value></data>
   <data name="SafeRemoveDesc" xml:space="preserve"><value>Windows가 "장치 사용 중"이라며 뽑기를 막을 때 씁니다.</value></data>
   <data name="SafeRemoveBtn" xml:space="preserve"><value>대상 안전하게 제거</value></data>
-  <data name="SafeRemoveTip" xml:space="preserve"><value>디스크를 오프라인으로 내려 캐시를 비웁니다. 데이터는 그대로입니다.</value></data>
   <data name="SafeRemoveBusy" xml:space="preserve"><value>대상 볼륨을 내리는 중...</value></data>
   <data name="SafeRemoveDone" xml:space="preserve"><value>대상 디스크를 오프라인으로 내렸습니다. 이제 USB를 안전하게 뽑을 수 있습니다.</value></data>
   <data name="SafeRemoveFailFmt" xml:space="preserve"><value>안전 제거에 실패했습니다: {0} — 디스크 관리(diskmgmt.msc)에서 이 디스크를 우클릭해 "오프라인"으로 내린 뒤 뽑으십시오.</value></data>

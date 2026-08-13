@@ -1959,66 +1959,58 @@
                         섹션은 변환 가능하거나 이미 실행됐을 때 보이고(ShowUefiConvertSection),
                         설명·버튼은 아직 변환 전(UefiConvertAvailable)일 때만 — 변환 후엔 결과만 남깁니다.
                     -->
-                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
-                            Background="{StaticResource SurfaceAlt}"
-                            BorderBrush="{StaticResource Accent}" BorderThickness="1"
-                            Visibility="{Binding ShowUefiConvertSection, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:Loc MakeBootableTitle}"
-                                       Style="{StaticResource Body}" FontWeight="SemiBold"
-                                       Foreground="{StaticResource Accent}" />
-
-                            <StackPanel Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
-                                           Text="{loc:Loc MakeBootableDesc}" />
-
-                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                    <Button Content="{loc:Loc ConvertUefiBtn}" Command="{Binding ConvertToUefiCommand}"
-                                            MinWidth="130" Padding="16,8" />
-                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
-                                               Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                               Text="{loc:Loc ConvertUefiTip}" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <TextBlock Text="{loc:Loc Converting}" Margin="0,6,0,0"
-                                       Style="{StaticResource Caption}"
-                                       Visibility="{Binding IsConvertingToUefi,
-                                                    Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Text="{Binding UefiConvertMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
-                                       Visibility="{Binding UefiConvertRan,
-                                                    Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding UefiConvertSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                    <!-- 상자를 두지 않습니다. 후속 작업이 넷인데 저마다 색 테두리 상자를
+                         두르면 결과 화면이 상자 다섯 개가 됩니다 — 정작 무엇이 끝났는지가
+                         묻힙니다. 버튼 한 줄 + 왜 필요한지 한 줄이면 충분합니다.
+                         "무엇을 하나"는 버튼 이름이 이미 말합니다(ConvertUefiTip 삭제). -->
+                    <StackPanel Margin="0,20,0,0"
+                                Visibility="{Binding ShowUefiConvertSection, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal"
+                                    Visibility="{Binding UefiConvertAvailable, Converter={StaticResource BoolToVisibility}}">
+                            <Button Content="{loc:Loc ConvertUefiBtn}" Command="{Binding ConvertToUefiCommand}"
+                                    MinWidth="130" Padding="16,8" VerticalAlignment="Top" />
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
+                                       Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
+                                       HorizontalAlignment="Left"
+                                       Text="{loc:Loc MakeBootableDesc}" />
                         </StackPanel>
-                    </Border>
+
+                        <TextBlock Text="{loc:Loc Converting}" Margin="0,6,0,0"
+                                   Style="{StaticResource Caption}"
+                                   Visibility="{Binding IsConvertingToUefi,
+                                                Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Text="{Binding UefiConvertMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding UefiConvertRan,
+                                                Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UefiConvertSuccess}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
 
                     <!--
                         복구 환경 안내 — 리사이즈로 복구 파티션이 밀렸을 때만.
                         부팅은 정상이라 사용자가 알아채지 못하고, 정작 복구가 필요한 순간에야
                         없다는 걸 알게 됩니다. 명령 한 줄이면 되는 일이라 여기서 말해 줍니다.
                     -->
-                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
-                            Background="{StaticResource SurfaceAlt}"
-                            BorderBrush="{StaticResource Warning}" BorderThickness="1"
-                            Visibility="{Binding HasRecoveryHint, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:Loc ReconnectWinre}" Style="{StaticResource Body}"
-                                       FontWeight="SemiBold" Foreground="{StaticResource Warning}" />
-                            <TextBlock Text="{Binding RecoveryHint}" Style="{StaticResource Caption}"
-                                       TextWrapping="Wrap" Margin="0,4,0,0" />
-                        </StackPanel>
-                    </Border>
+                    <!-- 누를 것이 없는 안내입니다. 색 테두리 상자로 두르면 할 일이 있는
+                         버튼들과 같은 무게로 보여, 정작 눌러야 할 것이 묻힙니다. -->
+                    <StackPanel Margin="0,20,0,0"
+                                Visibility="{Binding HasRecoveryHint, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{loc:Loc ReconnectWinre}" Style="{StaticResource Body}"
+                                   FontWeight="SemiBold" Foreground="{StaticResource Warning}" />
+                        <TextBlock Text="{Binding RecoveryHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" Margin="0,4,0,0" MaxWidth="560"
+                                   HorizontalAlignment="Left" />
+                    </StackPanel>
 
                     <!-- 파티션 확장 (대상에 남는 공간이 있을 때) -->
                     <StackPanel Margin="0,20,0,0"
@@ -2057,46 +2049,39 @@
                         Windows "안전하게 제거"가 "장치 사용 중"으로 막힙니다. 이 버튼이 볼륨을
                         디스마운트하고 디스크를 오프라인으로 내려 그대로 뽑을 수 있게 합니다.
                     -->
-                    <Border Margin="0,20,0,0" Padding="12,10" CornerRadius="6"
-                            Background="{StaticResource SurfaceAlt}"
-                            BorderBrush="{StaticResource Success}" BorderThickness="1"
-                            Visibility="{Binding SafeRemoveAvailable, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:Loc SafeRemoveTitle}"
-                                       Style="{StaticResource Body}" FontWeight="SemiBold"
-                                       Foreground="{StaticResource Success}" />
-                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                    <!-- 제목("대상 USB 안전하게 제거")이 버튼 이름("대상 안전하게 제거")과
+                         거의 같아 두 번 읽히던 자리입니다. 제목과 상자를 함께 걷어냅니다. -->
+                    <StackPanel Margin="0,20,0,0"
+                                Visibility="{Binding SafeRemoveAvailable, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{loc:Loc SafeRemoveBtn}" Command="{Binding SafeRemoveTargetCommand}"
+                                    MinWidth="130" Padding="16,8" VerticalAlignment="Top" />
+                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
+                                       Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
+                                       HorizontalAlignment="Left"
                                        Text="{loc:Loc SafeRemoveDesc}" />
-
-                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="{loc:Loc SafeRemoveBtn}" Command="{Binding SafeRemoveTargetCommand}"
-                                        MinWidth="130" Padding="16,8" />
-                                <TextBlock VerticalAlignment="Center" Margin="12,0,0,0"
-                                           Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                           Text="{loc:Loc SafeRemoveTip}" />
-                            </StackPanel>
-
-                            <TextBlock Text="{loc:Loc SafeRemoveBusy}" Margin="0,6,0,0"
-                                       Style="{StaticResource Caption}"
-                                       Visibility="{Binding IsSafeRemoving,
-                                                    Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Text="{Binding SafeRemoveMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
-                                       Visibility="{Binding SafeRemoveRan,
-                                                    Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SafeRemoveSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
                         </StackPanel>
-                    </Border>
+
+                        <TextBlock Text="{loc:Loc SafeRemoveBusy}" Margin="0,6,0,0"
+                                   Style="{StaticResource Caption}"
+                                   Visibility="{Binding IsSafeRemoving,
+                                                Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Text="{Binding SafeRemoveMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding SafeRemoveRan,
+                                                Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SafeRemoveSuccess}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
 
                     <Button Content="{loc:Loc StartOver}" Command="{Binding BackToSelectionCommand}"
                             Style="{StaticResource AccentButton}" HorizontalAlignment="Right"
