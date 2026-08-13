@@ -5,6 +5,7 @@
              xmlns:rt="clr-namespace:DiskMigrator.App.Runtime">
     <Application.Resources>
 
+
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:StageToVisibilityConverter x:Key="StageToVisibility" />
@@ -34,6 +35,16 @@
         <!-- 로고 마크용 — TextBrush(#33302B)를 흰색 쪽으로 10% 밝힌 값. 너무 새까맣지 않게. -->
         <SolidColorBrush x:Key="LogoInk" Color="#474540" />
         <SolidColorBrush x:Key="SelectionSoft" Color="#EEF3F7" />
+
+        <!-- 묶음 안에서 지금 고른 갈래를 표시하는 색.
+             테두리와 글자만 바꾸면 배경이 둘 다 같아 어느 쪽이 켜졌는지 잘 안 보였습니다 —
+             파랑(Accent)은 위 탭이 이미 쓰고 있어, 아래 줄은 초록 계열로 갈라 놓습니다. -->
+        <SolidColorBrush x:Key="SuccessSoft" Color="#E7F1EA" />
+        <SolidColorBrush x:Key="SuccessInk" Color="#3D6B51" />
+
+        <!-- 안 고른 갈래의 글자. Muted(#837B72)보다 옅어, 고른 쪽과 한눈에 갈립니다.
+             이 색은 하위 갈래 버튼에만 씁니다 — 다른 곳까지 흐려지면 화면 전체가 바랩니다. -->
+        <SolidColorBrush x:Key="MutedFaint" Color="#A8A8A8" />
         <SolidColorBrush x:Key="DangerSoft" Color="#FEF2F2" />
 
         <!--
@@ -137,6 +148,7 @@
             <Setter Property="Background" Value="{StaticResource Surface}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -145,7 +157,13 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="6">
+                            <!-- ⚠ TextElement.Foreground가 없으면 버튼의 Foreground가 글자에
+                                 닿지 않습니다. 글 내용은 ContentPresenter가 TextBlock으로 만드는데,
+                                 그 TextBlock이 앱의 암시적 TextBlock 스타일(TextBrush)을 먼저
+                                 집어가기 때문입니다 — 버튼 색을 아무리 바꿔도 글자는 그대로였습니다.
+                                 AccentButton에는 이 줄이 있었고 여기만 빠져 있었습니다. -->
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
                                               Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>

@@ -412,6 +412,15 @@
                                 <TextBlock Text=" / " FontSize="10.5" Foreground="{StaticResource Muted}" />
                                 <TextBlock Text="AiDesign.co.kr" Style="{StaticResource SiteLink}"
                                            Tag="http://aidesign.co.kr" MouseLeftButtonUp="CompanyLink_Click" />
+
+                                <!-- Claude에 들어와 있는 계정. 오른쪽 머리말에 있던 것을 여기로
+                                     옮깁니다 — 그쪽은 누르는 것들(묻기·언어)이 모이는 자리이고,
+                                     이것은 눌러도 아무 일이 없는 '지금 상태'라서요. -->
+                                <TextBlock Text=" · " FontSize="10.5" Foreground="{StaticResource Muted}"
+                                           Visibility="{Binding ShowClaudeAccount, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Text="{Binding ClaudeAccountText}" FontSize="10.5"
+                                           Foreground="{StaticResource Muted}"
+                                           Visibility="{Binding ShowClaudeAccount, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -430,9 +439,7 @@
                             FontSize="12" Style="{StaticResource AccentButton}"
                             Visibility="{Binding CanAskClaude, Converter={StaticResource BoolToVisibility}}" />
 
-                    <TextBlock Text="{Binding ClaudeAccountText}" FontSize="12" VerticalAlignment="Center"
-                               Margin="0,0,14,0" Foreground="{StaticResource Muted}"
-                               Visibility="{Binding ShowClaudeAccount, Converter={StaticResource BoolToVisibility}}" />
+                    <!-- 계정 표시는 로고 아래 줄로 옮겼습니다(AiDesign.co.kr 옆). -->
 
                     <Button Command="{Binding ClaudeLoginCommand}" Content="{loc:Loc ClaudeLoginBtn}"
                             Cursor="Hand" Margin="0,0,14,0" VerticalAlignment="Center" Padding="10,4"
@@ -621,9 +628,8 @@
                  없애지 않고 묶습니다 — 백업과 복원은 같은 파일을 두고 하는 반대 동작이고,
                  부팅 복구와 부팅 USB는 둘 다 안 켜질 때 쓰는 것입니다. 갈래가 둘인 묶음에서만
                  아래 줄이 나옵니다.
-
                  Width는 고정이어야 합니다 — MaxWidth+Center는 내용 크기로 줄어들어 별(*) 열이 안 펼쳐집니다. -->
-            <Grid Width="760" HorizontalAlignment="Center" Margin="0,0,0,10">
+            <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
@@ -696,12 +702,15 @@
                     <Button Command="{Binding SetModeCommand}" CommandParameter="Backup"
                             Content="{loc:Loc ModeBackup}" Padding="14,5" FontSize="12.5" Margin="0,0,8,0">
                         <Button.Style>
-                            <Style TargetType="Button">
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{StaticResource MutedFaint}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
                                         <Setter Property="FontWeight" Value="Bold" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessInk}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -710,12 +719,15 @@
                     <Button Command="{Binding SetModeCommand}" CommandParameter="Restore"
                             Content="{loc:Loc ModeRestore}" Padding="14,5" FontSize="12.5">
                         <Button.Style>
-                            <Style TargetType="Button">
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{StaticResource MutedFaint}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
                                         <Setter Property="FontWeight" Value="Bold" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessInk}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -728,12 +740,15 @@
                     <Button Command="{Binding SetModeCommand}" CommandParameter="FixBoot"
                             Content="{loc:Loc ModeFixBoot}" Padding="14,5" FontSize="12.5" Margin="0,0,8,0">
                         <Button.Style>
-                            <Style TargetType="Button">
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{StaticResource MutedFaint}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
                                         <Setter Property="FontWeight" Value="Bold" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessInk}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -742,12 +757,15 @@
                     <Button Command="{Binding SetModeCommand}" CommandParameter="BootUsb"
                             Content="{loc:Loc ModeBootUsb}" Padding="14,5" FontSize="12.5">
                         <Button.Style>
-                            <Style TargetType="Button">
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{StaticResource MutedFaint}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
                                         <Setter Property="FontWeight" Value="Bold" />
-                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessInk}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -1207,17 +1225,16 @@
             <!-- ===== 클론 모드 끝 ===== -->
 
             <!-- ===== 이미지 백업 모드 (디스크 → .vhdx) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+            <StackPanel
                         Visibility="{Binding IsBackupMode, Converter={StaticResource BoolToVisibility}}">
 
-                <!-- 왜 백업해 두어야 하는지 — 기능 설명보다 먼저 말해 줍니다. -->
-                <Border Background="#EDF7F2" BorderBrush="#CDE8DB" BorderThickness="1" CornerRadius="10"
-                        Padding="14,10" Margin="0,4,0,14">
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc BackupRecommendTitle}" Style="{StaticResource Body}" FontWeight="Bold" />
-                        <TextBlock Text="{loc:Loc BackupRecommendDesc}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                    </StackPanel>
-                </Border>
+                <!-- 왜 백업해 두어야 하는지 — 기능 설명보다 먼저 말해 줍니다.
+                     상자(배경·테두리)는 두지 않습니다. 화면이 넓어지면서 색 띠가 가로로 길게
+                     누워 정작 글보다 상자가 먼저 눈에 들어왔습니다. -->
+                <StackPanel Margin="0,4,0,14">
+                    <TextBlock Text="{loc:Loc BackupRecommendTitle}" Style="{StaticResource Body}" FontWeight="Bold" />
+                    <TextBlock Text="{loc:Loc BackupRecommendDesc}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
                     <TextBlock Text="{loc:Loc BackupSourceLabel}" Style="{StaticResource SubHeading}"
@@ -1270,7 +1287,7 @@
             </StackPanel>
 
             <!-- ===== 이미지 복원 모드 (.vhdx → 디스크) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+            <StackPanel
                         Visibility="{Binding IsRestoreMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc RestoreImageLabel}" Style="{StaticResource SectionLabel}" Margin="0,4,0,7" />
@@ -1345,11 +1362,16 @@
             </StackPanel>
 
             <!-- ===== 부팅 복구 모드 (독립 도구 — 복제 없이 검사·복구) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+            <StackPanel
                         Visibility="{Binding IsFixBootMode, Converter={StaticResource BoolToVisibility}}">
 
-                <TextBlock Text="{loc:Loc FixBootHint}" Style="{StaticResource Caption}"
-                           TextWrapping="Wrap" Margin="0,4,0,10" />
+                <!-- 백업 화면과 같은 모양 — 굵은 첫 줄이 무엇을 하는 자리인지 말하고,
+                     그 아래 흐린 줄이 덧붙입니다. 상자는 두지 않습니다. -->
+                <StackPanel Margin="0,4,0,14">
+                    <TextBlock Text="{loc:Loc FixBootTitle}" Style="{StaticResource Body}" FontWeight="Bold" />
+                    <TextBlock Text="{loc:Loc FixBootHint}" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" Margin="0,2,0,0" />
+                </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
                     <TextBlock Text="{loc:Loc FixBootTargetLabel}" Style="{StaticResource SubHeading}"
@@ -1469,7 +1491,7 @@
 
             <!-- ===== Claude 연결 (로컬 MCP 통로) =====
                  기본은 꺼짐입니다 — 디스크를 읽는 통로를 사용자 모르게 열어두지 않습니다. -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+            <StackPanel
                         Visibility="{Binding IsAssistantMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc McpTitle}" Style="{StaticResource SubHeading}" Margin="0,4,0,6" />
@@ -1658,7 +1680,7 @@
             </StackPanel>
 
             <!-- ===== 부팅 USB 모드 (WinPE 응급 USB 만들기) ===== -->
-            <StackPanel MaxWidth="760" HorizontalAlignment="Center"
+            <StackPanel
                         Visibility="{Binding IsBootUsbMode, Converter={StaticResource BoolToVisibility}}">
 
                 <TextBlock Text="{loc:Loc BootUsbHint}" Style="{StaticResource Caption}"
