@@ -28,6 +28,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
+    <!--
+      앱과 같은 아이콘을 답니다. 아이콘이 없으면 앱 옆에 놓인 이름 모를 낱개 실행 파일로
+      보입니다 — 서명도 없는 상태라 사용자와 백신 모두 의심할 만한 모습입니다.
+      한 식구로 보여야 사용자가 지우지 않습니다(지우면 Claude 관련 버튼이 사라집니다).
+    -->
+    <ApplicationIcon>..\DiskMigrator.App\AppIcon.ico</ApplicationIcon>
+
     <Product>DiskMigrator-X</Product>
     <AssemblyTitle>DiskMigrator-X Claude bridge</AssemblyTitle>
     <Company>DiskMigrator</Company>
