@@ -1455,9 +1455,9 @@ public sealed partial class MainViewModel : ObservableObject
             }
         }
 
-        // 이전 선택을 같은 번호로 복원하거나 첫 항목으로.
+        // 이전 선택을 같은 번호로 복원하거나, 사람이 넓히려 했을 파티션으로.
         SelectedResizePartition =
-            ResizablePartitions.FirstOrDefault(c => c.Number == previous) ?? ResizablePartitions.FirstOrDefault();
+            ResizablePartitions.FirstOrDefault(c => c.Number == previous) ?? PreferredGrowChoice();
 
         OnPropertyChanged(nameof(CanResize));
         OnPropertyChanged(nameof(ResizeBlockedReason));
@@ -1467,24 +1467,94 @@ public sealed partial class MainViewModel : ObservableObject
 
         // 대상이 더 이상 크지 않거나 후보가 없으면 '파티션 조정'을 끄고 기본으로 되돌립니다.
         // 고를 수 없게 된 방식이 선택된 채로 남으면 시작할 때 엉뚱하게 실패합니다.
-        if (FreeSpaceGrowPartition && !CanResize)
-        {
-            FreeSpaceGrowPartition = false;
-            FreeSpaceLeave = true;
-        }
+        if (FreeSpaceGrowPartition && !CanResize) SetFreeSpaceMode(leave: true);
 
         // 남는 공간이 아예 없으면 선택 자체가 의미 없으므로 기본으로 되돌립니다.
-        if (!HasFreeSpace && !FreeSpaceLeave)
-        {
-            FreeSpaceExpandLast = false;
-            FreeSpaceGrowPartition = false;
-            FreeSpaceLeave = true;
-        }
+        if (!HasFreeSpace && !FreeSpaceLeave) SetFreeSpaceMode(leave: true);
+
+        ApplyGrowByDefault();
 
         // 대상이 바뀌면 '새 총 크기'에 남아 있던 값이 새 대상 범위를 벗어날 수 있습니다 —
         // 더 큰 대상에서 정한 값을 그대로 두고 작은 대상으로 바꾸면 "용량 초과"로 거부돼
         // 리사이즈가 아예 불가능한 것처럼 보입니다. 범위를 벗어난 값은 최대치로 맞춥니다.
         ClampResizeSizeToBounds();
+    }
+
+    /// <summary>
+    /// 사람이 넓히려 했을 파티션 — <b>Windows가 든 것</b>.
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 목록의 첫 항목을 골랐습니다. 후보는 디스크 순서로 담기므로 첫 항목은 언제나
+    /// <c>시스템 예약</c>(479 MB)이었고, 크기 칸에는 그 파티션의 현재 크기가 들어갔습니다 —
+    /// 즉 <b>[파티션 조정]을 골라도 기본 상태는 "아무것도 안 함"</b>이었습니다. 원하는 결과를
+    /// 얻으려면 두 번 더 눌러야 했고, 2026-08-13에 만든 사람조차 그 함정에 걸렸습니다.
+    ///
+    /// <para>고르는 규칙 자체는 <see cref="GrowTargetPicker"/>(Core, 단위 시험 있음)에 있습니다 —
+    /// 이 규칙이 틀리면 엉뚱한 파티션이 커진 디스크가 남으므로, 화면 코드에 두어 시험 없이
+    /// 굴릴 자리가 아닙니다.</para>
+    /// </remarks>
+    private PartitionChoiceViewModel? PreferredGrowChoice()
+    {
+        var picked = GrowTargetPicker.Preferred([.. ResizablePartitions.Select(c => c.Partition)]);
+        return picked is null
+            ? null
+            : ResizablePartitions.FirstOrDefault(c => c.Number == picked.Number);
+    }
+
+    /// <summary>
+    /// 남는 공간 방식을 <b>우리가</b> 바꿉니다 — 사용자가 고른 것으로 세지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// 사용자가 한 번이라도 직접 고르면 그 뒤로는 기본값을 밀어 넣지 않습니다. 그러지 않으면
+    /// 디스크를 다시 고를 때마다 사용자의 선택이 조용히 되돌려집니다 — 자기가 끈 것이 다시
+    /// 켜져 있는 화면만큼 못 믿을 것이 없습니다.
+    /// </remarks>
+    private void SetFreeSpaceMode(bool leave = false, bool expandLast = false, bool grow = false)
+    {
+        _applyingFreeSpaceDefault = true;
+        try
+        {
+            FreeSpaceLeave = leave;
+            FreeSpaceExpandLast = expandLast;
+            FreeSpaceGrowPartition = grow;
+        }
+        finally
+        {
+            _applyingFreeSpaceDefault = false;
+        }
+    }
+
+    /// <summary>사용자가 남는 공간 방식을 직접 고른 적이 있는지.</summary>
+    private bool _freeSpaceChosenByUser;
+
+    /// <summary>기본값을 적용하는 중인지 — 그 사이의 변경은 사용자의 선택이 아닙니다.</summary>
+    private bool _applyingFreeSpaceDefault;
+
+    /// <summary>
+    /// 넓힐 수 있으면 <b>넓히는 쪽으로 시작합니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 예전 기본은 "그대로 둡니다"였습니다. 250 GB를 500 GB 디스크로 옮기면 절반이
+    /// <b>아무 말 없이 미할당으로 남았고</b>, 게다가 복구 파티션이 그 앞에 끼어 있어 나중에
+    /// Windows 디스크 관리로는 C:를 넓힐 수도 없었습니다. 초보자는 그 사실을 모른 채 끝냈습니다.
+    ///
+    /// <para>이제 디스크만 고르면 Windows 파티션이 남는 공간만큼 넓어집니다. 디스크를 지우는
+    /// 도구의 기본 동작을 바꾸는 일이므로 지키는 것을 함께 적어 둡니다 — <b>"변경 후" 막대</b>가
+    /// 결과를 그대로 그리고, <b>대상 모델명을 직접 입력하는 관문</b>도 그대로입니다. 몰래
+    /// 벌어지는 일은 없습니다.</para>
+    ///
+    /// <para>넓힐 수 없는 디스크(대상이 더 크지 않거나, NTFS 후보가 없거나, MBR 확장 파티션이
+    /// 있는 경우)에서는 예전처럼 "그대로 둡니다"로 시작합니다.</para>
+    /// </remarks>
+    private void ApplyGrowByDefault()
+    {
+        if (_freeSpaceChosenByUser || FreeSpaceGrowPartition) return;
+        if (!HasFreeSpace || !CanResize || SelectedResizePartition is null) return;
+
+        SetFreeSpaceMode(grow: true);
+
+        // 크기는 남는 공간 전부. 이것이 빠지면 넓히기를 켜 놓고도 현재 크기 그대로가 됩니다.
+        ResizeFillRemaining = true;
     }
 
     /// <summary>'새 총 크기' 입력이 현재 대상에서 가능한 범위를 벗어나면 맞춥니다.</summary>
@@ -1545,15 +1615,31 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnFreeSpaceGrowPartitionChanged(bool value)
     {
-        // 켰는데 아무 것도 안 골랐으면 첫 후보를 선택해 줍니다.
+        // 켰는데 아무 것도 안 골랐으면 사람이 넓히려 했을 파티션을 골라 줍니다.
         if (value && SelectedResizePartition is null)
-            SelectedResizePartition = ResizablePartitions.FirstOrDefault();
+            SelectedResizePartition = PreferredGrowChoice();
 
+        NoteFreeSpaceChoice();
         RefreshFreeSpaceChoice();
     }
 
-    partial void OnFreeSpaceLeaveChanged(bool value) => RefreshFreeSpaceChoice();
-    partial void OnFreeSpaceExpandLastChanged(bool value) => RefreshFreeSpaceChoice();
+    partial void OnFreeSpaceLeaveChanged(bool value)
+    {
+        NoteFreeSpaceChoice();
+        RefreshFreeSpaceChoice();
+    }
+
+    partial void OnFreeSpaceExpandLastChanged(bool value)
+    {
+        NoteFreeSpaceChoice();
+        RefreshFreeSpaceChoice();
+    }
+
+    /// <summary>이번 변경이 사용자의 손에서 온 것이면 그렇게 기록합니다.</summary>
+    private void NoteFreeSpaceChoice()
+    {
+        if (!_applyingFreeSpaceDefault) _freeSpaceChosenByUser = true;
+    }
     partial void OnSelectedResizePartitionChanged(PartitionChoiceViewModel? value)
     {
         // 칩은 자기가 켜졌을 때만 알려 옵니다(라디오는 꺼질 때도 false를 보내므로). 나머지를
