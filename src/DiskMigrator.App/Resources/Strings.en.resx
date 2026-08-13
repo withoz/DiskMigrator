@@ -365,6 +365,10 @@ Continue?</value></data>
   <data name="AskDisclaimer" xml:space="preserve"><value>Claude only reads. Cloning, backup, restore and boot repair are still yours to do on this screen.</value></data>
   <data name="DiagSaveExpander" xml:space="preserve"><value>Save a diagnostic file (to analyse on another computer)</value></data>
   <data name="ClaudeLoginBtn" xml:space="preserve"><value>Sign in to Claude</value></data>
+  <data name="ChatOpenBtn" xml:space="preserve"><value>Ask Claude</value></data>
+  <data name="ChatPanelTitle" xml:space="preserve"><value>Ask Claude</value></data>
+  <data name="ChatContextFmt" xml:space="preserve"><value>You are on the “{0}” screen. Ask and Claude will look at that.</value></data>
+  <data name="ChatContextDiskFmt" xml:space="preserve"><value>You are on the “{0}” screen, looking at {1}.</value></data>
   <data name="ClaudeSignedIn" xml:space="preserve"><value>Signed in</value></data>
   <data name="ClaudeNotInstalled" xml:space="preserve"><value>No Claude Code — only the asking feature is unavailable</value></data>
   <data name="ClaudeLoginFailedFmt" xml:space="preserve"><value>Could not open the sign-in window. Run {0} in a command window instead.</value></data>

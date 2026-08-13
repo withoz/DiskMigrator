@@ -480,11 +480,65 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>이 컴퓨터에서 바로 물어볼 수 있는지 — 중계기·Claude Code·로그인이 모두 있어야 합니다.</summary>
-    public bool CanAskClaude => _bridgePath is not null && ClaudeRunner.IsAvailable;
+    /// <summary>
+    /// 물어볼 수 있는지 — 중계기·Claude Code·<b>로그인</b>이 모두 있어야 합니다.
+    /// </summary>
+    /// <remarks>
+    /// 로그인까지 걸어 둡니다. 로그인 안 된 채로 [Claude에게 묻기]를 보여 주면, 눌러 놓고
+    /// 답 대신 인증 오류를 보게 됩니다 — 그때 사용자는 <b>앱이 고장 난 줄 압니다.</b>
+    /// 그 자리에는 대신 [Claude 로그인]이 나옵니다.
+    /// </remarks>
+    public bool CanAskClaude =>
+        _bridgePath is not null && !IsWinPe && ClaudeAccount.LoggedIn;
 
-    /// <summary>Claude Code가 없어 이 기능을 못 쓰는 경우 — 무엇을 하면 되는지 알려 줍니다.</summary>
-    public bool AskNeedsClaudeCode => _bridgePath is not null && !ClaudeRunner.IsAvailable;
+    /// <summary>오른쪽 대화 패널이 열려 있는지.</summary>
+    /// <remarks>
+    /// 닫혀 있으면 폭이 0이라 화면은 지금까지와 똑같습니다. 막혔을 때만 여는 자리입니다 —
+    /// 이 앱은 디스크 도구이지 대화 앱이 아닙니다.
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChatContextText))]
+    private bool _isChatOpen;
+
+    /// <summary>패널을 열고 닫습니다.</summary>
+    [RelayCommand]
+    private void ToggleChat()
+    {
+        IsChatOpen = !IsChatOpen;
+        if (IsChatOpen) OnPropertyChanged(nameof(ChatContextText));
+    }
+
+    /// <summary>
+    /// 지금 어느 화면에서 무엇을 하던 중인지 — <b>질문에 함께 실어 보냅니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 이것이 없으면 Claude가 "무엇을 하고 계셨나요"부터 되묻습니다. 막혀서 부른 사람에게
+    /// 그 질문은 도움이 아니라 한 번 더 설명하라는 요구입니다.
+    /// </remarks>
+    public string ChatContextText
+    {
+        get
+        {
+            string where = Mode switch
+            {
+                AppMode.Clone => Strings.Get("ModeClone"),
+                AppMode.Backup => Strings.Get("ModeBackup"),
+                AppMode.Restore => Strings.Get("ModeRestore"),
+                AppMode.FixBoot => Strings.Get("ModeFixBoot"),
+                AppMode.BootUsb => Strings.Get("ModeBootUsb"),
+                _ => "",
+            };
+            if (where.Length == 0) return "";
+
+            string what = SelectedSource is { } s
+                ? $"#{s.Disk.DeviceNumber} {s.Disk.Model}"
+                : SelectedTarget is { } t ? $"#{t.Disk.DeviceNumber} {t.Disk.Model}" : "";
+
+            return what.Length == 0
+                ? Strings.Format("ChatContextFmt", where)
+                : Strings.Format("ChatContextDiskFmt", where, what);
+        }
+    }
 
     /// <summary>주고받은 대화. 오래된 것이 위입니다.</summary>
     public ObservableCollection<ChatMessageViewModel> ChatMessages { get; } = [];
@@ -582,7 +636,7 @@ public sealed partial class MainViewModel : ObservableObject
                 AskProgress = Strings.Format("AskWorkingFmt", tool));
 
             var result = await ClaudeRunner.AskAsync(
-                question, bridge, IsKorean, _chatSessionId, progress, _askCts.Token);
+                WithSituation(question), bridge, IsKorean, _chatSessionId, progress, _askCts.Token);
 
             // 대화 표시는 실패한 차례에서도 받아 둡니다 — 그래야 다음 질문이 이어집니다.
             if (result.SessionId is { Length: > 0 } id) _chatSessionId = id;
@@ -649,6 +703,35 @@ public sealed partial class MainViewModel : ObservableObject
             ? "Look at the disks in this computer with your tools and tell me what is wrong, if anything."
             : $"Look at disk {focus} with your tools and tell me what is wrong, if anything. " +
               "If it will not boot, point out where it stops.";
+    }
+
+    /// <summary>
+    /// 지금 무엇을 하던 중인지 — <b>대화의 첫 질문에만</b> 한 줄로 붙입니다.
+    /// </summary>
+    /// <remarks>
+    /// 이어지는 질문에는 붙이지 않습니다. 매번 같은 말을 실어 보내면 대화가 그 문장으로
+    /// 도배되고, 이미 아는 것을 다시 말하는 셈이라 답이 그쪽으로 끌려갑니다.
+    /// </remarks>
+    private string WithSituation(string question)
+    {
+        if (_chatSessionId is { Length: > 0 }) return question;
+
+        string where = Mode switch
+        {
+            AppMode.Clone => Strings.Get("ModeClone"),
+            AppMode.Backup => Strings.Get("ModeBackup"),
+            AppMode.Restore => Strings.Get("ModeRestore"),
+            AppMode.FixBoot => Strings.Get("ModeFixBoot"),
+            AppMode.BootUsb => Strings.Get("ModeBootUsb"),
+            _ => "",
+        };
+        if (where.Length == 0) return question;
+
+        string lead = IsKorean
+            ? $"(나는 DiskMigrator-X의 «{where}» 화면에 있어.)"
+            : $"(I am on the \"{where}\" screen of DiskMigrator-X.)";
+
+        return $"{lead} {question}";
     }
 
     /// <summary>주소와 토큰을 클립보드로 복사합니다 — 손으로 옮겨 적지 않게.</summary>
