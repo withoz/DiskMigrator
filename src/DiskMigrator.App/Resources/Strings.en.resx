@@ -363,4 +363,5 @@ Continue?</value></data>
   <data name="ChatInputHint" xml:space="preserve"><value>Feel free to keep asking — "why is that?", "can I clone it now?". It remembers what you talked about. If you swapped a disk, start over with [New chat].</value></data>
   <data name="AskNeedsClaudeCode" xml:space="preserve"><value>Asking from here needs Claude Code on this computer. That is fine if you do not have it — use [Connect to Claude] below and ask from the Claude window instead.</value></data>
   <data name="AskDisclaimer" xml:space="preserve"><value>Claude only reads. Cloning, backup, restore and boot repair are still yours to do on this screen.</value></data>
+  <data name="DiagSaveExpander" xml:space="preserve"><value>Save a diagnostic file (to analyse on another computer)</value></data>
 </root>

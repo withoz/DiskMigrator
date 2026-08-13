@@ -278,6 +278,46 @@
             </Style.Triggers>
         </Style>
 
+        <!--
+            부팅 복구 버튼 한 벌 — <b>두 화면이 같은 것을 쓰게</b> 합니다.
+
+            ⚠ 예전에는 이 덩어리가 XAML에 두 번 복사돼 있었습니다(부팅 복구 화면 · 완료 화면).
+              한쪽만 고치면 두 화면이 조용히 갈립니다 — 이 프로젝트에서 이미 겪은 종류의
+              사고입니다(같은 결함을 브랜치 양쪽에서 고치다 한쪽을 빠뜨렸던 일).
+              여기 한 곳에 두고 양쪽이 참조합니다.
+
+            버튼은 하나뿐입니다. 예전의 '그래도 복구 해보기'는 같은 명령을 부르는 두 번째
+            버튼이었고 서로 배타적이라 절대 함께 뜨지 않았습니다 — 설명만 상황에 따라
+            바뀌면 되는 것을 버튼·상자·안내문으로 늘려 놓았던 셈입니다.
+        -->
+        <DataTemplate x:Key="BootRepairActionTemplate">
+            <StackPanel Margin="0,12,0,0"
+                        Visibility="{Binding ShowRepairBoot, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="{loc:Loc RepairBootBtn}" Command="{Binding RepairBootCommand}"
+                            MinWidth="120" Padding="14,7" />
+                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" MaxWidth="420" Text="{Binding RepairBootHint}" />
+                </StackPanel>
+                <TextBlock Text="{loc:Loc Repairing}" Margin="0,6,0,0" Style="{StaticResource Caption}"
+                           Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
+
+                <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DataTemplate>
+
     </Window.Resources>
 
     <!-- RootLayout: 작은 화면(부팅 USB의 WinPE 등)에서는 코드비하인드가 LayoutTransform으로
@@ -1218,44 +1258,6 @@
                                TextWrapping="Wrap" MaxWidth="440" Text="{loc:Loc FixBootReadOnlyNote}" />
                 </StackPanel>
 
-                <!-- 진단 리포트 저장 — 오프라인 브리지(계획서 §2.5).
-                     부팅이 막힌 PC에는 Claude도 인터넷도 없습니다. 그 PC에서 이 파일을 만들어
-                     USB로 옮겨야 정상 PC에서 분석할 수 있습니다. 그래서 이 버튼은 Claude 연결과
-                     무관하게 동작해야 합니다 — 여기에 있는 이유입니다. -->
-                <Border Background="{StaticResource SelectionSoft}" BorderBrush="{StaticResource BorderBrushSoft}"
-                        BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,14,0,0">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="{loc:Loc DiagSaveBtn}" Command="{Binding SaveDiagnosticCommand}"
-                                    MinWidth="130" Padding="14,7" VerticalAlignment="Top" />
-                            <TextBlock Margin="12,0,0,0" Style="{StaticResource Micro}"
-                                       TextWrapping="Wrap" MaxWidth="440" Text="{loc:Loc DiagSaveHint}" />
-                        </StackPanel>
-
-                        <CheckBox IsChecked="{Binding DiagIncludeDetails}" Margin="0,10,0,0"
-                                  Content="{loc:Loc DiagIncludeDetails}" />
-                        <TextBlock Text="{loc:Loc DiagIncludeHint}" Style="{StaticResource Micro}"
-                                   Margin="24,2,0,0" TextWrapping="Wrap" MaxWidth="560" />
-
-                        <TextBlock Text="{loc:Loc DiagCollecting}" Style="{StaticResource Caption}" Margin="0,8,0,0"
-                                   Visibility="{Binding IsCollectingDiagnostic, Converter={StaticResource BoolToVisibility}}" />
-
-                        <TextBlock Text="{Binding DiagnosticMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
-                                   Visibility="{Binding DiagnosticSaved, Converter={StaticResource BoolToVisibility}}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
-                                    <Setter Property="Foreground" Value="{StaticResource Success}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DiagnosticFailed}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-
                 <TextBlock Text="{loc:Loc Checking}" Margin="0,8,0,0" Style="{StaticResource Caption}"
                            Visibility="{Binding IsBootChecking, Converter={StaticResource BoolToVisibility}}" />
 
@@ -1305,45 +1307,53 @@
                         </ScrollViewer>
                     </Border>
 
-                    <!-- 부팅 복구 (BCD 장치 참조 문제 시) -->
-                    <StackPanel Margin="0,12,0,0"
-                                Visibility="{Binding BootRepairAvailable, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="{loc:Loc RepairBootBtn}" Command="{Binding RepairBootCommand}"
-                                    MinWidth="120" Padding="14,7" />
-                            <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}"
-                                       TextWrapping="Wrap" MaxWidth="420" Text="{loc:Loc RepairBootTip}" />
-                        </StackPanel>
-                        <TextBlock Text="{loc:Loc Repairing}" Margin="0,6,0,0" Style="{StaticResource Caption}"
-                                   Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
+                    <!-- 복구는 버튼 하나입니다. 예전에는 '부팅 복구'와 '그래도 복구 해보기'가
+                         따로 있었는데, 둘 다 같은 명령을 부르고 서로 배타적이라 절대 함께 뜨지
+                         않았습니다 — 사용자에게는 "복구가 두 종류인가?"로만 보였습니다.
+                         설명(RepairBootHint)만 상황에 따라 바뀝니다. -->
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource BootRepairActionTemplate}" />
+                </StackPanel>
 
-                    <!-- 검사는 통과했지만 실제로는 부팅이 막히는 경우(원본의 보안·DRM 드라이버 등
-                         검사 범위 밖 원인)를 위해, 그래도 복구를 해 볼 수 있게 합니다.
-                         복구는 하드웨어 독립화와 쓰기 확정을 다시 적용합니다. -->
-                    <Border Background="{StaticResource SelectionSoft}" CornerRadius="8" Padding="12,10" Margin="0,12,0,0"
-                            Visibility="{Binding ShowForceRepair, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:Loc ForceRepairTip}" TextWrapping="Wrap" Style="{StaticResource Caption}" />
-                            <Button Content="{loc:Loc ForceRepairBtn}" Command="{Binding RepairBootCommand}"
-                                    HorizontalAlignment="Left" MinWidth="150" Padding="14,7" Margin="0,8,0,0" />
-                        </StackPanel>
-                    </Border>
+                <!-- 진단 리포트 저장 — 오프라인 브리지(계획서 §2.5).
+                     부팅이 막힌 PC에는 Claude도 인터넷도 없습니다. 그 PC에서 이 파일을 만들어
+                     USB로 옮겨야 정상 PC에서 분석할 수 있습니다. Claude 연결과 무관하게
+                     동작해야 하므로 이 화면에 있습니다.
 
-                    <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
-                               Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
+                     ⚠ 예전에는 [부팅 검사]와 그 결과 '사이'에 테두리 상자로 놓여 있었습니다.
+                       검사하러 온 사람의 눈길을 다른 일이 가로막고 있었던 것입니다. 꼭 필요한
+                       기능이지만 대부분은 평생 쓰지 않으므로, 결과 아래로 내리고 접어 둡니다. -->
+                <Expander Header="{loc:Loc DiagSaveExpander}" IsExpanded="False" Margin="0,18,0,0">
+                  <StackPanel Margin="0,10,0,0">
+                    <TextBlock Text="{loc:Loc DiagSaveHint}" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" MaxWidth="560" Margin="0,0,0,8" />
+
+                    <CheckBox IsChecked="{Binding DiagIncludeDetails}"
+                              Content="{loc:Loc DiagIncludeDetails}" />
+                    <TextBlock Text="{loc:Loc DiagIncludeHint}" Style="{StaticResource Micro}"
+                               Margin="24,2,0,10" TextWrapping="Wrap" MaxWidth="560" />
+
+                    <Button Content="{loc:Loc DiagSaveBtn}" Command="{Binding SaveDiagnosticCommand}"
+                            HorizontalAlignment="Left" MinWidth="130" Padding="14,7" />
+
+                    <TextBlock Text="{loc:Loc DiagCollecting}" Style="{StaticResource Caption}" Margin="0,8,0,0"
+                               Visibility="{Binding IsCollectingDiagnostic, Converter={StaticResource BoolToVisibility}}" />
+
+                    <TextBlock Text="{Binding DiagnosticMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Visibility="{Binding DiagnosticSaved, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-                                <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Body}">
+                                <Setter Property="Foreground" Value="{StaticResource Success}" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource Success}" />
+                                    <DataTrigger Binding="{Binding DiagnosticFailed}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                </StackPanel>
+                  </StackPanel>
+                </Expander>
             </StackPanel>
 
             <!-- ===== Claude 연결 (로컬 MCP 통로) =====
@@ -1898,32 +1908,9 @@
                                 </ScrollViewer>
                             </Border>
 
-                            <!-- 부팅 복구 (BCD 장치 참조 문제 시) -->
-                            <StackPanel Margin="0,12,0,0"
-                                        Visibility="{Binding BootRepairAvailable, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="{loc:Loc RepairBootBtn}" Command="{Binding RepairBootCommand}"
-                                            MinWidth="120" Padding="14,7" />
-                                    <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="420"
-                                               Text="{loc:Loc RepairBootTip}" />
-                                </StackPanel>
-                                <TextBlock Text="{loc:Loc Repairing}" Margin="0,6,0,0" Style="{StaticResource Caption}"
-                                           Visibility="{Binding IsRepairingBoot, Converter={StaticResource BoolToVisibility}}" />
-                            </StackPanel>
-
-                            <TextBlock Text="{Binding BootRepairMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
-                                       Visibility="{Binding BootRepairRan, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BootRepairSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource Success}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <!-- 부팅 복구 — 부팅 복구 화면과 같은 부품을 씁니다(Window.Resources). -->
+                            <ContentControl Content="{Binding}"
+                                            ContentTemplate="{StaticResource BootRepairActionTemplate}" />
                         </StackPanel>
                     </StackPanel>
 

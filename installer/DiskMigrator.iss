@@ -10,7 +10,7 @@
 ;   제품명·설치 경로·exe 이름·AppId를 전부 달리해야 두 앱이 공존합니다.
 
 #define AppName "DiskMigrator-X"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #define AppPublisher "DiskMigrator"
 #define AppExeName "DiskMigratorX.exe"
 #define PublishDir "..\src\DiskMigrator.App\bin\Release\net8.0-windows\win-x64\publish"

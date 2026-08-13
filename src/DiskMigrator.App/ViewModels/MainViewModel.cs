@@ -1134,7 +1134,10 @@ public sealed partial class MainViewModel : ObservableObject
     public bool CanBootCheck => !IsBootChecking && SelectedTarget is not null;
 
     /// <summary>검사를 한 번이라도 실행해 결과 패널을 보여줄지.</summary>
-    [ObservableProperty] private bool _bootCheckRan;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    [NotifyPropertyChangedFor(nameof(ShowRepairBoot))]
+    private bool _bootCheckRan;
 
     [ObservableProperty] private string _bootCheckVerdict = "";
 
@@ -1177,6 +1180,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>검사에서 BCD 장치 참조 문제가 잡혀 복구 버튼을 보여줄지.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    [NotifyPropertyChangedFor(nameof(ShowRepairBoot))]
+    [NotifyPropertyChangedFor(nameof(RepairBootHint))]
     private bool _bootRepairAvailable;
 
     /// <summary>
@@ -1188,14 +1193,35 @@ public sealed partial class MainViewModel : ObservableObject
     /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    [NotifyPropertyChangedFor(nameof(ShowRepairBoot))]
+    [NotifyPropertyChangedFor(nameof(RepairBootHint))]
     private bool _bootCheckInconclusive;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RepairBootCommand))]
     [NotifyPropertyChangedFor(nameof(ShowForceRepair))]
+    [NotifyPropertyChangedFor(nameof(ShowRepairBoot))]
     private bool _isRepairingBoot;
 
     public bool CanRepairBoot => !IsRepairingBoot;
+
+    /// <summary>
+    /// 복구 버튼을 보일지 — <b>버튼은 하나뿐입니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 예전에는 버튼이 둘이었습니다. 하나는 "부팅 복구"(검사가 고칠 것을 찾았을 때), 다른
+    /// 하나는 "그래도 복구 해보기"(못 찾았을 때). 그런데 <b>둘 다 같은 명령</b>을 불렀고
+    /// 서로 배타적이라 <b>절대 함께 뜨지 않았습니다</b> — 하나의 동작을 위해 버튼 2개,
+    /// 테두리 상자 1개, 안내문 2개가 화면을 차지하고 있었던 셈입니다.
+    ///
+    /// <para>사용자가 보기에는 "복구가 두 종류인가?"입니다. 아닙니다. 버튼은 하나로 두고
+    /// <see cref="RepairBootHint"/>만 상황에 따라 바꿉니다.</para>
+    /// </remarks>
+    public bool ShowRepairBoot => BootRepairAvailable || ShowForceRepair;
+
+    /// <summary>복구 버튼 옆 한 줄 — 고칠 것을 찾았는지에 따라 다릅니다.</summary>
+    public string RepairBootHint =>
+        BootRepairAvailable ? Strings.Get("RepairBootTip") : Strings.Get("ForceRepairTip");
 
     [ObservableProperty] private bool _bootRepairRan;
     [ObservableProperty] private string _bootRepairMessage = "";
