@@ -1101,6 +1101,114 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>'파티션 조정'을 골랐을 때만 파티션·크기 입력을 보여줍니다.</summary>
     public bool ShowGrowDetails => FreeSpaceGrowPartition;
 
+    /// <summary>
+    /// [구성변경]이 펼쳐져 있는지. 기본은 접힘 — <b>대부분은 열 필요가 없습니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 고칠 것이 생기면(오류·경고) 스스로 펼칩니다. 접힌 채로 "시작할 수 없습니다"만 뜨면
+    /// 사용자는 어디를 고쳐야 하는지 알 수 없습니다.
+    /// </remarks>
+    [ObservableProperty] private bool _isFreeSpaceOpen;
+
+    /// <summary>
+    /// 접힌 상태에서 보여 줄 <b>한 문장</b> — 지금 설정대로면 무슨 일이 일어나는지.
+    /// </summary>
+    /// <remarks>
+    /// 크기는 <see cref="TargetAfterLayout"/>("변경 후" 막대)에서 그대로 가져옵니다.
+    /// 따로 계산하면 <b>막대와 문장이 다른 숫자를 말하는 날</b>이 옵니다 —
+    /// 이 화면은 이미 그 사고를 한 번 겪었습니다(미리보기와 실행이 따로 판정하던 시절).
+    /// </remarks>
+    public string FreeSpaceSummary
+    {
+        get
+        {
+            if (!HasFreeSpace) return "";
+            if (FreeSpaceLeave) return Strings.Get("FreeSpaceSummaryLeave");
+            if (FreeSpaceExpandLast) return Strings.Get("FreeSpaceSummaryMerge");
+            if (SelectedResizePartition is not { } choice) return "";
+
+            var grown = TargetAfterLayout?.Segments
+                .FirstOrDefault(s => s.PartitionNumber == choice.Number);
+            if (grown is null) return "";
+
+            return Strings.Format("FreeSpaceSummaryGrowFmt",
+                PartitionNaming.ChipName(choice.Partition),
+                SizeFormatter.Format(grown.LengthBytes));
+        }
+    }
+
+    /// <summary>넓히면 뒤로 밀리는 칸이 있다는 것 — 사용자가 놀라지 않게 미리 말합니다.</summary>
+    public string FreeSpaceMoveNote
+    {
+        get
+        {
+            if (!FreeSpaceGrowPartition || SelectedSource is not { } src ||
+                SelectedResizePartition is not { } choice) return "";
+
+            var moved = src.Disk.Partitions
+                .Where(p => p.StartingOffset > choice.Partition.StartingOffset)
+                .Select(PartitionNaming.ChipName)
+                .ToList();
+
+            return moved.Count == 0
+                ? ""
+                : Strings.Format("FreeSpaceMoveNoteFmt", string.Join(" · ", moved));
+        }
+    }
+
+    /// <summary>
+    /// 고른 대로 두면 <b>사용자가 바란 것과 다른 일</b>이 일어나는 경우를 그 자리에서 말해 줍니다.
+    /// </summary>
+    /// <remarks>
+    /// 막지는 않습니다 — 복구 칸을 일부러 넓히는 경우도 있습니다. 다만 <b>모르고 지나치는
+    /// 일</b>이 잦고, 그때 사용자는 복제를 마친 뒤에야 C:가 그대로인 것을 봅니다.
+    /// 되돌리려면 처음부터 다시 해야 합니다.
+    ///
+    /// <para>2026-08-13에 <b>만든 사람이 이 화면에서</b> 시스템 예약 479 MB를 고른 채,
+    /// 크기도 현재 값 그대로인 상태로 시작할 뻔했습니다 — 화면은 아무 말도 하지 않았습니다.</para>
+    /// </remarks>
+    public string ResizeChoiceWarning
+    {
+        get
+        {
+            if (!FreeSpaceGrowPartition || SelectedResizePartition is not { } choice) return "";
+
+            // ① 크기가 지금과 같으면 이 설정은 아무 일도 하지 않습니다.
+            if (!ResizeFillRemaining &&
+                FreeSpacePlanner.TryParseSizeGb(ResizeSizeGb, out double gb) && gb > 0 &&
+                (long)(gb * FreeSpacePlanner.BytesPerGb) <= choice.Partition.LengthBytes)
+            {
+                return Strings.Get("ResizeWarnNoChange");
+            }
+
+            // ② Windows가 아닌 칸을 넓히려는 경우.
+            if (PartitionNaming.IsSideRole(choice.Partition))
+                return Strings.Format("ResizeWarnSideRoleFmt", PartitionNaming.ChipName(choice.Partition));
+
+            return "";
+        }
+    }
+
+    public bool HasResizeChoiceWarning => ResizeChoiceWarning.Length > 0;
+
+    /// <summary>넓힐 파티션의 현재 크기 — 입력칸 앞에 두어 "무엇에서 무엇으로"가 보이게 합니다.</summary>
+    /// <remarks>
+    /// 예전에는 각주에 <i>"'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다)"</i>
+    /// 라고 적어 두었습니다. 입력칸이 스스로 말하면 그 문장이 필요 없습니다.
+    /// </remarks>
+    public string ResizeCurrentSizeText =>
+        SelectedResizePartition is { } c ? SizeFormatter.Format(c.Partition.LengthBytes) : "";
+
+    /// <summary>
+    /// 넓힐 수 없어 목록에서 빠진 파티션이 있는지 — 있을 때만 그 이유를 말합니다.
+    /// </summary>
+    /// <remarks>
+    /// "NTFS만 넓힐 수 있습니다"를 늘 띄워 두면, 그 말이 필요 없는 대부분의 사용자에게는
+    /// 읽을 것만 한 줄 늘어납니다.
+    /// </remarks>
+    public bool SomePartitionsNotResizable =>
+        SelectedSource is { } s && s.Disk.Partitions.Count > ResizablePartitions.Count;
+
     [ObservableProperty] private PartitionChoiceViewModel? _selectedResizePartition;
 
     /// <summary>true면 남는 공간을 전부 확대 파티션에, false면 <see cref="ResizeSizeGb"/> 크기로.</summary>
@@ -1905,6 +2013,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         OnPropertyChanged(nameof(FreeSpaceError));
         OnPropertyChanged(nameof(HasFreeSpaceError));
+        OnPropertyChanged(nameof(ResizeChoiceWarning));
+        OnPropertyChanged(nameof(HasResizeChoiceWarning));
+        OnPropertyChanged(nameof(ResizeCurrentSizeText));
+        OnPropertyChanged(nameof(SomePartitionsNotResizable));
+        OnPropertyChanged(nameof(FreeSpaceSummary));
+        OnPropertyChanged(nameof(FreeSpaceMoveNote));
+
+        // 고칠 것이 생기면 스스로 펼칩니다 — 접힌 채로 "시작할 수 없습니다"만 뜨면
+        // 사용자는 어디를 고쳐야 하는지 알 수 없습니다.
+        if (HasFreeSpaceError || HasResizeChoiceWarning) IsFreeSpaceOpen = true;
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(BlockedReason));
         OnPropertyChanged(nameof(HasBlockedReason));

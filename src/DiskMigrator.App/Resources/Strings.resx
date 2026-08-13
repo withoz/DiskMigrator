@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -52,7 +52,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
 
   <data name="AppTitle" xml:space="preserve"><value>DiskMigrator-X — 디스크 클론</value></data>
-  <data name="ResizeHandleTooltip" xml:space="preserve"><value>끌어서 크기를 맞춥니다 · ← → 키로 1 MiB씩 (Shift 누르면 1 GiB씩)</value></data>
+  <data name="ResizeHandleTooltip" xml:space="preserve"><value>끌어서 크기를 조정합니다.</value></data>
   <data name="NotAdminBadge" xml:space="preserve"><value>관리자 권한 아님 — 클론을 실행할 수 없습니다</value></data>
   <data name="Step1Title" xml:space="preserve"><value>디스크 선택</value></data>
   <data name="Step1Subtitle" xml:space="preserve"><value>원본은 읽기만 합니다</value></data>
@@ -63,12 +63,20 @@
   <data name="FreeSpaceLeaveTitle" xml:space="preserve"><value>그대로 둡니다</value></data>
   <data name="FreeSpaceLeaveDesc" xml:space="preserve"><value>미할당으로 남겨 두고, 나중에 디스크 관리에서 씁니다</value></data>
   <data name="FreeSpaceMergeTitle" xml:space="preserve"><value>마지막 파티션에 합치기</value></data>
-  <data name="FreeSpaceMergeDesc" xml:space="preserve"><value>간단하고 안전합니다 · MBR 디스크도 가능. 다만 맨 뒤가 복구 파티션이면 그것이 커집니다</value></data>
+  <data name="FreeSpaceMergeDesc" xml:space="preserve"><value>간단하고 안전합니다. 맨 뒤가 복구 파티션이면 그것이 커집니다.</value></data>
   <data name="FreeSpaceResizeTitle" xml:space="preserve"><value>파티션 조정</value></data>
-  <data name="FreeSpaceResizeDesc" xml:space="preserve"><value>C: 처럼 중간 파티션도 넓힙니다 · GPT·MBR 원본 (확장 파티션 제외)</value></data>
+  <data name="FreeSpaceResizeDesc" xml:space="preserve"><value>C: 처럼 중간에 있는 칸도 넓힙니다.</value></data>
   <data name="AllRemainingSpace" xml:space="preserve"><value>남는 공간 전부</value></data>
   <data name="NewTotalSizeGb" xml:space="preserve"><value>새 총 크기(GB):</value></data>
-  <data name="ResizeHelp" xml:space="preserve"><value>'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가 아닙니다). 클론 중 자동 확장이 안 되면 완료 화면의 '파티션 확장' 버튼으로 마무리하세요. NTFS 파티션만 넓힐 수 있습니다.</value></data>
+  <data name="ResizeCustomSize" xml:space="preserve"><value>직접 정하기</value></data>
+  <data name="FreeSpaceReconfigure" xml:space="preserve"><value>구성변경</value></data>
+  <data name="FreeSpaceSummaryLeave" xml:space="preserve"><value>남는 공간은 미할당으로 둡니다 — 지금은 쓰지 않습니다.</value></data>
+  <data name="FreeSpaceSummaryMerge" xml:space="preserve"><value>남는 공간을 마지막 파티션에 합칩니다.</value></data>
+  <data name="FreeSpaceSummaryGrowFmt" xml:space="preserve"><value>{0} 를 {1} 로 넓힙니다.</value></data>
+  <data name="FreeSpaceMoveNoteFmt" xml:space="preserve"><value>뒤쪽 칸({0})은 오른쪽으로 밀립니다 · 위 막대의 손잡이를 끌어 크기를 조정할 수 있습니다.</value></data>
+  <data name="ResizeNtfsOnly" xml:space="preserve"><value>NTFS 파티션만 넓힐 수 있어, 그 밖의 칸은 목록에 없습니다.</value></data>
+  <data name="ResizeWarnNoChange" xml:space="preserve"><value>이 설정은 아무것도 바꾸지 않습니다 — 지금 크기와 같습니다.</value></data>
+  <data name="ResizeWarnSideRoleFmt" xml:space="preserve"><value>'{0}'을(를) 넓혀도 Windows 공간은 그대로입니다.</value></data>
   <data name="Step2Title" xml:space="preserve"><value>옵션</value></data>
   <data name="SafetyLabel" xml:space="preserve"><value>안전</value></data>
   <data name="VssTitle" xml:space="preserve"><value>VSS 스냅샷 사용</value></data>
@@ -83,13 +91,13 @@
   <data name="NewHwTitle" xml:space="preserve"><value>새 하드웨어 대비</value></data>
   <data name="NewHwDesc" xml:space="preserve"><value>다른 PC로 옮겨도 부팅되게 저장소 드라이버 활성화</value></data>
   <data name="AutoUefiTitle" xml:space="preserve"><value>BIOS 원본을 UEFI로 자동 변환</value></data>
-  <data name="AutoUefiDesc" xml:space="preserve"><value>원본이 BIOS/MBR 방식이면 클론 후 자동으로 GPT/UEFI로 바꿔 NVMe·UEFI 전용 PC에서도 부팅되게 합니다. 되돌릴 수 없습니다(대상 디스크만 변경, 원본은 그대로). GPT 원본에는 적용되지 않습니다.</value></data>
+  <data name="AutoUefiDesc" xml:space="preserve"><value>옛 방식(BIOS) 원본을 복제한 뒤 UEFI로 바꿉니다. 되돌릴 수 없습니다.</value></data>
   <data name="ModeClone" xml:space="preserve"><value>디스크 클론</value></data>
   <data name="ModeBackup" xml:space="preserve"><value>이미지 백업</value></data>
   <data name="ModeRestore" xml:space="preserve"><value>이미지 복원</value></data>
   <data name="ModeFixBoot" xml:space="preserve"><value>부팅 복구</value></data>
   <data name="ModeBootUsb" xml:space="preserve"><value>부팅 USB</value></data>
-  <data name="BootUsbHint" xml:space="preserve"><value>윈도우가 아예 켜지지 않는 컴퓨터를 구조하는 응급 USB를 만듭니다. 이 USB로 부팅하면 DiskMigrator-X가 바로 실행되어 백업·복원·부팅 복구를 할 수 있습니다. 별도 다운로드 없이 이 컴퓨터에 내장된 복구 환경으로 만듭니다(몇 분 걸립니다).</value></data>
+  <data name="BootUsbHint" xml:space="preserve"><value>윈도우가 아예 켜지지 않는 컴퓨터를 구조하는 USB를 만듭니다. 몇 분 걸립니다.</value></data>
   <data name="BootUsbTargetLabel" xml:space="preserve"><value>USB 선택 (지워짐)</value></data>
   <data name="BootUsbStartBtn" xml:space="preserve"><value>부팅 USB 만들기</value></data>
   <data name="BootUsbWarn" xml:space="preserve"><value>이 USB의 모든 내용이 지워집니다. 최소 2GB, USB(이동식) 디스크만 가능합니다.</value></data>
@@ -97,13 +105,13 @@
   <data name="BootUsbNoTarget" xml:space="preserve"><value>부팅 USB로 만들 USB 디스크를 선택하세요.</value></data>
   <data name="BootUsbNotUsb" xml:space="preserve"><value>안전을 위해 USB(이동식) 디스크에만 만들 수 있습니다.</value></data>
   <data name="BootUsbTooSmall" xml:space="preserve"><value>USB가 너무 작습니다 — 최소 2GB가 필요합니다.</value></data>
-  <data name="BootUsbAfterHint" xml:space="preserve"><value>사용법: 구조할 컴퓨터에 USB를 꽂고 켠 뒤, 부팅 메뉴(보통 F12·F11·F8)에서 USB(UEFI)를 선택하세요. DiskMigrator-X가 자동으로 실행됩니다.</value></data>
+  <data name="BootUsbAfterHint" xml:space="preserve"><value>구조할 컴퓨터에 꽂고 켠 뒤, 부팅 메뉴(보통 F12)에서 USB를 고르십시오.</value></data>
   <data name="PeStatusPreparing" xml:space="preserve"><value>준비 중…</value></data>
   <data name="PeNoIngredients" xml:space="preserve"><value>이 컴퓨터에서 부팅 USB 재료(복구 환경)를 찾지 못했습니다.</value></data>
   <data name="PeCancelled" xml:space="preserve"><value>취소되었습니다. USB는 미완성 상태일 수 있으니 다시 만들어 주세요.</value></data>
-  <data name="FixBootHint" xml:space="preserve"><value>클론·복원해 둔 디스크가 부팅되지 않을 때 쓰는 도구입니다. 그 디스크를 USB 등으로 이 컴퓨터에 연결하고 검사하세요 — 복제 없이 부팅 구성만 검사·복구합니다.</value></data>
+  <data name="FixBootHint" xml:space="preserve"><value>복제해 둔 디스크가 부팅되지 않을 때 씁니다. 부팅 구성만 검사·복구합니다.</value></data>
   <data name="FixBootTargetLabel" xml:space="preserve"><value>검사할 디스크</value></data>
-  <data name="FixBootReadOnlyNote" xml:space="preserve"><value>검사는 읽기만 하므로 안전합니다. 문제가 발견되면 복구 버튼이 나타납니다.</value></data>
+  <data name="FixBootReadOnlyNote" xml:space="preserve"><value>읽기만 합니다.</value></data>
   <data name="FixBootBlockedSystem" xml:space="preserve"><value>지금 실행 중인 시스템 디스크에는 부팅 복구를 적용하지 않습니다 — 이 컴퓨터가 이미 그 디스크로 부팅되어 있어 고칠 것이 없습니다.</value></data>
   <data name="Browse" xml:space="preserve"><value>찾아보기…</value></data>
   <data name="BackupSourceLabel" xml:space="preserve"><value>백업할 원본 (읽기)</value></data>
@@ -112,7 +120,7 @@
   <data name="BackupIncNoticeFmt" xml:space="preserve"><value>기존 백업 발견 — 증분 백업으로 진행합니다: {0} 이후 바뀐 내용만 새 파일 {1}에 저장됩니다. 기존 파일은 수정되지 않습니다. 복원할 때는 가장 최근 파일을 고르고, 파일들은 같은 폴더에 함께 보관하세요.</value></data>
   <data name="BackupChainBroken" xml:space="preserve"><value>이 파일의 기본 백업(사슬의 첫 파일)을 찾지 못해 증분 백업을 할 수 없습니다. 새 파일 이름으로 전체 백업을 하세요.</value></data>
   <data name="BackupChoosePath" xml:space="preserve"><value>백업 이미지 저장 위치</value></data>
-  <data name="BackupHint" xml:space="preserve"><value>선택한 디스크를 통째로 .vhdx 이미지 파일로 저장합니다. 스마트 클론으로 사용 영역만, VSS 스냅샷으로 일관되게 담습니다. 나중에 '이미지 복원'으로 되돌릴 수 있습니다.</value></data>
+  <data name="BackupHint" xml:space="preserve"><value>선택한 디스크를 이미지 파일(.vhdx) 하나로 저장합니다.</value></data>
   <data name="BackupRecommendTitle" xml:space="preserve"><value>지금 컴퓨터(C:\)를 통째로 파일 하나에 저장해 두세요 (권장)</value></data>
   <data name="BackupRecommendDesc" xml:space="preserve"><value>디스크를 바꾸거나 고장 나도, 복원하면 쓰던 모습 그대로 살아납니다.</value></data>
   <data name="BackupDoneTitle" xml:space="preserve"><value>백업 완료</value></data>
@@ -128,7 +136,7 @@
   <data name="ProgImageCheck" xml:space="preserve"><value>이미지 무결성 검사</value></data>
   <data name="FailImageCheckTitle" xml:space="preserve"><value>이미지 무결성 검사 실패</value></data>
   <data name="RestoreChoosePath" xml:space="preserve"><value>복원할 이미지 선택</value></data>
-  <data name="RestoreHint" xml:space="preserve"><value>선택한 .vhdx 이미지를 대상 디스크에 통째로 되돌립니다. 대상이 이미지보다 크면 남는 공간을 쓸 수 있게 맞춰 주고, 작으면 자동으로 줄여서 맞춥니다. '새 하드웨어 대비'를 켜면 다른 PC에서도 부팅되게 만듭니다.</value></data>
+  <data name="RestoreHint" xml:space="preserve"><value>이미지 파일을 대상 디스크에 통째로 되돌립니다. 크기가 달라도 맞춰 줍니다.</value></data>
   <data name="ResShrinkFmt" xml:space="preserve"><value>축소: {0}</value></data>
   <data name="FailShrinkTempTitle" xml:space="preserve"><value>임시 공간 부족</value></data>
   <data name="ShrinkTempNoneFmt" xml:space="preserve"><value>축소 클론은 내부적으로 원본을 임시 이미지로 백업한 뒤 줄여서 복원합니다. 임시 이미지를 둘 여유 공간({0} 이상)이 있는 디스크(원본·대상 제외)가 없습니다. 다른 디스크에 공간을 확보한 뒤 다시 시도하십시오.</value></data>
@@ -150,28 +158,29 @@
   <data name="Cancel" xml:space="preserve"><value>취소</value></data>
   <data name="DoNotDisconnect" xml:space="preserve"><value>작업 중에는 대상 디스크의 연결을 끊거나 PC를 끄지 마십시오.</value></data>
   <data name="BootCheckBtn" xml:space="preserve"><value>부팅 구성 검사</value></data>
-  <data name="BootCheckTip" xml:space="preserve"><value>실제 부팅 없이 부트로더·BCD·winload·저장소 드라이버 무결성을 점검합니다.</value></data>
+  <data name="BootCheckTip" xml:space="preserve"><value>부팅에 필요한 것이 제자리에 있는지 봅니다.</value></data>
   <data name="Checking" xml:space="preserve"><value>검사 중...</value></data>
-  <data name="ForceRepairTip" xml:space="preserve"><value>검사에서는 문제를 찾지 못했습니다. 그래도 이 디스크가 실제로 부팅되지 않는다면, 아래 버튼으로 복구를 실행해 보세요 — 부팅 구성을 다시 쓰고, 다른 하드웨어에서도 부팅되도록 저장소 드라이버를 정리한 뒤, 변경 내용을 디스크에 확실히 저장합니다.</value></data>
+  <data name="ForceRepairTip" xml:space="preserve"><value>검사에서는 문제를 찾지 못했습니다. 그래도 부팅되지 않는다면 시도해 보십시오.</value></data>
   <data name="ForceRepairBtn" xml:space="preserve"><value>그래도 복구 실행</value></data>
   <data name="RepairBootBtn" xml:space="preserve"><value>부팅 복구</value></data>
-  <data name="RepairBootTip" xml:space="preserve"><value>BCD 장치 참조를 이 디스크의 파티션으로 다시 설정해 0xc000000e를 고칩니다.</value></data>
+  <data name="RepairBootTip" xml:space="preserve"><value>부팅 구성을 고치고 최대 절전 이미지를 지웁니다.</value></data>
   <data name="Repairing" xml:space="preserve"><value>복구 중...</value></data>
   <data name="MakeBootableTitle" xml:space="preserve"><value>요즘 PC에서 부팅되게 만들기 (GPT/UEFI 변환)</value></data>
-  <data name="MakeBootableDesc" xml:space="preserve"><value>이 사본은 원본과 같은 BIOS(레거시) 방식이라, 레거시 부팅을 지원하는 PC에서만 켜집니다. NVMe M.2 슬롯이나 UEFI 전용 PC에서는 부팅하지 않습니다. 아래 버튼이 GPT로 바꾸고 EFI 시스템 파티션을 만들어 UEFI로 부팅되게 합니다.</value></data>
+  <data name="MakeBootableDesc" xml:space="preserve"><value>이 사본은 옛 방식(BIOS)이라 UEFI 전용 PC에서는 켜지지 않습니다.</value></data>
   <data name="ConvertUefiBtn" xml:space="preserve"><value>UEFI로 변환</value></data>
-  <data name="ConvertUefiTip" xml:space="preserve"><value>되돌릴 수 없습니다. 변환 후에는 BIOS에서 CSM을 끄고 UEFI 항목으로 부팅하십시오.</value></data>
+  <data name="ConvertUefiTip" xml:space="preserve"><value>GPT로 바꾸고 EFI 파티션을 만들어 UEFI로 부팅되게 합니다.</value></data>
   <data name="Converting" xml:space="preserve"><value>변환 중... (몇 분 걸릴 수 있습니다)</value></data>
   <data name="SafeRemoveTitle" xml:space="preserve"><value>대상 USB 안전하게 제거</value></data>
-  <data name="SafeRemoveDesc" xml:space="preserve"><value>복제가 끝나면 대상 디스크가 다시 온라인이 되어 복제된 볼륨이 자동으로 마운트됩니다. 이 상태에서는 Windows "안전하게 제거"가 "장치 사용 중"이라며 막힙니다. 아래 버튼이 볼륨을 내리고 디스크를 오프라인으로 전환해, USB를 그대로 뽑을 수 있게 합니다.</value></data>
+  <data name="SafeRemoveDesc" xml:space="preserve"><value>Windows가 "장치 사용 중"이라며 뽑기를 막을 때 씁니다.</value></data>
   <data name="SafeRemoveBtn" xml:space="preserve"><value>대상 안전하게 제거</value></data>
-  <data name="SafeRemoveTip" xml:space="preserve"><value>디스크를 오프라인으로 내려(디스크 관리의 "오프라인"과 동일) 캐시를 비웁니다. 완료 메시지가 뜬 뒤 USB를 뽑으면 됩니다. 복제된 데이터는 손상되지 않습니다.</value></data>
+  <data name="SafeRemoveTip" xml:space="preserve"><value>디스크를 오프라인으로 내려 캐시를 비웁니다. 데이터는 그대로입니다.</value></data>
   <data name="SafeRemoveBusy" xml:space="preserve"><value>대상 볼륨을 내리는 중...</value></data>
   <data name="SafeRemoveDone" xml:space="preserve"><value>대상 디스크를 오프라인으로 내렸습니다. 이제 USB를 안전하게 뽑을 수 있습니다.</value></data>
   <data name="SafeRemoveFailFmt" xml:space="preserve"><value>안전 제거에 실패했습니다: {0} — 디스크 관리(diskmgmt.msc)에서 이 디스크를 우클릭해 "오프라인"으로 내린 뒤 뽑으십시오.</value></data>
   <data name="ReconnectWinre" xml:space="preserve"><value>복구 환경(WinRE) 다시 연결하기</value></data>
   <data name="ExpandPartitionBtn" xml:space="preserve"><value>파티션 확장</value></data>
-  <data name="ExpandPartitionTip" xml:space="preserve"><value>확대한 파티션(리사이즈) 또는 마지막 파티션을 남는 미할당 공간까지 넓힙니다. 맨 뒤가 복구 파티션이면 그것이 커집니다. 대상을 단독으로 연결한 상태(원본 분리)에서 가장 확실하게 동작합니다.</value></data>
+  <data name="ExpandPartitionTip" xml:space="preserve"><value>복제 중에 자동으로 넓혀지지 않았다면 이 버튼으로 마무리하십시오.</value></data>
+  <data name="PartitionWindows" xml:space="preserve"><value>Windows (C:)</value></data>
   <data name="Expanding" xml:space="preserve"><value>확장 중...</value></data>
   <data name="StartOver" xml:space="preserve"><value>처음으로</value></data>
 
@@ -228,7 +237,7 @@
   <data name="RoleEfi" xml:space="preserve"><value>EFI 시스템</value></data>
   <data name="RoleMsr" xml:space="preserve"><value>MSR (예약)</value></data>
   <data name="RoleRecovery" xml:space="preserve"><value>복구</value></data>
-  <data name="FreeSpaceHeaderFmt" xml:space="preserve"><value>남는 공간 {0} 를 어떻게 할까요</value></data>
+  <data name="FreeSpaceHeaderFmt" xml:space="preserve"><value>남는 공간 {0}</value></data>
 
   <data name="PauseResume" xml:space="preserve"><value>재개</value></data>
   <data name="PausePause" xml:space="preserve"><value>일시정지</value></data>
@@ -266,12 +275,12 @@
   <data name="ResMsgResizeCorruptedFmt" xml:space="preserve"><value>[{0}] {1} 에 데이터는 복사됐지만, 파티션 리사이즈 배치를 반영하는 GPT 재작성에 실패해 파티션 테이블이 옛 위치를 가리킵니다. 이 디스크로 부팅하거나 데이터를 사용하지 마십시오. 리사이즈를 끄고 다시 클론하십시오.</value></data>
 
   <data name="RbNotGptFmt" xml:space="preserve"><value>원본이 {0} 형식이라 쓸 수 없습니다 — 이 방식은 파티션을 옮기고 파티션 테이블을 다시 씁니다.</value></data>
-  <data name="RbExtended" xml:space="preserve"><value>원본에 확장 파티션(논리 드라이브)이 있어 쓸 수 없습니다 — 논리 드라이브는 EBR 체인으로 이어져 있어 옮기려면 체인 전체를 다시 써야 합니다.</value></data>
-  <data name="RbMbr2tb" xml:space="preserve"><value>MBR 원본은 약 2 TB까지만 파티션 위치를 가리킬 수 있어, 이보다 큰 대상에는 쓸 수 없습니다. '마지막 파티션에 합치기'를 쓰거나 원본을 GPT로 바꾸십시오.</value></data>
+  <data name="RbExtended" xml:space="preserve"><value>원본에 확장 파티션(논리 드라이브)이 있어 쓸 수 없습니다.</value></data>
+  <data name="RbMbr2tb" xml:space="preserve"><value>옛 방식(MBR) 원본은 약 2 TB까지만 가리킬 수 있습니다.</value></data>
   <data name="RbSectorMismatchFmt" xml:space="preserve"><value>원본과 대상의 섹터 크기가 다릅니다(원본 {0}바이트, 대상 {1}바이트). 파티션 위치가 어긋나 쓸 수 없습니다.</value></data>
   <data name="RbNoNtfs" xml:space="preserve"><value>원본에 넓힐 수 있는 NTFS 파티션이 없습니다.</value></data>
   <data name="RbNoRoom" xml:space="preserve"><value>대상이 원본보다 크지 않아 넓힐 공간이 없습니다.</value></data>
-  <data name="ReagentcNote" xml:space="preserve"><value>복구 파티션이 뒤로 밀려 Windows가 기억하던 위치와 달라졌습니다. 복제한 디스크로 부팅한 뒤 관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하면 복구 환경이 다시 연결됩니다. (Windows 부팅 자체는 정상입니다.)</value></data>
+  <data name="ReagentcNote" xml:space="preserve"><value>복구 파티션 위치가 바뀌었습니다. 복제한 디스크로 부팅한 뒤 관리자 명령 프롬프트에서 reagentc /enable 을 한 번 실행하십시오.</value></data>
   <data name="LoadErrorFmt" xml:space="preserve"><value>디스크 목록을 읽지 못했습니다: {0}</value></data>
   <data name="BootCheckFailFmt" xml:space="preserve"><value>검사에 실패했습니다: {0}</value></data>
   <data name="BootRepairFailFmt" xml:space="preserve"><value>복구에 실패했습니다: {0}</value></data>
@@ -291,25 +300,25 @@
   <data name="CloseRunningMsg1" xml:space="preserve"><value>클론이 진행 중입니다.</value></data>
   <data name="CloseRunningMsg2" xml:space="preserve"><value>지금 닫으면 대상 디스크는 불완전한 상태로 남고, 그 디스크의 데이터를 사용할 수 없습니다.</value></data>
   <data name="CloseRunningMsg3" xml:space="preserve"><value>정말 닫으시겠습니까?</value></data>
-<data name="McpCopied" xml:space="preserve"><value>주소와 토큰을 복사했습니다.</value></data><data name="McpCopyButton" xml:space="preserve"><value>주소·토큰 복사</value></data><data name="McpFailFmt" xml:space="preserve"><value>연결 통로 오류: {0}</value></data><data name="McpIntro" xml:space="preserve"><value>이 컴퓨터 안에서만 통하는 통로를 엽니다. Claude가 디스크 상태·부팅 구성·백업 이미지를 직접 읽고 무엇이 문제인지 짚어 줍니다. 읽기만 하며, 디스크를 바꾸는 일은 지금까지처럼 이 화면에서 사용자가 직접 합니다.</value></data><data name="McpRunningHint" xml:space="preserve"><value>통로가 열렸습니다. 아래 주소와 토큰을 Claude의 MCP 설정에 넣으십시오. 앱을 닫으면 통로도 함께 닫힙니다.</value></data><data name="McpShareDetails" xml:space="preserve"><value>디스크 시리얼·볼륨 이름도 함께 보내기</value></data><data name="McpShareDetailsHint" xml:space="preserve"><value>기본은 가려서 보냅니다. 진단 내용은 대화 기록에 남으므로 필요할 때만 켜십시오.</value></data><data name="McpStart" xml:space="preserve"><value>연결 통로 열기</value></data><data name="McpStop" xml:space="preserve"><value>연결 통로 닫기</value></data><data name="McpStoppedHint" xml:space="preserve"><value>통로를 닫았습니다. 다시 열면 새 토큰이 발급됩니다.</value></data><data name="McpTitle" xml:space="preserve"><value>Claude가 이 앱의 진단을 읽게 하기</value></data><data name="McpTokenLabel" xml:space="preserve"><value>토큰</value></data><data name="McpUrlLabel" xml:space="preserve"><value>주소</value></data><data name="ModeAssistant" xml:space="preserve"><value>Claude 연결</value></data><data name="ProposalApply" xml:space="preserve"><value>적용</value></data><data name="ProposalCloneFmt" xml:space="preserve"><value>디스크 {0}({1}) → 디스크 {2}({3}) 복제</value></data><data name="ProposalConfirmNote" xml:space="preserve"><value>적용해도 바로 실행되지 않습니다. 대상 모델명을 직접 입력해야 시작할 수 있습니다.</value></data><data name="ProposalDiskGone" xml:space="preserve"><value>제안한 디스크를 찾지 못했습니다 — 연결이 바뀐 것 같습니다. 새로고침 후 다시 시도하십시오.</value></data><data name="ProposalDismiss" xml:space="preserve"><value>무시</value></data><data name="ProposalPlainNote" xml:space="preserve"><value>적용하면 선택이 채워집니다. 시작 버튼은 직접 누르셔야 합니다.</value></data><data name="ProposalTitle" xml:space="preserve"><value>Claude의 제안</value></data>  <data name="ProposalKindRestore" xml:space="preserve"><value>복원</value></data>
+<data name="McpCopied" xml:space="preserve"><value>주소와 토큰을 복사했습니다.</value></data><data name="McpCopyButton" xml:space="preserve"><value>주소·토큰 복사</value></data><data name="McpFailFmt" xml:space="preserve"><value>연결 통로 오류: {0}</value></data><data name="McpIntro" xml:space="preserve"><value>Claude가 이 앱의 진단을 직접 읽게 합니다. 읽기만 합니다.</value></data><data name="McpRunningHint" xml:space="preserve"><value>통로가 열렸습니다. 앱을 닫으면 함께 닫힙니다.</value></data><data name="McpShareDetails" xml:space="preserve"><value>디스크 시리얼·볼륨 이름도 함께 보내기</value></data><data name="McpShareDetailsHint" xml:space="preserve"><value>기본은 가려서 보냅니다. 필요할 때만 켜십시오.</value></data><data name="McpStart" xml:space="preserve"><value>연결 통로 열기</value></data><data name="McpStop" xml:space="preserve"><value>연결 통로 닫기</value></data><data name="McpStoppedHint" xml:space="preserve"><value>통로를 닫았습니다. 다시 열면 새 토큰이 발급됩니다.</value></data><data name="McpTitle" xml:space="preserve"><value>Claude가 이 앱의 진단을 읽게 하기</value></data><data name="McpTokenLabel" xml:space="preserve"><value>토큰</value></data><data name="McpUrlLabel" xml:space="preserve"><value>주소</value></data><data name="ModeAssistant" xml:space="preserve"><value>Claude 연결</value></data><data name="ProposalApply" xml:space="preserve"><value>적용</value></data><data name="ProposalCloneFmt" xml:space="preserve"><value>디스크 {0}({1}) → 디스크 {2}({3}) 복제</value></data><data name="ProposalConfirmNote" xml:space="preserve"><value>대상 모델명을 직접 입력해야 시작할 수 있습니다.</value></data><data name="ProposalDiskGone" xml:space="preserve"><value>제안한 디스크를 찾지 못했습니다 — 연결이 바뀐 것 같습니다. 새로고침 후 다시 시도하십시오.</value></data><data name="ProposalDismiss" xml:space="preserve"><value>무시</value></data><data name="ProposalPlainNote" xml:space="preserve"><value>적용하면 선택이 채워집니다. 시작 버튼은 직접 누르셔야 합니다.</value></data><data name="ProposalTitle" xml:space="preserve"><value>Claude의 제안</value></data>  <data name="ProposalKindRestore" xml:space="preserve"><value>복원</value></data>
   <data name="ProposalKindBootRepair" xml:space="preserve"><value>부팅 복구</value></data>
   <data name="ProposalKindClone" xml:space="preserve"><value>복제</value></data>
   <data name="ProposalKindBackup" xml:space="preserve"><value>백업</value></data>
-  <data name="DiagNotOnTarget" xml:space="preserve"><value>그 위치는 진단 대상 디스크 위입니다. USB나 다른 디스크를 고르십시오 — 리포트를 그 디스크에 쓰면 진단이 대상을 건드리게 됩니다.</value></data>
+  <data name="DiagNotOnTarget" xml:space="preserve"><value>검사할 디스크를 먼저 고르십시오.</value></data>
   <data name="DiagSaveBtn" xml:space="preserve"><value>진단 리포트 저장</value></data>
   <data name="DiagIncludeHint" xml:space="preserve"><value>기본은 가려서 담습니다. 이 파일은 남에게 보여주려고 만드는 것입니다.</value></data>
   <data name="DiagFileFilter" xml:space="preserve"><value>진단 리포트 (*.dmdiag)|*.dmdiag</value></data>
   <data name="DiagSavedFmt" xml:space="preserve"><value>{0} 에 저장했습니다 ({1:N0} KB). 정상 PC에서 이 파일을 Claude에게 보여주거나 저희에게 보내십시오.</value></data>
   <data name="DiagSaveTitle" xml:space="preserve"><value>진단 리포트 저장</value></data>
-  <data name="DiagSaveHint" xml:space="preserve"><value>이 디스크의 부팅 관련 정보를 파일 하나로 모읍니다. 디스크는 수정하지 않습니다. 저장한 파일을 다른 PC로 옮겨 도움을 받을 수 있습니다.</value></data>
+  <data name="DiagSaveHint" xml:space="preserve"><value>부팅 관련 정보를 파일 하나로 모읍니다. 디스크는 바뀌지 않습니다.</value></data>
   <data name="DiagFailFmt" xml:space="preserve"><value>리포트를 저장하지 못했습니다: {0}</value></data>
   <data name="DiagCollecting" xml:space="preserve"><value>모으는 중… 읽기만 하며 디스크에는 아무것도 쓰지 않습니다.</value></data>
   <data name="DiagIncludeDetails" xml:space="preserve"><value>디스크 시리얼·볼륨 이름도 포함</value></data>
-  <data name="McpRunningReusedHint" xml:space="preserve"><value>지난번과 같은 주소·토큰으로 통로가 열렸습니다 — Claude에 이미 넣어 두셨다면 고칠 것이 없습니다.</value></data>
+  <data name="McpRunningReusedHint" xml:space="preserve"><value>지난번과 같은 주소·토큰으로 열렸습니다.</value></data>
   <data name="McpResetToken" xml:space="preserve"><value>새 토큰 발급</value></data>
-  <data name="McpResetTokenHint" xml:space="preserve"><value>토큰이 샜다고 생각될 때 쓰십시오. 기존 토큰은 통하지 않게 되고, 새 토큰을 Claude에 다시 넣어야 합니다.</value></data>
+  <data name="McpResetTokenHint" xml:space="preserve"><value>토큰이 샜다고 생각될 때 씁니다. Claude에 다시 등록해야 합니다.</value></data>
   <data name="McpTokenReset" xml:space="preserve"><value>새 토큰을 발급했습니다. Claude에 다시 넣으십시오.</value></data>
-  <data name="McpActivityHint" xml:space="preserve"><value>모든 호출이 이곳을 지납니다. 읽기는 디스크를 읽기만 한 것이고, 제안은 화면에 카드를 띄운 것입니다 — 실행된 것은 없습니다.</value></data>
+  <data name="McpActivityHint" xml:space="preserve"><value>모든 호출이 이곳을 지납니다. 실행된 것은 없습니다.</value></data>
   <data name="McpActProtocol" xml:space="preserve"><value>연결</value></data>
   <data name="McpActivityTitle" xml:space="preserve"><value>Claude가 무엇을 봤는지</value></data>
   <data name="McpActivityEmpty" xml:space="preserve"><value>아직 없습니다. Claude가 일하는 대로 여기에 나타납니다.</value></data>
@@ -318,17 +327,17 @@
   <data name="McpActCancel" xml:space="preserve"><value>취소</value></data>
   <data name="VerdictDiskOffline" xml:space="preserve"><value>이 디스크는 오프라인입니다 — 볼륨이 마운트되지 않아 아무것도 검사하지 못했습니다. 먼저 온라인으로 바꾸십시오(디스크 관리, 또는 diskpart: select disk N → online disk).</value></data>
   <data name="McpConnectorCopy" xml:space="preserve"><value>주소 복사 (토큰 포함)</value></data>
-  <data name="McpConnectorCopied" xml:space="preserve"><value>토큰이 포함된 주소를 복사했습니다. 커넥터 추가 화면의 주소 칸에 붙여 넣으십시오.</value></data>
-  <data name="McpConnectorHint" xml:space="preserve"><value>헤더를 보낼 수 없는 도구에서 이 주소만으로 연결할 때 씁니다. Claude 앱 설정 화면에서는 쓸 수 없습니다. 이 줄에는 열쇠가 들어 있으니 남에게 보이지 마십시오.</value></data>
+  <data name="McpConnectorCopied" xml:space="preserve"><value>주소를 복사했습니다. 열쇠가 들어 있으니 조심하십시오.</value></data>
+  <data name="McpConnectorHint" xml:space="preserve"><value>헤더를 못 보내는 도구용입니다. 이 줄에는 열쇠가 들어 있습니다.</value></data>
   <data name="McpConnectorLabel" xml:space="preserve"><value>토큰이 포함된 주소 (참고)</value></data>
   <data name="McpCommandLabel" xml:space="preserve"><value>Claude에 연결하는 명령 (이 방법만 됩니다)</value></data>
   <data name="McpCommandCopied" xml:space="preserve"><value>연결 명령을 복사했습니다. 명령 창에 붙여 넣고 실행하십시오.</value></data>
-  <data name="McpCommandHint" xml:space="preserve"><value>아래 버튼으로 복사한 뒤, 명령 창에 붙여 넣고 실행하십시오. Claude 앱의 설정 화면에서 커넥터로 추가하는 방법은 쓸 수 없습니다 — 그 화면은 https 주소만 받는데, 이 통로는 이 컴퓨터 안에서만 통하는 http이기 때문입니다.</value></data>
+  <data name="McpCommandHint" xml:space="preserve"><value>명령 창에 붙여 넣고 실행하십시오. Claude 앱의 커넥터 화면으로는 되지 않습니다.</value></data>
   <data name="McpCommandCopy" xml:space="preserve"><value>연결 명령 복사</value></data>
   <data name="McpConnectButton" xml:space="preserve"><value>Claude에 연결하기</value></data>
   <data name="McpConnectLabel" xml:space="preserve"><value>가장 쉬운 방법 — 버튼 한 번</value></data>
-  <data name="McpConnectHint" xml:space="preserve"><value>이 버튼을 누르면 앱이 Claude 쪽에 우리를 대신 등록합니다. 명령 창을 열 필요도, 주소나 토큰을 옮겨 적을 필요도 없습니다. 무엇을 고칠지 먼저 보여 드리고, 원래 설정은 사본으로 남깁니다.</value></data>
-  <data name="McpConnectNoBridge" xml:space="preserve"><value>연결에 필요한 파일(DiskMigratorX.Bridge.exe)이 앱 옆에 없습니다. 설치본으로 다시 설치하시면 함께 들어갑니다. 그때까지는 아래 명령 방식을 쓰십시오.</value></data>
+  <data name="McpConnectHint" xml:space="preserve"><value>앱이 Claude 쪽에 대신 등록합니다. 원래 설정은 사본으로 남깁니다.</value></data>
+  <data name="McpConnectNoBridge" xml:space="preserve"><value>연결에 필요한 파일이 없습니다. 설치본으로 다시 설치하십시오.</value></data>
   <data name="McpConnectTargetDesktop" xml:space="preserve"><value>Claude 데스크톱 앱</value></data>
   <data name="McpConnectTargetCode" xml:space="preserve"><value>Claude Code (명령줄)</value></data>
   <data name="McpConnectDesktopDone" xml:space="preserve"><value>등록했습니다. Claude를 완전히 종료했다가 다시 켜십시오.</value></data>
@@ -349,7 +358,7 @@
 계속할까요?</value></data>
   <data name="McpAdvancedLabel" xml:space="preserve"><value>수동으로 연결하기 (버튼이 안 될 때)</value></data>
   <data name="AskTitle" xml:space="preserve"><value>여기서 바로 물어보기</value></data>
-  <data name="AskHint" xml:space="preserve"><value>창을 옮겨 다니지 않아도 됩니다. 누르면 Claude가 이 앱의 도구로 디스크를 직접 읽고, 무엇이 문제인지 여기에 적어 줍니다. 디스크를 골라 두었으면 그 디스크를 봅니다. 몇 분 걸릴 수 있습니다.</value></data>
+  <data name="AskHint" xml:space="preserve"><value>Claude가 디스크를 직접 읽고 무엇이 문제인지 적어 줍니다. 몇 분 걸립니다.</value></data>
   <data name="AskButton" xml:space="preserve"><value>무엇이 문제인지 봐 줘</value></data>
   <data name="AskCancel" xml:space="preserve"><value>중단</value></data>
   <data name="AskStarting" xml:space="preserve"><value>Claude를 부르는 중…</value></data>
@@ -360,9 +369,9 @@
   <data name="ChatYou" xml:space="preserve"><value>나</value></data>
   <data name="ChatSend" xml:space="preserve"><value>보내기</value></data>
   <data name="ChatNew" xml:space="preserve"><value>새 대화</value></data>
-  <data name="ChatInputHint" xml:space="preserve"><value>이어서 물어보셔도 됩니다 — "그건 왜 그래?", "지금 복제해도 돼?" 처럼요. 앞의 이야기를 기억합니다. 디스크를 바꿔 꽂으셨다면 [새 대화]로 처음부터 시작하십시오.</value></data>
-  <data name="AskNeedsClaudeCode" xml:space="preserve"><value>여기서 바로 물어보려면 Claude Code가 이 컴퓨터에 있어야 합니다. 없어도 괜찮습니다 — 아래 [Claude에 연결하기]로 Claude 창에서 물어보시면 됩니다.</value></data>
-  <data name="AskDisclaimer" xml:space="preserve"><value>Claude는 읽기만 합니다. 복제·백업·복원·부팅 복구는 지금까지처럼 이 화면에서 직접 하십시오.</value></data>
+  <data name="ChatInputHint" xml:space="preserve"><value>이어서 물어보셔도 됩니다 — 앞의 이야기를 기억합니다.</value></data>
+  <data name="AskNeedsClaudeCode" xml:space="preserve"><value>Claude Code가 있어야 물어볼 수 있습니다.</value></data>
+  <data name="AskDisclaimer" xml:space="preserve"><value>Claude는 읽기만 합니다. 실행은 이 화면에서 직접 하십시오.</value></data>
   <data name="DiagSaveExpander" xml:space="preserve"><value>진단 파일로 저장 (다른 컴퓨터에서 분석하려면)</value></data>
   <data name="ClaudeLoginBtn" xml:space="preserve"><value>Claude 로그인</value></data>
   <data name="ChatOpenBtn" xml:space="preserve"><value>Claude에게 묻기</value></data>

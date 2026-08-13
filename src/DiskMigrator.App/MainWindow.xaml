@@ -878,8 +878,18 @@
                                    Foreground="{StaticResource Danger}" TextWrapping="Wrap" />
                     </Border>
 
-                    <TextBlock Text="{Binding FreeSpaceText}" Style="{StaticResource StepTitle}"
-                               Margin="0,0,0,10" TextWrapping="Wrap" />
+                    <!-- 접힌 상태에서 보이는 것은 이 <b>한 줄</b>이 전부입니다.
+                         "뒤쪽 칸은 밀립니다"와 "손잡이를 끌어 조정할 수 있습니다"도 적어 봤지만,
+                         바로 위 "변경 후" 막대가 이미 둘 다 보여 줍니다 — 복구가 끝으로 간 것도,
+                         손잡이가 달려 있는 것도. 그림이 말하는 것을 글로 또 말하면 넉 줄이 되고,
+                         그러면 정작 이 한 줄도 안 읽힙니다. -->
+                    <TextBlock Text="{Binding FreeSpaceSummary}" Style="{StaticResource StepTitle}"
+                               TextWrapping="Wrap" Margin="0,0,0,6" />
+
+                    <!-- 다르게 하고 싶은 사람만 펼칩니다. 아무것도 없애지 않았습니다. -->
+                    <Expander Header="{loc:Loc FreeSpaceReconfigure}" IsExpanded="{Binding IsFreeSpaceOpen}"
+                              Margin="0,0,0,4">
+                      <StackPanel Margin="0,10,0,0">
 
                     <RadioButton GroupName="FreeSpace" IsChecked="{Binding FreeSpaceLeave}"
                                  VerticalContentAlignment="Top" Margin="0,0,0,9">
@@ -961,8 +971,16 @@
                             -->
                             <RadioButton x:Name="ResizeSizeRadio" GroupName="ResizeSize"
                                          IsChecked="{Binding ResizeUseCustomSize}"
-                                         Content="{loc:Loc NewTotalSizeGb}" VerticalContentAlignment="Center"
-                                         Margin="0,0,6,0" FontSize="12" />
+                                         Content="{loc:Loc ResizeCustomSize}" VerticalContentAlignment="Center"
+                                         Margin="0,0,8,0" FontSize="12" />
+
+                            <!-- 입력칸이 스스로 설명합니다: 231.32 GB → [ 464.20 ] GB.
+                                 각주에 "'새 총 크기'는 늘린 뒤의 전체 크기입니다(추가할 크기가
+                                 아닙니다)"라고 적어 두었던 문장이 이 배치로 필요 없어집니다. -->
+                            <TextBlock Text="{Binding ResizeCurrentSizeText}" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{StaticResource Muted}" />
+                            <TextBlock Text=" → " VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{StaticResource Muted}" />
                             <!--
                                 기본 UpdateSourceTrigger(LostFocus)면 숫자를 다 치고도 다른 곳을
                                 누르기 전까지 막대와 시작 버튼이 옛 값 그대로입니다. 치는 대로
@@ -971,11 +989,30 @@
                             <TextBox Width="70" VerticalContentAlignment="Center"
                                      Text="{Binding ResizeSizeGb, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding IsChecked, ElementName=ResizeSizeRadio}" />
+                            <TextBlock Text=" GB" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{StaticResource Muted}" />
                         </StackPanel>
 
+                        <!-- 고른 대로 두면 바란 것과 다른 일이 일어나는 경우를 그 자리에서 말합니다.
+                             막지는 않습니다 — 복구 칸을 일부러 넓히는 경우도 있습니다. -->
+                        <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,8,0,0"
+                                   Foreground="{StaticResource Warning}" MaxWidth="560"
+                                   HorizontalAlignment="Left"
+                                   Text="{Binding ResizeChoiceWarning}"
+                                   Visibility="{Binding HasResizeChoiceWarning,
+                                                Converter={StaticResource BoolToVisibility}}" />
+
+                        <!-- 목록에서 빠진 파티션이 있을 때만. 늘 띄워 두면 그 말이 필요 없는
+                             대부분에게는 읽을 것만 한 줄 늘어납니다. -->
                         <TextBlock TextWrapping="Wrap" Style="{StaticResource Micro}" Margin="0,6,0,0"
-                                   Text="{loc:Loc ResizeHelp}" />
+                                   Text="{loc:Loc ResizeNtfsOnly}" MaxWidth="560"
+                                   HorizontalAlignment="Left"
+                                   Visibility="{Binding SomePartitionsNotResizable,
+                                                Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
+
+                      </StackPanel>
+                    </Expander>
                 </StackPanel>
 
                 <!--
@@ -1967,6 +2004,9 @@
                         <StackPanel Orientation="Horizontal">
                             <Button Content="{loc:Loc ExpandPartitionBtn}" Command="{Binding ExpandPartitionCommand}"
                                     MinWidth="130" Padding="16,8" />
+                            <!-- "클론 중 자동 확장이 안 되면 이 버튼으로 마무리하세요"는 원래
+                                 선택 화면의 각주에 있었습니다. 거기서는 할 수 있는 일이 없습니다 —
+                                 버튼이 여기 있으니 설명도 여기 있어야 합니다. -->
                             <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource Micro}" TextWrapping="Wrap" MaxWidth="440"
                                        Text="{loc:Loc ExpandPartitionTip}" />
                         </StackPanel>

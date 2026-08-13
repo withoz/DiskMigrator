@@ -179,10 +179,7 @@ public sealed class DiskLayoutViewModel
 
         var p = span.Partition;
         string role = DescribeRole(p);
-        string letter = p.DriveLetter is { } dl ? $"{dl}: " : "";
-        string label = string.IsNullOrWhiteSpace(p.VolumeLabel) ? "" : $"{p.VolumeLabel} ";
-        string title = $"{letter}{label}".Trim();
-        if (title.Length == 0) title = role;
+        string title = PartitionNaming.Title(p);
 
         bool hasUsage = p.FreeSpaceBytes is >= 0 && p.LengthBytes > 0;
         long used = hasUsage ? Math.Max(0, p.LengthBytes - p.FreeSpaceBytes!.Value) : 0;
@@ -226,26 +223,11 @@ public sealed class DiskLayoutViewModel
         };
     }
 
-    /// <summary>막대 안에 넣을 짧은 역할 이름 — 좁은 조각에 긴 글자는 안 들어갑니다.</summary>
-    private static string ShortRole(PartitionInfo p)
-    {
-        if (p.IsEfiSystemPartition) return "EFI";
-        if (p.GptPartitionType == MicrosoftReserved) return "MSR";
-        if (p.IsWindowsRecovery) return Strings.Get("RoleRecovery");
-        return p.FileSystem ?? "RAW";
-    }
+    // 이름 짓는 규칙은 PartitionNaming 한곳에만 둡니다 — 범례는 "복구"라고 부르면서
+    // 칩은 같은 것을 "파티션 4 NTFS"라고 부르던 어긋남이 여기서 시작됐습니다.
+    private static string ShortRole(PartitionInfo p) => PartitionNaming.ShortRole(p);
 
-    // 잘 알려진 GPT 타입 GUID. Windows 프로젝트에도 같은 표가 있지만 internal이라 여기서 다시 둡니다.
-    // 복구 파티션 판별은 MBR(0x27)도 함께 봐야 해서 PartitionInfo.IsWindowsRecovery로 옮겼습니다.
-    private static readonly Guid MicrosoftReserved = new("e3c9e316-0b5c-4db8-817d-f92df00215ae");
-
-    private static string DescribeRole(PartitionInfo p)
-    {
-        if (p.IsEfiSystemPartition) return Strings.Get("RoleEfi");
-        if (p.GptPartitionType == MicrosoftReserved) return Strings.Get("RoleMsr");
-        if (p.IsWindowsRecovery) return Strings.Get("RoleRecovery");
-        return p.FileSystem ?? "RAW";
-    }
+    private static string DescribeRole(PartitionInfo p) => PartitionNaming.Role(p);
 
     /// <summary>
     /// 이 비율보다 좁은 조각에는 글자를 넣지 않습니다.
@@ -281,7 +263,7 @@ public sealed class DiskLayoutViewModel
     private static Brush BrushFor(PartitionInfo p)
     {
         if (p.IsEfiSystemPartition) return EfiBrush;
-        if (p.GptPartitionType == MicrosoftReserved) return ReservedBrush;
+        if (p.GptPartitionType == PartitionNaming.MicrosoftReserved) return ReservedBrush;
         if (p.DriveLetter is not null) return DataBrush;
         return OtherBrush;
     }
