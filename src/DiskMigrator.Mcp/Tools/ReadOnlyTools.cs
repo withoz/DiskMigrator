@@ -340,33 +340,45 @@ public sealed class ReadOnlyTools(
 
     [McpServerTool(Name = "list_disks")]
     [Description(
-        "List all physical disks on this PC with their size, bus type, partition style, and " +
-        "whether each is the system/boot/pagefile disk. Always call this first — every other " +
-        "disk tool takes a deviceNumber from here. Drive letters change; device numbers are stable " +
-        "within a session.")]
-    public async Task<ToolResult<IReadOnlyList<DiskDto>>> ListDisksAsync(CancellationToken ct = default)
+        "List every physical disk on this PC **with its full partition layout** — size, bus type, " +
+        "partition style, whether it is the system/boot/pagefile disk, and each partition's offset, " +
+        "size, file system, label, drive letter and used space. Always call this first. " +
+        "You do NOT need inspect_disk afterwards: everything it returns is already here. " +
+        "Drive letters change; device numbers are stable within a session.")]
+    public async Task<ToolResult<IReadOnlyList<DiskDetailDto>>> ListDisksAsync(CancellationToken ct = default)
     {
         try
         {
             if (!diskService.IsElevated)
             {
-                return ToolResult<IReadOnlyList<DiskDto>>.Fail(
+                return ToolResult<IReadOnlyList<DiskDetailDto>>.Fail(
                     ToolErrorCodes.NotElevated,
                     "Disk enumeration requires administrator rights.",
                     "Restart DiskMigrator as administrator.");
             }
 
+            // 파티션까지 함께 돌려줍니다.
+            //
+            // ⚠ 예전에는 요약만 주고, 파티션을 보려면 디스크마다 inspect_disk를 다시 부르게
+            //   했습니다. 그런데 inspect_disk도 <b>같은 EnumerateDisksAsync를 다시 부를 뿐</b>이라
+            //   새로 읽는 것이 없었습니다 — 정보는 이미 첫 호출에 다 들어 있었습니다.
+            //
+            //   대신 도구 호출이 디스크 수만큼 늘었고, 호출 한 번은 모델을 한 번 오가는 일입니다.
+            //   2026-08-13 실기: 디스크 8개인 PC에서 왕복 12번 · 62초가 걸렸고 그중 8번이
+            //   inspect_disk였습니다. 한 번에 주면 그 8번이 사라집니다.
+            //
+            //   응답이 길어지는 대신 왕복이 줄어듭니다. 왕복 한 번이 3~6초이므로 훨씬 남는 장사입니다.
             var disks = await diskService.EnumerateDisksAsync(ct);
-            var dtos = disks.Select(mapping.ToDto).ToList();
+            var dtos = disks.Select(mapping.ToDetailDto).ToList();
 
-            _logger.LogInformation("MCP list_disks → 디스크 {Count}개", dtos.Count);
-            return ToolResult<IReadOnlyList<DiskDto>>.Success(dtos);
+            _logger.LogInformation("MCP list_disks → 디스크 {Count}개(파티션 포함)", dtos.Count);
+            return ToolResult<IReadOnlyList<DiskDetailDto>>.Success(dtos);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "MCP list_disks 실패.");
-            return ToolResult<IReadOnlyList<DiskDto>>.Fail(ToolErrorCodes.Internal, ex.Message);
+            return ToolResult<IReadOnlyList<DiskDetailDto>>.Fail(ToolErrorCodes.Internal, ex.Message);
         }
     }
 
@@ -500,9 +512,9 @@ public sealed class ReadOnlyTools(
 
     [McpServerTool(Name = "inspect_disk")]
     [Description(
-        "Inspect one disk in detail: its partition layout (offset, size, file system, label, " +
-        "drive letter, used space) plus the GPT disk GUID or MBR signature. Use this to understand " +
-        "what is on a disk before planning anything, or to see whether a target disk is empty.")]
+        "Re-read ONE disk's partition layout. Rarely needed: list_disks already returns this for " +
+        "every disk. Use it only to refresh a single disk after something changed — for example " +
+        "after a clone finished, or after the user plugged a disk in.")]
     public async Task<ToolResult<DiskDetailDto>> InspectDiskAsync(
         [Description("Physical disk number, as returned by list_disks.")] int deviceNumber,
         CancellationToken ct = default)

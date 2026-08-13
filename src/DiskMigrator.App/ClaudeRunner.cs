@@ -15,6 +15,22 @@ namespace DiskMigrator.App;
 /// <param name="Error">실패 사유(원문). 우리가 번역할 수 없는 남의 문구입니다.</param>
 public sealed record ClaudeAnswer(bool Ok, string Text, string? SessionId = null, string? Error = null);
 
+/// <summary>Claude가 일하는 동안 화면으로 흘려보내는 것.</summary>
+/// <remarks>
+/// 예전에는 도구 이름만 알렸습니다. 그래서 답이 다 만들어질 때까지 화면은 "살펴보는 중…"
+/// 하나로 멈춰 있었고, <b>56초를 기다렸다가 글 뭉치를 한꺼번에</b> 받았습니다.
+/// Claude는 글자가 생기는 대로 흘려보냅니다 — 우리도 그 신호를 이미 받고 있었으면서
+/// 버리고 있었습니다.
+/// </remarks>
+public abstract record ClaudeEvent
+{
+    /// <summary>지금 어떤 도구를 부르는 중인지.</summary>
+    public sealed record Tool(string Name) : ClaudeEvent;
+
+    /// <summary>답의 조각. 오는 대로 화면에 붙입니다.</summary>
+    public sealed record Text(string Chunk) : ClaudeEvent;
+}
+
 /// <summary>
 /// 앱 안에서 <b>Claude에게 직접 물어봅니다</b> — 사용자가 창을 옮겨 다니지 않아도 되게.
 /// </summary>
@@ -60,7 +76,7 @@ public static class ClaudeRunner
         string bridgePath,
         bool korean,
         string? resume = null,
-        IProgress<string>? progress = null,
+        IProgress<ClaudeEvent>? progress = null,
         CancellationToken ct = default)
     {
         string? claude = ClaudeRegistration.FindOnPath("claude");
@@ -136,6 +152,10 @@ public static class ClaudeRunner
         "--output-format", "stream-json",
         "--verbose",
 
+        // 글자가 만들어지는 대로 받습니다. 이 한 줄이 없으면 완성된 덩어리만 오고,
+        // 사용자는 답이 다 될 때까지 멈춘 화면을 봅니다 — 실기에서 56초였습니다.
+        "--include-partial-messages",
+
         // 우리 중계기만 붙입니다. 여기서 직접 넘기므로 Claude 설정에 등록이 없어도 됩니다.
         "--mcp-config", McpConfigJson(bridgePath),
 
@@ -190,7 +210,7 @@ public static class ClaudeRunner
     /// 걸려 넘어지면 답을 통째로 잃습니다.
     /// </remarks>
     private static void Interpret(
-        string line, IProgress<string>? progress, ref string answer, ref string? failure, ref string? session)
+        string line, IProgress<ClaudeEvent>? progress, ref string answer, ref string? failure, ref string? session)
     {
         try
         {
@@ -205,6 +225,16 @@ public static class ClaudeRunner
 
             switch (type)
             {
+                // 글자 조각. 이것이 흘러야 사용자가 답이 만들어지는 것을 봅니다.
+                case "stream_event" when root.TryGetProperty("event", out var ev) &&
+                                         ev.TryGetProperty("delta", out var delta) &&
+                                         delta.TryGetProperty("type", out var dt) &&
+                                         dt.GetString() == "text_delta" &&
+                                         delta.TryGetProperty("text", out var txt):
+                    if (txt.GetString() is { Length: > 0 } chunk)
+                        progress?.Report(new ClaudeEvent.Text(chunk));
+                    break;
+
                 case "assistant" when root.TryGetProperty("message", out var m) &&
                                       m.TryGetProperty("content", out var blocks) &&
                                       blocks.ValueKind == JsonValueKind.Array:
@@ -213,7 +243,7 @@ public static class ClaudeRunner
                         if (block.TryGetProperty("type", out var bt) && bt.GetString() == "tool_use" &&
                             block.TryGetProperty("name", out var n))
                         {
-                            progress?.Report(FriendlyToolName(n.GetString() ?? ""));
+                            progress?.Report(new ClaudeEvent.Tool(FriendlyToolName(n.GetString() ?? "")));
                         }
                     }
                     break;

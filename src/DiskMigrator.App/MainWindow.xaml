@@ -1490,38 +1490,34 @@
             </StackPanel>
 
             <!-- ===== Claude 연결 (로컬 MCP 통로) =====
-                 기본은 꺼짐입니다 — 디스크를 읽는 통로를 사용자 모르게 열어두지 않습니다. -->
+                 기본은 꺼짐입니다 — 디스크를 읽는 통로를 사용자 모르게 열어두지 않습니다.
+
+                 대화창은 이 탭이 아니라 오른쪽 패널에 있습니다. 여기 남는 것은 둘입니다.
+                   ① 연결 — Claude 쪽에 등록하고 통로를 여는 것
+                   ② 감사 — Claude가 무엇을 봤는지 확인하는 것
+                 주소·토큰·명령은 버튼이 안 될 때의 대비책이라 [수동으로 연결하기] 안으로
+                 넣습니다. 그것이 늘 펼쳐져 있으면 초보자가 "이걸 해야 하나" 하고 멈춥니다. -->
             <StackPanel
                         Visibility="{Binding IsAssistantMode, Converter={StaticResource BoolToVisibility}}">
 
-                <TextBlock Text="{loc:Loc McpTitle}" Style="{StaticResource SubHeading}" Margin="0,4,0,6" />
-                <TextBlock Text="{loc:Loc McpIntro}" Style="{StaticResource Caption}"
-                           TextWrapping="Wrap" Margin="0,0,0,14" />
+                <TextBlock Text="{loc:Loc McpTitle}" Style="{StaticResource Body}" FontWeight="Bold"
+                           Margin="0,4,0,2" />
+                <TextBlock Text="{loc:Loc McpIntro}" Style="{StaticResource Micro}"
+                           TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" Margin="0,0,0,16" />
 
-                <!-- 대화창은 이 탭이 아니라 <b>오른쪽 패널</b>에 있습니다(RootLayout 1열).
-                     막혔을 때 물어보려고 하던 화면을 떠나야 한다면, 하던 것을 잃습니다 —
-                     부팅 복구 도중이라면 특히 그렇습니다. 머리말의 [Claude에게 묻기]로
-                     어느 화면에서나 옆에서 열립니다. 이 탭에는 연결·감사 기록만 둡니다. -->
-
-                <!-- ===== 버튼 한 번으로 연결 =====
-                     여기가 이 화면의 첫 번째 답이어야 합니다. 그전에는 사용자가 명령을 복사해
-                     명령 프롬프트를 열고 붙여 넣어야 했고, 초보자는 거기서 멈췄습니다.
-                     중계기 파일이 없으면(개발 중 단독 실행 등) 아예 보이지 않습니다 —
-                     눌러도 아무 일이 없는 버튼은 앱 전체를 의심하게 만듭니다. -->
-                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
-                        BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16"
-                        Visibility="{Binding CanConnectToClaude, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc McpConnectLabel}" Style="{StaticResource SubHeading}"
-                                   FontWeight="Bold" />
-                        <TextBlock Text="{loc:Loc McpConnectHint}" Style="{StaticResource Micro}"
-                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,4,0,10" />
+                <!-- 상자를 두지 않습니다. 다른 화면과 같은 규칙 — 버튼 한 줄 + 왜 필요한지 한 줄. -->
+                <StackPanel Margin="0,0,0,16"
+                            Visibility="{Binding CanConnectToClaude, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
                         <Button x:Name="ConnectToClaudeButton" Click="ConnectToClaude_Click"
                                 Content="{loc:Loc McpConnectButton}"
-                                HorizontalAlignment="Left" Padding="18,9"
+                                Padding="18,9" VerticalAlignment="Top"
                                 Style="{StaticResource AccentButton}" />
+                        <TextBlock Text="{loc:Loc McpConnectHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" />
                     </StackPanel>
-                </Border>
+                </StackPanel>
 
                 <!-- 켜기 전에 정해야 합니다 — 이미 나간 정보는 되돌릴 수 없으므로,
                      통로가 열려 있는 동안에는 바꾸지 못하게 잠급니다. -->
@@ -1537,146 +1533,140 @@
                         </Style>
                     </CheckBox.Style>
                 </CheckBox>
-                <TextBlock Text="{loc:Loc McpShareDetailsHint}" Style="{StaticResource Caption}"
-                           TextWrapping="Wrap" Margin="24,0,0,14" />
+                <TextBlock Text="{loc:Loc McpShareDetailsHint}" Style="{StaticResource Micro}"
+                           TextWrapping="Wrap" Margin="24,0,0,14" MaxWidth="540" HorizontalAlignment="Left" />
 
                 <Button Command="{Binding ToggleMcpCommand}" Content="{Binding McpToggleLabel}"
-                        HorizontalAlignment="Left" Padding="18,9" Margin="0,0,0,12"
-                        Style="{StaticResource AccentButton}" />
+                        HorizontalAlignment="Left" Padding="18,9" Margin="0,0,0,10" />
 
                 <TextBlock Text="{Binding McpStatusText}" Style="{StaticResource Caption}"
-                           TextWrapping="Wrap" Margin="0,0,0,10"
+                           TextWrapping="Wrap" Margin="0,0,0,10" MaxWidth="560" HorizontalAlignment="Left"
                            Visibility="{Binding McpStatusText, Converter={StaticResource NullToVisibility}}" />
 
-                <!-- 통로가 열렸을 때만 주소·토큰을 보여 줍니다. -->
-                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource BorderBrushSoft}"
-                        BorderThickness="1" CornerRadius="8" Padding="14"
-                        Visibility="{Binding McpRunning, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <TextBlock Text="{loc:Loc McpUrlLabel}" Style="{StaticResource Caption}" />
+                <!-- ===== 통로가 열렸을 때 ===== -->
+                <StackPanel Visibility="{Binding McpRunning, Converter={StaticResource BoolToVisibility}}">
+
+                    <!-- 감사 기록. 앱은 "읽기만 합니다"라고 말하면서 정작 무엇을 읽었는지는
+                         보여주지 않았습니다 — 그 말을 확인할 방법이 사용자에게 없었다는 뜻입니다.
+                         이제 이 탭의 주인공이라, 상자 안에 파묻지 않고 앞으로 냅니다. -->
+                    <TextBlock Text="{loc:Loc McpActivityTitle}" Style="{StaticResource Body}"
+                               FontWeight="Bold" Margin="0,8,0,2" />
+                    <TextBlock Text="{loc:Loc McpActivityHint}" Style="{StaticResource Micro}"
+                               TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" />
+
+                    <TextBlock Text="{loc:Loc McpActivityEmpty}" Style="{StaticResource Caption}"
+                               Margin="0,10,0,0"
+                               Visibility="{Binding HasMcpActivity, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                    <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1"
+                            CornerRadius="8" Margin="0,10,0,0" MaxWidth="640" HorizontalAlignment="Left"
+                            Visibility="{Binding HasMcpActivity, Converter={StaticResource BoolToVisibility}}">
+                        <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding McpActivities}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="10,5">
+                                            <TextBlock Text="{Binding Time}" FontFamily="Consolas" FontSize="11.5"
+                                                       Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+
+                                            <!-- 종류 배지 — 도구 이름보다 이쪽이 사용자의 관심사입니다. -->
+                                            <Border CornerRadius="4" Padding="6,1" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#E5E7EB" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRead}" Value="True">
+                                                                <Setter Property="Background" Value="#DCFCE7" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsProposal}" Value="True">
+                                                                <Setter Property="Background" Value="#FEF3C7" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding KindLabel}" FontSize="10.5" FontWeight="SemiBold" />
+                                            </Border>
+
+                                            <TextBlock Text="{Binding Tool}" FontFamily="Consolas" FontSize="11.5"
+                                                       Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Failed}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <TextBlock Text="{Binding Detail}" FontSize="11.5" Margin="8,0,0,0"
+                                                       Foreground="{StaticResource Muted}" VerticalAlignment="Center"
+                                                       Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
+
+                                            <TextBlock Text="{Binding Elapsed}" FontSize="10.5" Margin="8,0,0,0"
+                                                       Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- 손으로 연결하는 방법. 버튼이 생기기 전에는 이것이 유일한 길이었지만,
+                         이제는 버튼이 안 될 때의 대비책입니다. 주소·토큰도 여기로 들어옵니다 —
+                         [Claude에 연결하기]를 쓰는 사람은 볼 일이 없는 값입니다.
+
+                         ⚠ Claude 앱의 "커스텀 커넥터 추가" 화면은 쓸 수 없습니다. 그 화면은 주소가
+                            https로 시작할 것을 요구하는데, 이 통로는 이 컴퓨터 안에서만 통하는
+                            http이기 때문입니다(2026-08-10 실기에서 거절 확인). -->
+                    <Expander Header="{loc:Loc McpAdvancedLabel}" IsExpanded="False" Margin="0,20,0,0">
+                      <StackPanel Margin="0,10,0,0">
+                        <TextBlock Text="{loc:Loc McpCommandLabel}" Style="{StaticResource Caption}" />
+                        <TextBox Text="{Binding McpAddCommand, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,4,0,4"
+                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                        <TextBlock Text="{loc:Loc McpCommandHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" Margin="0,0,0,10" />
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Command="{Binding CopyMcpAddCommandCommand}" Content="{loc:Loc McpCommandCopy}"
+                                    Padding="14,7" Margin="0,0,8,0" />
+                            <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
+                                    Padding="14,7" Margin="0,0,8,0" />
+                            <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
+                                    Padding="14,7" />
+                        </StackPanel>
+
+                        <TextBlock Text="{loc:Loc McpUrlLabel}" Style="{StaticResource Caption}" Margin="0,16,0,0" />
                         <TextBox Text="{Binding McpUrl, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,10"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,2,0,8"
                                  BorderThickness="0" Background="Transparent" />
 
                         <TextBlock Text="{loc:Loc McpTokenLabel}" Style="{StaticResource Caption}" />
                         <TextBox Text="{Binding McpToken, Mode=OneWay}" IsReadOnly="True"
-                                 FontFamily="Consolas" FontSize="12.5" Margin="0,2,0,12"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,2,0,8"
                                  BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
 
-                        <!-- ⚠ Claude 앱의 "커스텀 커넥터 추가" 화면은 쓸 수 없습니다. 그 화면은 주소가
-                             https로 시작할 것을 요구하는데, 이 통로는 이 컴퓨터 안에서만 통하는
-                             http이기 때문입니다(2026-08-10 실기에서 거절 확인).
-                             확인된 방법은 아래 명령 한 줄뿐이므로 그것을 맨 앞에 둡니다. -->
-                        <!-- 손으로 연결하는 방법은 접어 둡니다. 버튼이 생기기 전에는 이것이
-                             유일한 길이었지만, 이제는 버튼이 안 될 때의 대비책입니다.
-                             펼쳐 둔 채로 두면 초보자가 "이걸 해야 하나" 하고 다시 멈춥니다. -->
-                        <Expander Header="{loc:Loc McpAdvancedLabel}" IsExpanded="False" Margin="0,18,0,0">
-                          <StackPanel Margin="0,10,0,0">
-                            <TextBlock Text="{loc:Loc McpCommandLabel}" Style="{StaticResource Caption}" />
-                            <TextBox Text="{Binding McpAddCommand, Mode=OneWay}" IsReadOnly="True"
-                                     FontFamily="Consolas" FontSize="12" Margin="0,4,0,4"
-                                     BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
-                            <TextBlock Text="{loc:Loc McpCommandHint}" Style="{StaticResource Micro}"
-                                       TextWrapping="Wrap" MaxWidth="620" Margin="0,0,0,10" />
+                        <!-- 헤더를 못 보내는 도구를 위한 참고용. 화면 설정에서는 쓸 수 없다는 것을
+                             문구에 분명히 적습니다 — 그러지 않으면 또 막다른 길로 보냅니다. -->
+                        <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" />
+                        <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12" Margin="0,2,0,4"
+                                 BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
+                        <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
+                                   TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" />
 
-                            <StackPanel Orientation="Horizontal">
-                                <Button Command="{Binding CopyMcpAddCommandCommand}" Content="{loc:Loc McpCommandCopy}"
-                                        Padding="14,7" Margin="0,0,8,0" />
-                                <Button Command="{Binding CopyMcpSettingsCommand}" Content="{loc:Loc McpCopyButton}"
-                                        Padding="14,7" Margin="0,0,8,0" />
-                                <Button Command="{Binding CopyMcpConnectorUrlCommand}" Content="{loc:Loc McpConnectorCopy}"
-                                        Padding="14,7" />
-                            </StackPanel>
-
-                            <!-- 헤더를 못 보내는 도구를 위한 참고용. 화면 설정에서는 쓸 수 없다는 것을
-                                 문구에 분명히 적습니다 — 그러지 않으면 또 막다른 길로 보냅니다. -->
-                            <TextBlock Text="{loc:Loc McpConnectorLabel}" Style="{StaticResource Caption}" Margin="0,16,0,0" />
-                            <TextBox Text="{Binding McpConnectorUrl, Mode=OneWay}" IsReadOnly="True"
-                                     FontFamily="Consolas" FontSize="12" Margin="0,2,0,4"
-                                     BorderThickness="0" Background="Transparent" TextWrapping="Wrap" />
-                            <TextBlock Text="{loc:Loc McpConnectorHint}" Style="{StaticResource Micro}"
-                                       TextWrapping="Wrap" MaxWidth="620" />
-                          </StackPanel>
-                        </Expander>
-
-                        <StackPanel Orientation="Horizontal" Visibility="Collapsed">
-                            <!-- 토큰은 이제 다음 실행까지 유지됩니다. 새로 발급하는 것은
-                                 사용자가 명시적으로 정할 일이라 별도 버튼으로 둡니다. -->
-                            <Button Command="{Binding ResetMcpTokenCommand}" Content="{loc:Loc McpResetToken}"
-                                    Padding="14,7" Margin="8,0,0,0" />
-                        </StackPanel>
+                        <!-- ⚠ 이 버튼은 Collapsed로 숨겨져 있으면서 설명만 화면에 떠 있었습니다.
+                             누를 것이 없는 안내는 사용자를 찾아 헤매게 만듭니다. 함께 보입니다. -->
+                        <Button Command="{Binding ResetMcpTokenCommand}" Content="{loc:Loc McpResetToken}"
+                                HorizontalAlignment="Left" Padding="14,7" Margin="0,16,0,0" />
                         <TextBlock Text="{loc:Loc McpResetTokenHint}" Style="{StaticResource Micro}"
-                                   TextWrapping="Wrap" MaxWidth="560" Margin="0,6,0,0" />
-
-                        <!-- Claude 활동 기록 — 감사용.
-                             앱은 "읽기만 합니다"라고 말하면서 정작 무엇을 읽었는지는 보여주지
-                             않았습니다. 그 말을 확인할 방법이 사용자에게 없었다는 뜻입니다. -->
-                        <TextBlock Text="{loc:Loc McpActivityTitle}" Style="{StaticResource SubHeading}"
-                                   FontWeight="Bold" Margin="0,20,0,0" />
-                        <TextBlock Text="{loc:Loc McpActivityHint}" Style="{StaticResource Micro}"
-                                   TextWrapping="Wrap" MaxWidth="620" Margin="0,3,0,0" />
-
-                        <TextBlock Text="{loc:Loc McpActivityEmpty}" Style="{StaticResource Caption}"
-                                   Margin="0,10,0,0"
-                                   Visibility="{Binding HasMcpActivity, Converter={StaticResource InverseBoolToVisibility}}" />
-
-                        <Border BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="1"
-                                CornerRadius="8" Margin="0,10,0,0" MaxWidth="640" HorizontalAlignment="Left"
-                                Visibility="{Binding HasMcpActivity, Converter={StaticResource BoolToVisibility}}">
-                            <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding McpActivities}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Margin="10,5">
-                                                <TextBlock Text="{Binding Time}" FontFamily="Consolas" FontSize="11.5"
-                                                           Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
-
-                                                <!-- 종류 배지 — 도구 이름보다 이쪽이 사용자의 관심사입니다. -->
-                                                <Border CornerRadius="4" Padding="6,1" Margin="10,0,0,0"
-                                                        VerticalAlignment="Center">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="#E5E7EB" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsRead}" Value="True">
-                                                                    <Setter Property="Background" Value="#DCFCE7" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsProposal}" Value="True">
-                                                                    <Setter Property="Background" Value="#FEF3C7" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock Text="{Binding KindLabel}" FontSize="10.5" FontWeight="SemiBold" />
-                                                </Border>
-
-                                                <TextBlock Text="{Binding Tool}" FontFamily="Consolas" FontSize="11.5"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Failed}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-
-                                                <TextBlock Text="{Binding Detail}" FontSize="11.5" Margin="8,0,0,0"
-                                                           Foreground="{StaticResource Muted}" VerticalAlignment="Center"
-                                                           Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
-
-                                                <TextBlock Text="{Binding Elapsed}" FontSize="10.5" Margin="8,0,0,0"
-                                                           Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Border>
-                    </StackPanel>
-                </Border>
+                                   TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                      </StackPanel>
+                    </Expander>
+                </StackPanel>
             </StackPanel>
 
             <!-- ===== 부팅 USB 모드 (WinPE 응급 USB 만들기) ===== -->

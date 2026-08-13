@@ -644,10 +644,32 @@ public sealed partial class MainViewModel : ObservableObject
         //   로그가 거짓말을 합니다(2026-08-10 실기에서 실제로 그렇게 찍혔습니다).
         bool resumed = _chatSessionId is { Length: > 0 };
 
+        // 답이 흘러오는 대로 붙일 자리. 첫 글자가 올 때 만듭니다 — 미리 만들어 두면
+        // 도구만 부르다 끝난 차례에 빈 말풍선이 남습니다.
+        ChatMessageViewModel? streaming = null;
+
         try
         {
-            var progress = new Progress<string>(tool =>
-                AskProgress = Strings.Format("AskWorkingFmt", tool));
+            var progress = new Progress<ClaudeEvent>(e =>
+            {
+                switch (e)
+                {
+                    case ClaudeEvent.Tool tool:
+                        AskProgress = Strings.Format("AskWorkingFmt", tool.Name);
+                        break;
+
+                    case ClaudeEvent.Text text:
+                        if (streaming is null)
+                        {
+                            streaming = new ChatMessageViewModel(IsUser: false, "");
+                            ChatMessages.Add(streaming);
+                            OnPropertyChanged(nameof(HasChat));
+                            AskProgress = "";     // 글이 보이기 시작하면 "살펴보는 중"은 물러납니다.
+                        }
+                        streaming.Append(text.Chunk);
+                        break;
+                }
+            });
 
             var result = await ClaudeRunner.AskAsync(
                 WithSituation(question), bridge, IsKorean, _chatSessionId, progress, _askCts.Token);
@@ -657,7 +679,10 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (result.Ok)
             {
-                ChatMessages.Add(new ChatMessageViewModel(IsUser: false, result.Text));
+                // 흘려보낸 것과 마지막 답이 어긋날 수 있으므로(중간에 고쳐 쓰는 경우),
+                // 끝나면 완성본으로 맞춥니다. 흘린 것이 없었으면 새로 붙입니다.
+                if (streaming is not null) streaming.Text = result.Text;
+                else ChatMessages.Add(new ChatMessageViewModel(IsUser: false, result.Text));
                 AskProgress = "";
             }
             else

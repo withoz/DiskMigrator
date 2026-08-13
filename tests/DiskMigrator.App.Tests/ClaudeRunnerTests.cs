@@ -44,6 +44,15 @@ public class ClaudeRunnerTests
     }
 
     [Fact]
+    public void 글자가_만들어지는_대로_받는다()
+    {
+        // 이 한 줄이 빠지면 완성된 덩어리만 온다. 실패하지 않고 <b>느려 보이기만</b> 한다 —
+        // 2026-08-13 실기에서 사용자는 56초 동안 "살펴보는 중…" 한 줄만 보고 있었다.
+        // 있으면 첫 글자까지 5초, 없으면 끝까지 아무것도 안 보인다.
+        Assert.Contains("--include-partial-messages", Args());
+    }
+
+    [Fact]
     public void 우리_중계기를_그_자리에서_넘긴다()
     {
         // 이래야 Claude 설정에 아무것도 등록돼 있지 않아도 동작합니다.
