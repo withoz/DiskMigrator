@@ -366,6 +366,9 @@ Continue?</value></data>
   <data name="DiagSaveExpander" xml:space="preserve"><value>Save a diagnostic file (to analyse on another computer)</value></data>
   <data name="ClaudeLoginBtn" xml:space="preserve"><value>Sign in to Claude</value></data>
   <data name="ChatOpenBtn" xml:space="preserve"><value>Ask Claude</value></data>
+  <data name="GroupCopy" xml:space="preserve"><value>Copy a disk</value></data>
+  <data name="GroupImage" xml:space="preserve"><value>Backup · Restore</value></data>
+  <data name="GroupTrouble" xml:space="preserve"><value>Fix a problem</value></data>
   <data name="ChatPanelTitle" xml:space="preserve"><value>Ask Claude</value></data>
   <data name="ChatContextFmt" xml:space="preserve"><value>You are on the “{0}” screen. Ask and Claude will look at that.</value></data>
   <data name="ChatContextDiskFmt" xml:space="preserve"><value>You are on the “{0}” screen, looking at {1}.</value></data>

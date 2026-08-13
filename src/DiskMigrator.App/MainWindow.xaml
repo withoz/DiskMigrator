@@ -614,29 +614,33 @@
                       Visibility="{Binding Stage, Converter={StaticResource StageToVisibility}, ConverterParameter=Selecting}">
         <StackPanel Margin="40,14,40,16">
 
-            <!-- ===== 모드 선택: 독립 카드 탭 5개가 아래 패널(760px)과 양 끝이 정확히 일치 =====
+            <!-- ===== 모드 선택: 묶음 셋 =====
+                 갈림길이 다섯이면 무엇을 눌러야 할지 아는 사람에게만 빠릅니다. 디스크가 안 켜져
+                 찾아온 사람에게 그건 이미 어려운 질문입니다.
+
+                 없애지 않고 묶습니다 — 백업과 복원은 같은 파일을 두고 하는 반대 동작이고,
+                 부팅 복구와 부팅 USB는 둘 다 안 켜질 때 쓰는 것입니다. 갈래가 둘인 묶음에서만
+                 아래 줄이 나옵니다.
+
                  Width는 고정이어야 합니다 — MaxWidth+Center는 내용 크기로 줄어들어 별(*) 열이 안 펼쳐집니다. -->
-            <Grid Width="760" HorizontalAlignment="Center" Margin="0,0,0,12">
+            <Grid Width="760" HorizontalAlignment="Center" Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+
                 <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="💽" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#7FA6C8" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <TextBlock Text="{loc:Loc ModeClone}" />
+                        <TextBlock Text="{loc:Loc GroupCopy}" />
                     </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsCloneMode}" Value="True">
+                                <DataTrigger Binding="{Binding IsGroupCopy}" Value="True">
                                     <Setter Property="Background" Value="{StaticResource Accent}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
                                     <Setter Property="Foreground" Value="White" />
@@ -645,15 +649,16 @@
                         </Style>
                     </Button.Style>
                 </Button>
+
                 <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#D9A65A" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <TextBlock Text="{loc:Loc ModeBackup}" />
+                        <TextBlock Text="{loc:Loc GroupImage}" />
                     </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
+                                <DataTrigger Binding="{Binding IsGroupImage}" Value="True">
                                     <Setter Property="Background" Value="{StaticResource Accent}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
                                     <Setter Property="Foreground" Value="White" />
@@ -662,49 +667,16 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="Restore">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="♻️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#6FBF97" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <TextBlock Text="{loc:Loc ModeRestore}" />
-                    </StackPanel>
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource Accent}" />
-                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                    <Setter Property="Foreground" Value="White" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-                <Button Grid.Column="6" Command="{Binding SetModeCommand}" CommandParameter="FixBoot">
+
+                <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="FixBoot">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🛠️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#B39A6B" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <TextBlock Text="{loc:Loc ModeFixBoot}" />
+                        <TextBlock Text="{loc:Loc GroupTrouble}" />
                     </StackPanel>
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource Accent}" />
-                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                    <Setter Property="Foreground" Value="White" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-                <Button Grid.Column="8" Command="{Binding SetModeCommand}" CommandParameter="BootUsb">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🚑" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#E57373" VerticalAlignment="Center" Margin="0,0,7,0" />
-                        <TextBlock Text="{loc:Loc ModeBootUsb}" />
-                    </StackPanel>
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource ModeTab}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
+                                <DataTrigger Binding="{Binding IsGroupTrouble}" Value="True">
                                     <Setter Property="Background" Value="{StaticResource Accent}" />
                                     <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
                                     <Setter Property="Foreground" Value="White" />
@@ -714,6 +686,75 @@
                     </Button.Style>
                 </Button>
             </Grid>
+
+            <!-- 묶음 안의 갈래. 하나뿐인 묶음(디스크 복사)에서는 나오지 않습니다 —
+                 고를 것이 하나면 고르라고 하지 않습니다. -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12"
+                        Visibility="{Binding ShowSubModes, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsGroupImage, Converter={StaticResource BoolToVisibility}}">
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Backup"
+                            Content="{loc:Loc ModeBackup}" Padding="14,5" FontSize="12.5" Margin="0,0,8,0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBackupMode}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="Restore"
+                            Content="{loc:Loc ModeRestore}" Padding="14,5" FontSize="12.5">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRestoreMode}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"
+                            Visibility="{Binding IsGroupTrouble, Converter={StaticResource BoolToVisibility}}">
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="FixBoot"
+                            Content="{loc:Loc ModeFixBoot}" Padding="14,5" FontSize="12.5" Margin="0,0,8,0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFixBootMode}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding SetModeCommand}" CommandParameter="BootUsb"
+                            Content="{loc:Loc ModeBootUsb}" Padding="14,5" FontSize="12.5">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBootUsbMode}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                        <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
 
             <!-- ===== 클론 모드 ===== -->
             <Grid Visibility="{Binding IsCloneMode, Converter={StaticResource BoolToVisibility}}">

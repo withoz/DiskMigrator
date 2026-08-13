@@ -394,14 +394,25 @@ public sealed partial class MainViewModel : ObservableObject
     // Claude는 <b>막혔을 때 부르는 사람</b>입니다. 그래서 로그인 상태는 머리말에 조용히
     // 놓이고, 없다고 해서 앱이 무엇을 막지 않습니다.
 
-    /// <summary>지금 Claude에 누가 들어와 있는지. 물어보기 전에는 "없음"입니다.</summary>
+    /// <summary>
+    /// 지금 Claude에 누가 들어와 있는지. <b>아직 물어보기 전이면 null</b>입니다.
+    /// </summary>
+    /// <remarks>
+    /// ⚠ 처음 값을 "설치 안 됨"으로 두면 안 됩니다. 2026-08-13에 그렇게 했다가, 상태를
+    /// 읽는 코드가 시작 경로에서 아예 불리지 않는 동안 머리말이 <b>"Claude Code 없음"</b>이라고
+    /// 단언했습니다 — 멀쩡히 설치돼 있는 컴퓨터에서. <b>확인 못 한 것과 없는 것은 다릅니다.</b>
+    /// 이 제품이 부팅 검사에서 이미 배운 것을 화면에서 또 어겼습니다.
+    ///
+    /// <para>모르는 동안에는 셋 다 보이지 않습니다. 잠깐 비어 있는 머리말이,
+    /// 틀린 단언보다 낫습니다.</para>
+    /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowClaudeAccount))]
     [NotifyPropertyChangedFor(nameof(ShowClaudeLogin))]
     [NotifyPropertyChangedFor(nameof(ShowClaudeInstall))]
     [NotifyPropertyChangedFor(nameof(ClaudeAccountText))]
     [NotifyPropertyChangedFor(nameof(CanAskClaude))]
-    private ClaudeAccount _claudeAccount = ClaudeAccount.NotInstalled;
+    private ClaudeAccount? _claudeAccount;
 
     /// <summary>
     /// 부팅 USB(WinPE) 안인지 — 그곳에서는 묻기를 아예 내보내지 않습니다.
@@ -413,23 +424,24 @@ public sealed partial class MainViewModel : ObservableObject
     /// </remarks>
     public static bool IsWinPe => DiskMigrator.Windows.Pe.WinPeEnvironment.IsWinPe;
 
-    public bool ShowClaudeAccount => !IsWinPe && ClaudeAccount.LoggedIn;
+    // 셋 다 '읽어 본 뒤에만' 나옵니다. ClaudeAccount가 null이면 아직 모르는 상태입니다.
+    public bool ShowClaudeAccount => !IsWinPe && ClaudeAccount is { LoggedIn: true };
     public bool ShowClaudeLogin => !IsWinPe && ClaudeAccount is { Installed: true, LoggedIn: false };
-    public bool ShowClaudeInstall => !IsWinPe && !ClaudeAccount.Installed;
+    public bool ShowClaudeInstall => !IsWinPe && ClaudeAccount is { Installed: false };
 
     /// <summary>머리말에 보일 한 줄 — 계정과 구독 종류.</summary>
     public string ClaudeAccountText
     {
         get
         {
-            if (!ClaudeAccount.LoggedIn) return "";
+            if (ClaudeAccount is not { LoggedIn: true } account) return "";
 
             // 이메일 전체는 길고, 남이 보는 화면에 다 띄울 이유도 없습니다. 앞부분만.
-            string who = ClaudeAccount.Email is { Length: > 0 } e
+            string who = account.Email is { Length: > 0 } e
                 ? e.Split('@')[0]
                 : Strings.Get("ClaudeSignedIn");
 
-            return ClaudeAccount.Plan is { Length: > 0 } p ? $"{who} · {p}" : who;
+            return account.Plan is { Length: > 0 } p ? $"{who} · {p}" : who;
         }
     }
 
@@ -476,7 +488,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             await Task.Delay(3000);
             await RefreshClaudeAuthAsync();
-            if (ClaudeAccount.LoggedIn) return;
+            if (ClaudeAccount is { LoggedIn: true }) return;
         }
     }
 
@@ -489,7 +501,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// 그 자리에는 대신 [Claude 로그인]이 나옵니다.
     /// </remarks>
     public bool CanAskClaude =>
-        _bridgePath is not null && !IsWinPe && ClaudeAccount.LoggedIn;
+        _bridgePath is not null && !IsWinPe && ClaudeAccount is { LoggedIn: true };
 
     /// <summary>오른쪽 대화 패널이 열려 있는지.</summary>
     /// <remarks>
@@ -521,7 +533,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             string where = Mode switch
             {
-                AppMode.Clone => Strings.Get("ModeClone"),
+                // 탭에 적힌 이름과 같아야 합니다 — 같은 화면을 두 이름으로 부르면
+                // 사용자는 다른 곳 이야기인 줄 압니다.
+                AppMode.Clone => Strings.Get("GroupCopy"),
                 AppMode.Backup => Strings.Get("ModeBackup"),
                 AppMode.Restore => Strings.Get("ModeRestore"),
                 AppMode.FixBoot => Strings.Get("ModeFixBoot"),
@@ -718,7 +732,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         string where = Mode switch
         {
-            AppMode.Clone => Strings.Get("ModeClone"),
+            AppMode.Clone => Strings.Get("GroupCopy"),
             AppMode.Backup => Strings.Get("ModeBackup"),
             AppMode.Restore => Strings.Get("ModeRestore"),
             AppMode.FixBoot => Strings.Get("ModeFixBoot"),
@@ -903,6 +917,11 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsFixBootMode))]
     [NotifyPropertyChangedFor(nameof(IsBootUsbMode))]
     [NotifyPropertyChangedFor(nameof(IsAssistantMode))]
+    [NotifyPropertyChangedFor(nameof(IsGroupCopy))]
+    [NotifyPropertyChangedFor(nameof(IsGroupImage))]
+    [NotifyPropertyChangedFor(nameof(IsGroupTrouble))]
+    [NotifyPropertyChangedFor(nameof(ShowSubModes))]
+    [NotifyPropertyChangedFor(nameof(ChatContextText))]
     [NotifyPropertyChangedFor(nameof(ShowCloneResultActions))]
     private AppMode _mode = AppMode.Clone;
 
@@ -912,6 +931,25 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsFixBootMode => Mode == AppMode.FixBoot;
     public bool IsBootUsbMode => Mode == AppMode.BootUsb;
     public bool IsAssistantMode => Mode == AppMode.Assistant;
+
+    // --- 다섯 갈래를 셋으로 --------------------------------------------------
+    //
+    // 갈림길이 다섯이면 <b>무엇을 눌러야 할지 아는 사람</b>에게만 빠릅니다. 디스크가 안 켜져
+    // 찾아온 사람에게 그건 이미 어려운 질문입니다. 없애지 않고 묶습니다 —
+    // 백업과 복원은 <b>같은 파일을 두고 하는 반대 동작</b>이고, 부팅 복구와 부팅 USB는
+    // 둘 다 <b>안 켜질 때 쓰는 것</b>입니다. 묶어 놓으면 이름만 보고도 어디로 갈지 압니다.
+
+    /// <summary>디스크 → 디스크.</summary>
+    public bool IsGroupCopy => Mode == AppMode.Clone;
+
+    /// <summary>이미지 파일을 만들거나 되돌리기.</summary>
+    public bool IsGroupImage => Mode is AppMode.Backup or AppMode.Restore;
+
+    /// <summary>안 켜질 때 쓰는 것들.</summary>
+    public bool IsGroupTrouble => Mode is AppMode.FixBoot or AppMode.BootUsb;
+
+    /// <summary>묶음 안에 갈래가 둘인 경우에만 아래 줄이 나옵니다.</summary>
+    public bool ShowSubModes => IsGroupImage || IsGroupTrouble;
 
     /// <summary>
     /// 완료 화면의 부팅 관련 후속 작업(부팅 검사·복구 등)을 보일지. 클론·복원 성공 시 보이고

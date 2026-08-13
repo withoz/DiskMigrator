@@ -160,6 +160,7 @@ public partial class App : Application
 
             _ = viewModel.RefreshDisksAsync();
             _ = viewModel.CheckForUpdatesAsync();
+            _ = viewModel.RefreshClaudeAuthAsync();
         }
         catch
         {
