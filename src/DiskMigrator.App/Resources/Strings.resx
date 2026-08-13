@@ -364,4 +364,8 @@
   <data name="AskNeedsClaudeCode" xml:space="preserve"><value>여기서 바로 물어보려면 Claude Code가 이 컴퓨터에 있어야 합니다. 없어도 괜찮습니다 — 아래 [Claude에 연결하기]로 Claude 창에서 물어보시면 됩니다.</value></data>
   <data name="AskDisclaimer" xml:space="preserve"><value>Claude는 읽기만 합니다. 복제·백업·복원·부팅 복구는 지금까지처럼 이 화면에서 직접 하십시오.</value></data>
   <data name="DiagSaveExpander" xml:space="preserve"><value>진단 파일로 저장 (다른 컴퓨터에서 분석하려면)</value></data>
+  <data name="ClaudeLoginBtn" xml:space="preserve"><value>Claude 로그인</value></data>
+  <data name="ClaudeSignedIn" xml:space="preserve"><value>로그인됨</value></data>
+  <data name="ClaudeNotInstalled" xml:space="preserve"><value>Claude Code 없음 — 묻기 기능만 못 씁니다</value></data>
+  <data name="ClaudeLoginFailedFmt" xml:space="preserve"><value>로그인 창을 띄우지 못했습니다. 명령 창에서 {0} 을(를) 직접 실행하십시오.</value></data>
 </root>

@@ -410,6 +410,23 @@
                 </StackPanel>
 
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <!-- 누가 들어와 있는지. 로그인돼 있으면 계정과 구독 종류를, 아니면 [로그인]을,
+                         Claude Code가 아예 없으면 [설치하기]를 보여 줍니다.
+                         부팅 USB(WinPE)에서는 셋 다 나오지 않습니다 — 거기서는 설치할 수 없고,
+                         쓸 수 없는 버튼은 도움이 아니라 방해입니다. -->
+                    <TextBlock Text="{Binding ClaudeAccountText}" FontSize="12" VerticalAlignment="Center"
+                               Margin="0,0,14,0" Foreground="{StaticResource Muted}"
+                               Visibility="{Binding ShowClaudeAccount, Converter={StaticResource BoolToVisibility}}" />
+
+                    <Button Command="{Binding ClaudeLoginCommand}" Content="{loc:Loc ClaudeLoginBtn}"
+                            Cursor="Hand" Margin="0,0,14,0" VerticalAlignment="Center" Padding="10,4"
+                            FontSize="12"
+                            Visibility="{Binding ShowClaudeLogin, Converter={StaticResource BoolToVisibility}}" />
+
+                    <TextBlock Text="{loc:Loc ClaudeNotInstalled}" FontSize="12" VerticalAlignment="Center"
+                               Margin="0,0,14,0" Foreground="{StaticResource Muted}"
+                               Visibility="{Binding ShowClaudeInstall, Converter={StaticResource BoolToVisibility}}" />
+
                     <!-- Claude 연결 — 작업 모드가 아니라 설정에 가까우므로 모드 탭에 넣지 않고 헤더에 둡니다.
                          점 색으로 통로가 열려 있는지 한눈에 보입니다. -->
                     <Button Command="{Binding SetModeCommand}" CommandParameter="Assistant"

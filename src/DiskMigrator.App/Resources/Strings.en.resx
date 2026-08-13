@@ -364,4 +364,8 @@ Continue?</value></data>
   <data name="AskNeedsClaudeCode" xml:space="preserve"><value>Asking from here needs Claude Code on this computer. That is fine if you do not have it — use [Connect to Claude] below and ask from the Claude window instead.</value></data>
   <data name="AskDisclaimer" xml:space="preserve"><value>Claude only reads. Cloning, backup, restore and boot repair are still yours to do on this screen.</value></data>
   <data name="DiagSaveExpander" xml:space="preserve"><value>Save a diagnostic file (to analyse on another computer)</value></data>
+  <data name="ClaudeLoginBtn" xml:space="preserve"><value>Sign in to Claude</value></data>
+  <data name="ClaudeSignedIn" xml:space="preserve"><value>Signed in</value></data>
+  <data name="ClaudeNotInstalled" xml:space="preserve"><value>No Claude Code — only the asking feature is unavailable</value></data>
+  <data name="ClaudeLoginFailedFmt" xml:space="preserve"><value>Could not open the sign-in window. Run {0} in a command window instead.</value></data>
 </root>

@@ -81,6 +81,10 @@ public partial class App : Application
 
         _ = viewModel.RefreshDisksAsync();
         _ = viewModel.CheckForUpdatesAsync();
+
+        // 누가 Claude에 들어와 있는지 — 머리말에 조용히 표시합니다. 못 읽어도 앱은 그대로
+        // 동작합니다(이 앱은 디스크 도구이고, Claude는 막혔을 때 부르는 사람입니다).
+        _ = viewModel.RefreshClaudeAuthAsync();
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -128,9 +132,7 @@ public partial class App : Application
         //
         // 부팅 USB(WinPE) 안에서는 묻지 않습니다 — 그 USB는 이 앱으로 동의를 마친 사용자가
         // 직접 만든 것이고, 램디스크라 동의를 기록해도 부팅마다 사라져 같은 질문만 반복됩니다.
-        bool inWinPe = Microsoft.Win32.Registry.LocalMachine
-            .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\MiniNT") is not null;
-        if (!inWinPe && !EulaAcceptance.IsAccepted())
+        if (!DiskMigrator.Windows.Pe.WinPeEnvironment.IsWinPe && !EulaAcceptance.IsAccepted())
         {
             // 스플래시가 topMost라 동의 창을 가리므로 먼저 닫습니다(첫 실행 한정).
             CloseSplash(TimeSpan.Zero);

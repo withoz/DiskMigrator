@@ -388,7 +388,99 @@ public sealed partial class MainViewModel : ObservableObject
     // 사용자가 앱을 떠나지 않습니다 — 버튼을 누르면 앱이 뒤에서 Claude Code를 부르고,
     // 답만 화면에 옮깁니다. 자세한 이유는 ClaudeRunner 주석에 있습니다.
 
-    /// <summary>이 컴퓨터에서 바로 물어볼 수 있는지 — 중계기와 Claude Code가 모두 있어야 합니다.</summary>
+    // --- 누가 들어와 있는지 -------------------------------------------------
+    //
+    // 앱은 Claude 없이도 온전합니다. 복사·백업·복원·부팅 복구·부팅 USB는 그대로 동작하고,
+    // Claude는 <b>막혔을 때 부르는 사람</b>입니다. 그래서 로그인 상태는 머리말에 조용히
+    // 놓이고, 없다고 해서 앱이 무엇을 막지 않습니다.
+
+    /// <summary>지금 Claude에 누가 들어와 있는지. 물어보기 전에는 "없음"입니다.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowClaudeAccount))]
+    [NotifyPropertyChangedFor(nameof(ShowClaudeLogin))]
+    [NotifyPropertyChangedFor(nameof(ShowClaudeInstall))]
+    [NotifyPropertyChangedFor(nameof(ClaudeAccountText))]
+    [NotifyPropertyChangedFor(nameof(CanAskClaude))]
+    private ClaudeAccount _claudeAccount = ClaudeAccount.NotInstalled;
+
+    /// <summary>
+    /// 부팅 USB(WinPE) 안인지 — 그곳에서는 묻기를 아예 내보내지 않습니다.
+    /// </summary>
+    /// <remarks>
+    /// 램디스크라 껐다 켜면 사라지고 Node.js도 인터넷도 없는 것이 보통이라 Claude Code를
+    /// 설치할 수 없습니다. 그런데 그 자리는 윈도우가 아예 안 켜질 때 쓰는 마지막 수단입니다 —
+    /// 가장 절박한 순간에 쓸 수 없는 버튼을 보여 주는 것은 도움이 아니라 방해입니다.
+    /// </remarks>
+    public static bool IsWinPe => DiskMigrator.Windows.Pe.WinPeEnvironment.IsWinPe;
+
+    public bool ShowClaudeAccount => !IsWinPe && ClaudeAccount.LoggedIn;
+    public bool ShowClaudeLogin => !IsWinPe && ClaudeAccount is { Installed: true, LoggedIn: false };
+    public bool ShowClaudeInstall => !IsWinPe && !ClaudeAccount.Installed;
+
+    /// <summary>머리말에 보일 한 줄 — 계정과 구독 종류.</summary>
+    public string ClaudeAccountText
+    {
+        get
+        {
+            if (!ClaudeAccount.LoggedIn) return "";
+
+            // 이메일 전체는 길고, 남이 보는 화면에 다 띄울 이유도 없습니다. 앞부분만.
+            string who = ClaudeAccount.Email is { Length: > 0 } e
+                ? e.Split('@')[0]
+                : Strings.Get("ClaudeSignedIn");
+
+            return ClaudeAccount.Plan is { Length: > 0 } p ? $"{who} · {p}" : who;
+        }
+    }
+
+    /// <summary>로그인 상태를 다시 읽습니다 — 시작할 때, 그리고 로그인을 마친 뒤.</summary>
+    public async Task RefreshClaudeAuthAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            ClaudeAccount = await ClaudeAuth.ReadAsync(ct);
+            _logger.LogInformation("Claude 로그인 상태: {State}",
+                ClaudeAccount.Installed
+                    ? (ClaudeAccount.LoggedIn ? $"로그인됨({ClaudeAccount.Plan})" : "로그아웃 상태")
+                    : "Claude Code 없음");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            // 상태를 못 읽는 것이 앱을 막을 이유는 아닙니다.
+            _logger.LogWarning(ex, "Claude 로그인 상태를 읽지 못했습니다.");
+        }
+    }
+
+    /// <summary>
+    /// 로그인 절차를 띄우고, 끝나기를 <b>기다렸다 화면을 갱신</b>합니다.
+    /// </summary>
+    /// <remarks>
+    /// 로그인은 브라우저에서 이뤄지므로 언제 끝날지 알 수 없습니다. 사용자가 마치고 앱으로
+    /// 돌아왔을 때 여전히 "로그인하세요"가 떠 있으면 되지 않은 줄 압니다 — 그래서 잠시
+    /// 지켜보다 상태가 바뀌면 그 자리에서 바꿔 줍니다.
+    /// </remarks>
+    [RelayCommand]
+    private async Task ClaudeLoginAsync()
+    {
+        if (!ClaudeAuth.StartLogin())
+        {
+            McpStatusText = Strings.Format("ClaudeLoginFailedFmt", ClaudeAuth.LoginCommand);
+            return;
+        }
+
+        _logger.LogInformation("Claude 로그인 절차를 띄웠습니다.");
+
+        // 2분 동안 지켜봅니다. 그 안에 안 끝나면 사용자가 다시 눌러도 됩니다.
+        for (int i = 0; i < 40; i++)
+        {
+            await Task.Delay(3000);
+            await RefreshClaudeAuthAsync();
+            if (ClaudeAccount.LoggedIn) return;
+        }
+    }
+
+    /// <summary>이 컴퓨터에서 바로 물어볼 수 있는지 — 중계기·Claude Code·로그인이 모두 있어야 합니다.</summary>
     public bool CanAskClaude => _bridgePath is not null && ClaudeRunner.IsAvailable;
 
     /// <summary>Claude Code가 없어 이 기능을 못 쓰는 경우 — 무엇을 하면 되는지 알려 줍니다.</summary>

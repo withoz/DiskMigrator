@@ -283,8 +283,8 @@ public sealed class PeFileDialog : Window
 /// </summary>
 public static class FileDialogs
 {
-    private static readonly bool IsWinPe = Microsoft.Win32.Registry.LocalMachine
-        .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\MiniNT") is not null;
+    // 판별은 한곳에서만(WinPeEnvironment) — 같은 조건이 세 곳에 흩어져 있었습니다.
+    private static bool IsWinPe => DiskMigrator.Windows.Pe.WinPeEnvironment.IsWinPe;
 
     /// <summary>기존 파일 선택. 취소하면 null.</summary>
     public static string? PickOpen(string title, string filter, string ext)
