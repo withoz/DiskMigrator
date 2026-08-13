@@ -72,6 +72,16 @@ public class ClaudeRunnerTests
     }
 
     [Fact]
+    public void 사용자의_다른_MCP_서버는_끌고_들어오지_않는다()
+    {
+        // 이 한 줄이 빠지면 사용자가 등록해 둔 서버가 전부 함께 뜹니다.
+        // 2026-08-13 실기: Figma·Gmail·Google Drive·Google Calendar까지 붙어
+        // 도구가 56 → 92개가 됐고 그중 셋은 인증이 풀린 상태였습니다.
+        // 실패하지 않고 조용히 넓어지는 종류라, 시험이 없으면 다음에 또 그렇게 됩니다.
+        Assert.Contains("--strict-mcp-config", Args());
+    }
+
+    [Fact]
     public void 우리_도구는_묻지_않고_쓰되_그_밖의_것은_막는다()
     {
         // 화면 없이 도는 실행이라, 허락을 물으면 답할 사람이 없어 그대로 멈춥니다.

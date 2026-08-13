@@ -139,6 +139,14 @@ public static class ClaudeRunner
         // 우리 중계기만 붙입니다. 여기서 직접 넘기므로 Claude 설정에 등록이 없어도 됩니다.
         "--mcp-config", McpConfigJson(bridgePath),
 
+        // ⚠ 이 한 줄이 없으면 <b>사용자가 등록해 둔 다른 MCP 서버가 전부 함께 뜹니다.</b>
+        //   2026-08-13 실기: 우리 것 하나만 부르려던 자리에 Figma·Gmail·Google Drive·
+        //   Google Calendar까지 붙어 도구가 56개에서 92개로 늘었고, 그중 셋은 인증이 풀린
+        //   상태(needs-auth)였습니다. 디스크를 봐 달라고 부른 자리에 남의 메일 도구가
+        //   들어와 있을 이유가 없습니다 — 느려지고, 실패할 거리가 늘고, 무엇보다
+        //   사용자가 허락한 적 없는 연결입니다.
+        "--strict-mcp-config",
+
         // 우리 도구는 묻지 않고 쓰게 합니다 — 화면 없는 실행이라 물어보면 그대로 멈춥니다.
         "--allowedTools", $"mcp__{ClaudeRegistration.ServerName}",
 
