@@ -230,7 +230,7 @@
   <data name="UnallocatedTipLine2" xml:space="preserve"><value>Belongs to no partition, so it isn’t cloned.</value></data>
   <data name="TipLabelFmt" xml:space="preserve"><value>Label: {0}</value></data>
   <data name="TipKindFmt" xml:space="preserve"><value>Type: {0}</value></data>
-  <data name="TipSizeFmt" xml:space="preserve"><value>Size: {0}  ({1} of the disk)</value></data>
+  <data name="TipSizeFmt" xml:space="preserve"><value>Size: {0} ({1} of the disk)</value></data>
   <data name="TipLocationFmt" xml:space="preserve"><value>Location: from {0}</value></data>
   <data name="TipUsageFmt" xml:space="preserve"><value>Used: {0} / Free: {1}</value></data>
   <data name="TipUsageUnknown" xml:space="preserve"><value>Usage: unknown (not a mounted volume)</value></data>
