@@ -26,6 +26,9 @@ public sealed class PlanningTools(
     // 이미지를 읽기 전용으로 부착해 그 안에서 부팅 진단을 돌리는 데 씁니다.
     // 완성된 객체로 받습니다 — 안의 IDiskService에 도구가 손대지 못하게(ReadOnlyTools와 같은 이유).
     Windows.Jobs.ImageInspector imageInspector,
+    // 화면이 지금 어떤 설정으로 서 있는지 보기 위한 것 — 읽기만 합니다.
+    // 안전 판정이 화면과 갈리지 않으려면 같은 입력으로 재야 합니다.
+    IAppState appState,
     ILogger<PlanningTools>? logger = null)
 {
     private readonly ILogger _logger = logger ?? (ILogger)NullLogger.Instance;
@@ -42,8 +45,10 @@ public sealed class PlanningTools(
     public async Task<ToolResult<SafetyDto>> EvaluateSafetyAsync(
         [Description("Physical disk number to copy FROM. It is only read.")] int sourceDeviceNumber,
         [Description("Physical disk number to copy TO. Everything on it will be erased.")] int targetDeviceNumber,
-        [Description("Whether a VSS snapshot would be used (matters when the source is the running system).")]
-        bool useSnapshot = true,
+        [Description(
+            "Leave this out. It defaults to the setting the app is actually showing, so your verdict " +
+            "matches the app's. Only pass it to answer a what-if question the user asked.")]
+        bool? useSnapshot = null,
         CancellationToken ct = default)
     {
         try
@@ -80,8 +85,15 @@ public sealed class PlanningTools(
             // 내려면 이 사실을 알려줘야 합니다 — 1단계에서 만든 진단을 그대로 씁니다.
             bool hibernated = await Task.Run(() => IsHibernated(source), ct);
 
+            // 인자를 안 주면 <b>화면이 지금 보여 주는 설정</b>을 씁니다.
+            //
+            // ⚠ 예전에는 늘 true로 가정했습니다. 사용자가 화면에서 VSS를 껐다면 Claude는
+            //   "안전하다"는데 화면은 경고를 띄우게 됩니다 — 안전 판정에서 두 답이 갈리는 것은
+            //   그냥 틀린 것보다 나쁩니다. 사용자가 어느 쪽을 믿어야 할지 모르게 되니까요.
+            bool snapshot = useSnapshot ?? appState.UseSnapshot;
+
             var report = Core.Safety.SafetyGuard.Evaluate(
-                source, target, diskService.IsElevated, useSnapshot, hibernated);
+                source, target, diskService.IsElevated, snapshot, hibernated);
 
             _logger.LogInformation("MCP evaluate_safety({Src}→{Tgt}) → 진행가능={Can} 확인필요={Confirm} 차단={Blockers}",
                 sourceDeviceNumber, targetDeviceNumber, report.CanProceed, report.NeedsTypedConfirmation,
@@ -313,23 +325,15 @@ public sealed class PlanningTools(
     /// 원본에 최대 절전 이미지가 있는지. 읽지 못하면 <b>없다고 단정하지 않고</b> false를 돌려주되,
     /// 그 경우 엔진의 다른 검사가 잡습니다.
     /// </summary>
-    private static bool IsHibernated(Core.Models.DiskInfo disk)
-    {
-        try
-        {
-            string? windowsRoot = Core.Registry.BootReadinessCheck.ResolveInput(disk).WindowsRoot;
-            if (windowsRoot is null) return false;
-            return Core.Registry.FastStartupState.Inspect(windowsRoot).HiberfilExists;
-        }
-        catch
-        {
-            // 실행 중인 시스템이면 하이브를 못 읽습니다 — 그 경우 파일 존재만 따로 봅니다.
-            try
-            {
-                string? root = Core.Registry.BootReadinessCheck.ResolveInput(disk).WindowsRoot;
-                return root is not null && File.Exists(Path.Combine(root, "hiberfil.sys"));
-            }
-            catch { return false; }
-        }
-    }
+    /// <remarks>
+    /// 판정은 <see cref="Core.Registry.HibernationImage"/>에 있습니다 — 화면(<c>MainViewModel</c>)과
+    /// 이 도구가 <b>반드시 같은 답</b>을 내야 하기 때문입니다. 안전 판정이 갈리면 사용자는
+    /// Claude와 화면 중 어느 쪽을 믿어야 할지 모르게 됩니다.
+    ///
+    /// <para>예전에는 여기서 <see cref="Core.Registry.FastStartupState"/>를 거쳐 보고 실패하면
+    /// 파일 존재로 되돌아갔습니다. 하이브까지 읽을 이유가 없었습니다 — 안전 판정이 묻는 것은
+    /// "재개 이미지가 지금 있는가" 하나뿐입니다.</para>
+    /// </remarks>
+    private static bool IsHibernated(Core.Models.DiskInfo disk) =>
+        Core.Registry.HibernationImage.IsPresent(disk);
 }

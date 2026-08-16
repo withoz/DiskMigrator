@@ -45,6 +45,7 @@ public class McpHostTests
     private sealed class IdleAppState : IAppState
     {
         public bool IsBusy => false;
+        public bool UseSnapshot => true;
         public OperationProgress GetProgress() => new(false, null, 0, null, null, null, null);
         public void RequestCancel() => throw new InvalidOperationException("이 시험에서는 불려서는 안 됩니다.");
     }

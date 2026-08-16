@@ -20,6 +20,9 @@ public sealed class AppStateBridge(MainViewModel vm) : IAppState
 {
     public bool IsBusy => vm.Stage == AppStage.Running || vm.IsPeBuilding;
 
+    /// <summary>화면의 'VSS 스냅샷 사용' 체크 상태 그대로. 안전 판정이 이 값에 따라 갈립니다.</summary>
+    public bool UseSnapshot => vm.UseSnapshot;
+
     public OperationProgress GetProgress()
     {
         if (!IsBusy)

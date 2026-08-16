@@ -1789,22 +1789,14 @@ public sealed partial class MainViewModel : ObservableObject
     /// 원본에 최대 절전 이미지(<c>hiberfil.sys</c>)가 있는지 — 사본이 검은 화면에서 멈추는 원인.
     /// </summary>
     /// <remarks>
-    /// <see cref="SafetyGuard"/>는 파일을 읽지 않는 순수 판정기라, 파일 확인은 여기서 하고
-    /// 결과만 넘깁니다. 볼륨이 마운트되지 않았거나 접근할 수 없으면 false — 확인하지 못한 것을
-    /// 문제로 단정하지 않습니다.
+    /// <see cref="SafetyGuard"/>는 파일을 읽지 않는 순수 판정기라, 파일 확인은 밖에서 하고
+    /// 결과만 넘깁니다.
+    ///
+    /// <para>판정 자체는 <see cref="HibernationImage"/>(Core)에 있습니다 — 화면과 Claude 도구가
+    /// <b>반드시 같은 답</b>을 내야 하기 때문입니다. 예전에는 같은 질문에 답하는 코드가 양쪽에
+    /// 따로 있었고, 한쪽만 고치는 날 Claude는 "안전하다"는데 화면은 경고를 띄우게 됩니다.</para>
     /// </remarks>
-    private static bool HasHibernationImage(DiskInfo disk)
-    {
-        try
-        {
-            string? windowsRoot = BootReadinessCheck.ResolveInput(disk).WindowsRoot;
-            return windowsRoot is not null && File.Exists(Path.Combine(windowsRoot, "hiberfil.sys"));
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    private static bool HasHibernationImage(DiskInfo disk) => HibernationImage.IsPresent(disk);
 
     /// <summary>원본 파티션을 확대 후보 목록으로 채우고, 확대 가능 여부를 갱신합니다.</summary>
     private void UpdateResizeChoices()

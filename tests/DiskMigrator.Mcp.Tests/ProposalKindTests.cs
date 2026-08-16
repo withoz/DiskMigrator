@@ -49,6 +49,7 @@ public class ProposalKindTests
     private sealed class IdleAppState : IAppState
     {
         public bool IsBusy { get; init; }
+        public bool UseSnapshot => true;
         public OperationProgress GetProgress() => new(IsBusy, null, 0, null, null, null, null);
         public void RequestCancel() { }
     }

@@ -32,6 +32,19 @@ public interface IAppState
     /// <summary>지금 클론·백업·복원 등을 실행 중인지. 참이면 새 제안을 받지 않습니다.</summary>
     bool IsBusy { get; }
 
+    /// <summary>
+    /// 지금 화면에서 <b>VSS 스냅샷 사용</b>이 켜져 있는지.
+    /// </summary>
+    /// <remarks>
+    /// 안전 판정이 이 값에 따라 갈립니다(실행 중인 시스템을 스냅샷 없이 복제하면 경고가 붙습니다).
+    /// 예전에는 <c>evaluate_safety</c>가 늘 "켜져 있다"고 가정했고, 사용자가 화면에서 그것을 껐다면
+    /// <b>Claude와 화면이 다른 판정을 내놓았습니다.</b> 그러면 사용자는 둘 중 어느 쪽을 믿어야
+    /// 할지 모릅니다 — 안전 판정에서 그것은 그냥 틀린 것보다 나쁩니다.
+    ///
+    /// <para>읽기 전용입니다. 도구가 이 값을 <b>바꿀 수는 없습니다</b> — 옵션을 정하는 것은 사람입니다.</para>
+    /// </remarks>
+    bool UseSnapshot { get; }
+
     /// <summary>진행 상황(실행 중이 아니면 Running=false).</summary>
     OperationProgress GetProgress();
 
