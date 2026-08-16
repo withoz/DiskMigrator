@@ -1467,6 +1467,18 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _resultDetails = "";
     [ObservableProperty] private string? _logFilePath;
 
+    /// <summary>
+    /// 마지막으로 끝난 작업이 <b>취소로</b> 끝났는지. 화면에는 안 쓰고, Claude에게 넘기는 데 씁니다.
+    /// </summary>
+    /// <remarks>
+    /// 제목 문구(<see cref="ResultTitle"/>)로도 구분되지만 그것은 언어를 탑니다. Claude가 한국어
+    /// 문구를 보고 "취소"를 알아내게 두면, 영어로 쓰는 사람에게는 그 판단이 조용히 어긋납니다.
+    ///
+    /// <para>결과를 쓰는 자리마다 <b>반드시</b> 값을 정합니다. 잊고 지나가면 앞 작업의 값이 남아,
+    /// 방금 실패한 작업을 "취소했습니다"라고 말하게 됩니다.</para>
+    /// </remarks>
+    public bool ResultWasCancelled { get; internal set; }
+
     // --- 부팅 구성 검사 (클론 후) ------------------------------------------
 
     /// <summary>부팅 구성 검사 결과 항목들.</summary>
@@ -2986,6 +2998,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         ResultDetails = string.Join("\n", details);
         ResultIsSuccess = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
+        ResultWasCancelled = result.Outcome is CloneOutcome.Cancelled;
 
         // 클론 중 파티션 확장을 시도했다면 그 결과를 결과 화면에도 보여줍니다.
         if (report.PartitionExpand is { } expand)
@@ -3046,9 +3059,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private void ShowFailure(string title, string message, string details)
+    /// <param name="cancelled">사용자가 멈춘 것인지. 실패와 취소는 사용자에게 전혀 다른 일입니다.</param>
+    private void ShowFailure(string title, string message, string details, bool cancelled = false)
     {
         ResultIsSuccess = false;
+        ResultWasCancelled = cancelled;
         ResultTitle = title;
         ResultMessage = message;
         ResultDetails = details;
@@ -3127,7 +3142,8 @@ public sealed partial class MainViewModel : ObservableObject
             // 취소된 백업은 불완전한 .vhdx를 남기므로 지웁니다(서비스가 이미 VHDX를 detach함).
             // 증분이면 자식 파일만 지웁니다 — 부모(기존 백업)는 건드리지 않았으므로 그대로 유효합니다.
             if (producedPath.Length > 0) TryDeletePartialImage(producedPath);
-            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("BackupCancelledMsg"), "");
+            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("BackupCancelledMsg"), "",
+                cancelled: true);
         }
         catch (Exception ex)
         {
@@ -3163,6 +3179,7 @@ public sealed partial class MainViewModel : ObservableObject
         bool ok = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
 
         ResultIsSuccess = ok;
+        ResultWasCancelled = result.Outcome is CloneOutcome.Cancelled;
         ResultTitle = ok ? Strings.Get("BackupDoneTitle") : Strings.Get("ResTitleFailed");
         ResultMessage = ok
             ? Strings.Format("BackupDoneMsgFmt", imagePath)
@@ -3689,7 +3706,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("RestoreCancelledMsg"), "");
+            ShowFailure(Strings.Get("ResTitleCancelled"), Strings.Get("RestoreCancelledMsg"), "",
+                cancelled: true);
         }
         catch (Exception ex)
         {
@@ -3737,6 +3755,7 @@ public sealed partial class MainViewModel : ObservableObject
         bool ok = result.Outcome is CloneOutcome.Completed or CloneOutcome.CompletedWithBadSectors;
 
         ResultIsSuccess = ok;
+        ResultWasCancelled = result.Outcome is CloneOutcome.Cancelled;
         ResultTitle = ok ? Strings.Get("RestoreDoneTitle") : Strings.Get("ResTitleFailed");
         ResultMessage = ok
             ? Strings.Format("RestoreDoneMsgFmt", target.DeviceNumber, target.Model)

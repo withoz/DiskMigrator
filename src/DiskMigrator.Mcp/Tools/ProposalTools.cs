@@ -373,7 +373,12 @@ public sealed class ProposalTools(
     [Description(
         "Read how a running operation is going — phase, percent, current region, speed and ETA. " +
         "Read-only. Use it to keep the user informed while a clone or backup runs, and to see whether " +
-        "something you proposed was eventually started.")]
+        "something you proposed was eventually started. " +
+        "When running is false, 'lastOutcome' says how the previous operation ended: Completed, " +
+        "Cancelled, or Failed (null if none has finished yet). NEVER report a stopped operation as " +
+        "finished without reading it — a cancelled clone leaves an incomplete copy that must not be " +
+        "used, and 'lastMessage' is the exact wording the user is looking at on screen. " +
+        "'paused' true means the user paused it deliberately; the numbers are frozen, not stuck.")]
     public Task<ToolResult<OperationProgress>> GetProgressAsync(CancellationToken ct = default)
     {
         try
@@ -408,7 +413,8 @@ public sealed class ProposalTools(
 
             return Task.FromResult(ToolResult<string>.Success(
                 "Cancellation requested. The engine stops at a safe point, so this is not instant. " +
-                "The target will hold an incomplete copy and should not be used until it is written again."));
+                "The target will hold an incomplete copy and should not be used until it is written again. " +
+                "Call get_progress to see when it actually stopped — lastOutcome becomes Cancelled."));
         }
         catch (Exception ex)
         {

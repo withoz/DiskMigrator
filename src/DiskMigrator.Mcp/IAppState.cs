@@ -8,6 +8,12 @@ namespace DiskMigrator.Mcp;
 /// <param name="BytesText">처리량 / 전체.</param>
 /// <param name="SpeedText">속도.</param>
 /// <param name="EtaText">남은 시간.</param>
+/// <param name="Paused">사용자가 잠시 멈춰 둔 상태인지.</param>
+/// <param name="LastOutcome">
+/// 마지막으로 끝난 작업이 어떻게 끝났는지 — <c>Completed</c> · <c>Cancelled</c> · <c>Failed</c>.
+/// 아직 아무것도 끝나지 않았으면 null.
+/// </param>
+/// <param name="LastMessage">그때 화면에 뜬 문구 그대로(앱 언어).</param>
 public sealed record OperationProgress(
     bool Running,
     string? Phase,
@@ -15,7 +21,18 @@ public sealed record OperationProgress(
     string? CurrentRegion,
     string? BytesText,
     string? SpeedText,
-    string? EtaText);
+    string? EtaText,
+    bool Paused = false,
+    string? LastOutcome = null,
+    string? LastMessage = null);
+
+/// <summary>작업이 끝난 방식 — 화면 문구와 달리 언어를 타지 않는 값.</summary>
+public static class OperationOutcomes
+{
+    public const string Completed = "Completed";
+    public const string Cancelled = "Cancelled";
+    public const string Failed = "Failed";
+}
 
 /// <summary>
 /// 앱의 상태를 <b>읽고</b>, 취소만 요청할 수 있는 통로.

@@ -23,10 +23,19 @@ public sealed class AppStateBridge(MainViewModel vm) : IAppState
     /// <summary>화면의 'VSS 스냅샷 사용' 체크 상태 그대로. 안전 판정이 이 값에 따라 갈립니다.</summary>
     public bool UseSnapshot => vm.UseSnapshot;
 
+    /// <remarks>
+    /// <b>끝난 뒤에도 답이 있어야 합니다.</b> 예전에는 작업이 끝나면 "실행 중 아님"만 남아,
+    /// Claude는 그것이 끝난 건지 취소된 건지 실패한 건지 구분할 수 없었습니다. 화면에는
+    /// "취소됨 — 대상은 불완전한 사본입니다"라고 떠 있는데 Claude가 "복사가 끝났습니다"라고
+    /// 말하면, 사용자는 못 쓰는 디스크를 쓸 수 있는 것으로 압니다.
+    /// </remarks>
     public OperationProgress GetProgress()
     {
         if (!IsBusy)
-            return new OperationProgress(false, null, 0, null, null, null, null);
+            return new OperationProgress(false, null, 0, null, null, null, null,
+                Paused: false,
+                LastOutcome: LastOutcome(),
+                LastMessage: Empty(vm.ResultMessage));
 
         return new OperationProgress(
             Running: true,
@@ -35,8 +44,18 @@ public sealed class AppStateBridge(MainViewModel vm) : IAppState
             CurrentRegion: Empty(vm.ProgressRegion),
             BytesText: Empty(vm.ProgressBytes),
             SpeedText: Empty(vm.ProgressSpeed),
-            EtaText: Empty(vm.ProgressEta));
+            EtaText: Empty(vm.ProgressEta),
+            Paused: vm.IsPaused);
     }
+
+    /// <summary>결과 화면이 아직 안 떴으면 null — 지어내지 않습니다.</summary>
+    private string? LastOutcome() => vm.Stage switch
+    {
+        AppStage.Finished when vm.ResultWasCancelled => OperationOutcomes.Cancelled,
+        AppStage.Finished when vm.ResultIsSuccess => OperationOutcomes.Completed,
+        AppStage.Finished => OperationOutcomes.Failed,
+        _ => null,
+    };
 
     /// <summary>
     /// 취소를 <b>요청</b>합니다. 엔진이 안전한 지점에서 정리한 뒤 멈추므로 즉시 중단은 아닙니다.
