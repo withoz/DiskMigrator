@@ -204,6 +204,11 @@ public sealed class Mapping(bool includeSensitive = false)
         var confirmations = r.Confirmations.Select(ToDto).ToList();
         var warnings = r.Warnings.Select(ToDto).ToList();
 
+        // 정보 항목까지 함께 넘깁니다. 예전에는 여기서 버렸고, 그래서 화면은 "남는 공간
+        // 500GB"를 알려 주는데 Claude는 그 사실을 모른 채 답했습니다 — 같은 질문에 두 개의
+        // 다른 답이 나오는 자리였습니다.
+        var notes = r.Notes.Select(ToDto).ToList();
+
         string summary = !r.CanProceed
             ? $"BLOCKED — {blockers.Count} reason(s) prevent this: {string.Join("; ", blockers.Select(b => b.Code))}. " +
               "No confirmation can override these."
@@ -221,6 +226,7 @@ public sealed class Mapping(bool includeSensitive = false)
             Blockers: blockers,
             Confirmations: confirmations,
             Warnings: warnings,
+            Notes: notes,
             Source: ToDto(source),
             Target: ToDto(target));
     }

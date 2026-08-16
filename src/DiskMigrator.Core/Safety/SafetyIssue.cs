@@ -27,6 +27,10 @@ public sealed class SafetyReport
     public IEnumerable<SafetyIssue> Warnings =>
         Issues.Where(i => i.Severity == SafetySeverity.Warning);
 
+    /// <summary>위험은 아니지만 알려 주는 사실(남는 공간, USB 연결 등).</summary>
+    public IEnumerable<SafetyIssue> Notes =>
+        Issues.Where(i => i.Severity == SafetySeverity.Info);
+
     /// <summary>Blocker가 하나도 없어야 사용자 확인 단계로 넘어갈 수 있습니다.</summary>
     public bool CanProceed => !Blockers.Any();
 

@@ -41,7 +41,9 @@ public sealed class PlanningTools(
         "code you should reason about instead of the wording. " +
         "Call this BEFORE describing any clone to the user, and repeat the blockers verbatim rather " +
         "than paraphrasing them away. If needsTypedConfirmation is true, the user must type the " +
-        "target model name in the app — you cannot do that for them, and should say so plainly.")]
+        "target model name in the app — you cannot do that for them, and should say so plainly. " +
+        "'notes' holds facts the app's own screen shows the user (leftover space on a larger target, " +
+        "a disk attached over USB); mention them so your answer and the screen agree.")]
     public async Task<ToolResult<SafetyDto>> EvaluateSafetyAsync(
         [Description("Physical disk number to copy FROM. It is only read.")] int sourceDeviceNumber,
         [Description("Physical disk number to copy TO. Everything on it will be erased.")] int targetDeviceNumber,
