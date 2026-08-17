@@ -34,7 +34,12 @@ Write-Host "[2/5] 앱 exe 코드 서명..." -ForegroundColor Cyan
 $appSigned = & "$installerDir\sign.ps1" -Files @($appExe, $bridgeExe)
 
 Write-Host "[3/5] 라이선스 파일 생성 (UTF-8 BOM)..." -ForegroundColor Cyan
-$eula = Get-Content "$root\src\DiskMigrator.App\Resources\EULA.txt" -Raw -Encoding UTF8
+# ⚠ 설치 마법사의 언어(DiskMigrator.iss의 [Languages])와 같은 언어를 넣어야 합니다.
+#   마법사는 영어인데 여기만 한국어를 넣어 두었더니, 다른 글은 다 영어인 화면에서
+#   사용권 계약만 한국어로 떴습니다(2026-08-17 실기). 영어본은 처음부터 있었는데
+#   스크립트가 한국어 쪽을 집어 오고 있었습니다.
+#   마법사에 다른 언어를 추가하면 그 언어의 EULA도 함께 넣어야 합니다.
+$eula = Get-Content "$root\src\DiskMigrator.App\Resources\EULA.en.txt" -Raw -Encoding UTF8
 $utf8bom = New-Object System.Text.UTF8Encoding($true)
 [System.IO.File]::WriteAllText("$installerDir\EULA-license.txt", $eula, $utf8bom)
 

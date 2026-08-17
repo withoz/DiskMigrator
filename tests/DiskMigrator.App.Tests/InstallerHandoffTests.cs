@@ -1,5 +1,6 @@
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using DiskMigrator.App;
 using Xunit;
 
@@ -91,6 +92,31 @@ public class InstallerHandoffTests
         }
     }
 
+    /// <summary>
+    /// 사용권 계약이 <b>마법사와 같은 언어</b>인지.
+    /// </summary>
+    /// <remarks>
+    /// 마법사는 영어인데 라이선스 단계만 한국어가 떴습니다(2026-08-17 실기). 영어본은
+    /// 처음부터 있었는데 빌드 스크립트가 한국어 쪽을 집어 오고 있었습니다 — 읽어야 할 글이
+    /// 읽을 수 없는 언어로 나오면, 동의 절차 자체가 형식만 남습니다.
+    ///
+    /// <para>마법사에 다른 언어를 더하면 이 시험이 먼저 막습니다 — 그 언어의 계약서도
+    /// 함께 넣으라는 뜻입니다.</para>
+    /// </remarks>
+    [Fact]
+    public void 사용권_계약이_마법사와_같은_언어다()
+    {
+        var languages = Regex.Matches(InstallerScript(), @"^Name: ""(\w+)"";\s*MessagesFile",
+                RegexOptions.Multiline)
+            .Select(m => m.Groups[1].Value)
+            .ToArray();
+
+        Assert.Equal(["english"], languages);
+
+        string build = File.ReadAllText(Path.Combine(InstallerFolder(), "build.ps1"));
+        Assert.Contains("EULA.en.txt", build, StringComparison.Ordinal);
+    }
+
     private static string AppSource()
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
@@ -101,14 +127,19 @@ public class InstallerHandoffTests
         return Path.Combine(dir!.FullName, "src", "DiskMigrator.App");
     }
 
-    private static string InstallerScript()
+    private static string InstallerFolder()
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "installer")))
             dir = dir.Parent;
 
         Assert.NotNull(dir);
-        string path = Path.Combine(dir!.FullName, "installer", "DiskMigrator.iss");
+        return Path.Combine(dir!.FullName, "installer");
+    }
+
+    private static string InstallerScript()
+    {
+        string path = Path.Combine(InstallerFolder(), "DiskMigrator.iss");
         Assert.True(File.Exists(path), $"설치 스크립트를 찾지 못했습니다: {path}");
 
         return File.ReadAllText(path);
