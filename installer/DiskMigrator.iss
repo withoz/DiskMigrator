@@ -92,4 +92,15 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; ⚠ runascurrentuser가 반드시 있어야 합니다.
+;
+; 설치 프로그램은 마지막 실행을 <b>일부러 권한을 낮춰</b> 겁니다(Run as: Original user).
+; 보통 앱은 그래야 맞지만, 이 앱은 디스크를 직접 여느라 관리자 권한을 요구합니다 —
+; 낮춘 채로 걸면 그 자리에서 거부됩니다:
+;
+;   CreateProcess failed; code 740. 요청한 작업을 수행하려면 권한 상승이 필요합니다.
+;
+; 사용자에게는 "체크했는데 앱이 안 뜬다"로만 보입니다(2026-08-17 실기).
+; 설치 프로그램은 이미 관리자 권한이므로, 그 권한 그대로 걸면 창을 한 번 더 띄우지 않고
+; 바로 뜹니다.
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runascurrentuser

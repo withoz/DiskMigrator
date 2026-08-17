@@ -46,6 +46,19 @@ public class InstallerHandoffTests
         Assert.Contains("{cm:LaunchProgram", iss, StringComparison.Ordinal);
     }
 
+    /// <summary>마지막 실행이 <b>관리자 권한으로</b> 걸리는지.</summary>
+    /// <remarks>
+    /// 설치 프로그램은 마지막 실행을 일부러 권한을 낮춰 겁니다. 보통 앱은 그래야 맞지만
+    /// 이 앱은 디스크를 직접 여느라 관리자 권한을 요구해, 낮춘 채로는 거부됩니다
+    /// (<c>CreateProcess failed; code 740</c>). 사용자에게는 <b>"체크했는데 앱이 안 뜬다"</b>로만
+    /// 보입니다 — 2026-08-17 실기에서 정확히 그렇게 나왔습니다.
+    /// </remarks>
+    [Fact]
+    public void 마지막_실행은_권한을_낮추지_않는다()
+    {
+        Assert.Contains("runascurrentuser", InstallerScript(), StringComparison.Ordinal);
+    }
+
     /// <summary>파일을 붙잡은 프로그램을 닫도록 되어 있는지.</summary>
     /// <remarks>
     /// 앱에서 Claude에게 물어본 적이 있으면 <c>claude.exe</c>가 남아 중계기를 붙잡습니다.
