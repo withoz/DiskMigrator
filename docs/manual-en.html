@@ -83,17 +83,17 @@
     <p style="margin:0 0 5px; font-size:12.5px;">by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a></p>
   </div>
   </div>
-  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">User Manual — copy, back up, and restore an entire Windows disk (a beginner-friendly guide) <span class="badge">v1.0.0</span></p>
+  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">User Manual — copy, back up, and restore an entire Windows disk (a beginner-friendly guide) <span class="badge">v1.1.0</span></p>
 </header>
 
 <nav class="toc">
   <a href="#before">Before you start</a>
-  <a href="#modes">The five modes</a>
-  <a href="#clone">① Clone</a>
-  <a href="#backup">② Backup</a>
-  <a href="#restore">③ Restore</a>
-  <a href="#fixboot">④ Fix Boot</a>
-  <a href="#bootusb">⑤ Boot USB</a>
+  <a href="#modes">Three groups</a>
+  <a href="#clone">Copy a disk</a>
+  <a href="#backup">Backup</a>
+  <a href="#restore">Restore</a>
+  <a href="#fixboot">Boot repair</a>
+  <a href="#bootusb">Boot USB</a>
   <a href="#claude">Claude</a>
   <a href="#usb">USB vs internal</a>
   <a href="#faq">FAQ</a>
@@ -117,16 +117,21 @@
   <p>• Depending on the amount of data, it takes 30 minutes to several hours. Do not turn off the computer part-way.</p>
 </div>
 
-<h2 id="modes">The five modes — pick one at the top of the window</h2>
+<h2 id="modes">Three groups to start from &mdash; pick one at the top of the window</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Choose what you want to do first.
+Only the groups that hold two choices show a second row underneath.</p>
 <div class="modes">
-  <div class="mode"><span class="ico">💽</span><b>Disk Clone</b><p>Copy disk → disk directly.<br>For moving to a new SSD.</p></div>
-  <div class="mode"><span class="ico">📦</span><b>Image Backup</b><p>Save disk → file (.vhdx).<br>Insurance against failure.</p></div>
-  <div class="mode"><span class="ico">♻️</span><b>Image Restore</b><p>Saved file → disk.<br>Bring a backed-up system back.</p></div>
-  <div class="mode"><span class="ico">🛠️</span><b>Fix Boot</b><p>When a copied disk won't start.<br>Checks and repairs without re-copying.</p></div>
-  <div class="mode"><span class="ico">🚑</span><b>Boot USB</b><p>For when Windows won't start at all.<br>Boot from USB and use this app.</p></div>
+  <div class="mode"><span class="ico">&#128191;</span><b>Copy a disk</b><p>Disk &rarr; disk, straight across.<br>For moving to a new SSD.</p></div>
+  <div class="mode"><span class="ico">&#128230;</span><b>Backup &middot; Restore</b><p><b>Backup</b> &mdash; keep it as one file.<br><b>Restore</b> &mdash; bring it back from that file.</p></div>
+  <div class="mode"><span class="ico">&#128736;&#65039;</span><b>Fix a problem</b><p><b>Boot repair</b> &mdash; the copied disk won't start.<br><b>Boot USB</b> &mdash; in case Windows won't start at all.</p></div>
 </div>
+<div class="note"><b>What sits at the top right.</b>
+  <b>Ask Claude</b> (a chat panel for when you are stuck) &middot; <b>Claude connection</b> &middot;
+  <b>&#9728; &middot; &#9790;</b> (light screen &middot; dark screen &mdash; it follows your Windows setting at first) &middot;
+  <b>&#54620;&#44397;&#50612; &middot; English</b>.</div>
 
-<h2 id="clone">① Disk Clone — step by step</h2>
+<h2 id="clone">Copy a disk — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Top of the window: <b>[Copy a disk]</b></p>
 <ol class="steps">
   <li>Select the <b>source</b> (the disk to copy, usually marked <code>System</code>) on the left</li>
   <li>Select the <b>target</b> (the new disk) on the right — <b style="color:var(--danger)">this disk will be erased</b></li>
@@ -138,7 +143,8 @@
   if it is <b>smaller</b>, the largest partition is <b>shrunk automatically</b> to fit (a notice tells you what will happen).
   If your actual data won't fit on the target, the app explains why and stops before touching anything.</div>
 
-<h2 id="backup">② Image Backup — step by step</h2>
+<h2 id="backup">Backup — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Top of the window: <b>[Backup &middot; Restore]</b> &rarr; <b>[Backup]</b></p>
 <div class="tip"><b>✓ Save your current computer (C:\) into a single file now (recommended)</b><br>
   Even if you replace the disk or it fails, restoring brings everything back exactly as it was.</div>
 <ol class="steps">
@@ -152,7 +158,8 @@
   (<code>backup-01.vhdx</code>, and so on). Existing files are never modified; to restore, just pick the
   <b>most recent file</b>. Keep the files together in the same folder.</div>
 
-<h2 id="restore">③ Image Restore — step by step</h2>
+<h2 id="restore">Restore — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Top of the window: <b>[Backup &middot; Restore]</b> &rarr; <b>[Restore]</b></p>
 <ol class="steps">
   <li>Use <b>Browse</b> to pick the <code>.vhdx</code> file you backed up</li>
   <li>Select the <b>target</b> disk — it will be erased. If it is smaller, an automatic-shrink notice appears</li>
@@ -162,11 +169,12 @@
   and when restore starts a deeper check (including the file system) runs <b>before the target is erased</b>.
   If the backup is corrupted, nothing is written and the target is left untouched.</div>
 
-<h2 id="fixboot">④ Fix Boot — step by step</h2>
+<h2 id="fixboot">Boot repair — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Top of the window: <b>[Fix a problem]</b> &rarr; <b>[Boot repair]</b></p>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">A tool for when a cloned or restored disk won't boot. It does not copy anything again.</p>
 <ol class="steps">
   <li>Connect the disk that wouldn't start <b>to this computer, e.g. with a USB adapter</b></li>
-  <li>Select that disk on the <b>Fix Boot</b> tab</li>
+  <li>Select that disk under <b>[Fix a problem] &rarr; [Boot repair]</b></li>
   <li>Click <b>Check Boot</b> — it only reads, so it is safe</li>
   <li>If problems are found, click the <b>Repair Boot</b> button that appears — after repairing, the check runs again automatically</li>
 </ol>
@@ -181,18 +189,19 @@
   boot information into a <b>single file</b>. The disk is only read, never modified.</p>
   <p>Copy the file to another computer on a USB stick and show it to Claude, or send it to us.
   <b>This matters most on a computer that will not boot</b> — that machine has no internet and no Claude,
-  but you can start it from the ⑤ Boot USB and press this one button to capture everything needed.</p>
+  but you can start it from the <b>Boot USB</b> and press this one button to capture everything needed.</p>
   <p style="color:var(--muted); font-size:13.5px;">• Disk serials and volume names are <b>masked by default</b> — this file is meant to be shown to someone else.<br>
   • The report <b>cannot be saved onto the disk being diagnosed</b>. Pick a USB stick or another disk.<br>
   • Save it <b>before and after</b> a repair to compare what actually changed.</p>
 </div>
 
-<h2 id="bootusb">⑤ Boot USB — step by step</h2>
+<h2 id="bootusb">Boot USB — step by step</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Top of the window: <b>[Fix a problem]</b> &rarr; <b>[Boot USB]</b></p>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">Make an <b>emergency USB</b> ahead of time, to rescue a computer whose Windows won't start at all.
 Nothing extra to install — it is built entirely from materials already inside your Windows.</p>
 <div class="warn"><b>⚠ The USB stick is completely erased.</b> Have an empty USB stick of 8 GB or more ready.</div>
 <ol class="steps">
-  <li>Plug in the USB stick and select it on the <b>Boot USB</b> tab</li>
+  <li>Plug in the USB stick and select it under <b>[Fix a problem] &rarr; [Boot USB]</b></li>
   <li>In the red box, <b>type the USB stick's model name exactly</b> (a mistake-prevention safeguard)</li>
   <li>Click <b>Create Boot USB</b> → done in a few minutes</li>
 </ol>
@@ -296,10 +305,10 @@ Nothing extra to install — it is built entirely from materials already inside 
 <h2>If it won't boot</h2>
 <div class="card">
   <p><b>Don't panic.</b> It is usually just a slightly misaligned boot setting, and it can be fixed.
-  Following <b>④ Fix Boot — step by step</b> above resolves most cases.</p>
+  Following <b>Boot repair — step by step</b> above resolves most cases.</p>
   <p>• Right after a clone/restore, the same button is on the completion screen. (It also runs once automatically on completion.)</p>
   <p>• If Windows was installed the old way (BIOS) and won't start on a modern computer, use <b>Convert to UEFI</b> on the completion screen.</p>
-  <p>• If the computer won't turn on at all — so you can't even run this app — boot from the <b>⑤ Boot USB</b> you made in advance and do the same work there.</p>
+  <p>• If the computer won't turn on at all — so you can't even run this app — boot from the <b>Boot USB</b> you made in advance and do the same work there.</p>
   <p>• On an older motherboard, try <b>updating the BIOS to the latest version</b> — especially if a restart works but a cold start does not.</p>
 </div>
 
@@ -341,14 +350,14 @@ Nothing extra to install — it is built entirely from materials already inside 
   <div><dt>BIOS / UEFI</dt><dd>The base program that runs first when a computer powers on. <b>BIOS is the old way, UEFI is the modern way</b>; recent M.2 disks boot only via UEFI.</dd></div>
   <div><dt>MBR / GPT</dt><dd>The scheme used to record how a disk is partitioned. MBR is the old one (paired with BIOS); GPT is the modern one (paired with UEFI).</dd></div>
   <div><dt>M.2 / NVMe / SSD</dt><dd>Today's fast, small storage. M.2 is the stick-of-gum shape, NVMe is the fast connection, SSD means solid-state storage.</dd></div>
-  <div><dt>Fix Boot</dt><dd>Automatically corrects the boot configuration (BCD) of a copied disk when it is out of line. The program runs it automatically after completion.</dd></div>
+  <div><dt>Boot repair</dt><dd>Automatically corrects the boot configuration (BCD) of a copied disk when it is out of line. The program runs it automatically after completion.</dd></div>
   <div><dt>Incremental backup</dt><dd>A backup that saves <b>only what changed</b> since the last one, into a small new file. It happens automatically when you pick your existing backup file as the save location. Keep the files together in the same folder.</dd></div>
   <div><dt>Image integrity check</dt><dd>A safeguard that automatically verifies your backup file is intact before a restore begins. If the backup is corrupted, the target disk is left untouched.</dd></div>
 </dl>
 </div>
 
 <footer>
-  DiskMigrator-X v1.0.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · Download: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator-X v1.1.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · Download: github.com/withoz/DiskMigrator/releases ·
   Contact: <a href="mailto:withoz1111@gmail.com" style="color:var(--accent); text-decoration:none;">withoz1111@gmail.com</a><br>
   If something goes wrong, send us the log files in <code>C:\Users\&lt;you&gt;\AppData\Local\DiskMigrator-X\logs</code>.
 </footer>

@@ -83,17 +83,17 @@
     <p style="margin:0 0 5px; font-size:12.5px;">by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a></p>
   </div>
   </div>
-  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">사용설명서 — 윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 (컴퓨터 초보자용 안내) <span class="badge">v1.0.0</span></p>
+  <p style="margin:14px 0 0; color:var(--muted); font-size:13.5px;">사용설명서 — 윈도우가 설치된 디스크를 통째로 복사·보관·복원하는 도구 (컴퓨터 초보자용 안내) <span class="badge">v1.1.0</span></p>
 </header>
 
 <nav class="toc">
   <a href="#before">시작 전에</a>
-  <a href="#modes">다섯 가지 모드</a>
-  <a href="#clone">① 클론</a>
-  <a href="#backup">② 백업</a>
-  <a href="#restore">③ 복원</a>
-  <a href="#fixboot">④ 부팅 복구</a>
-  <a href="#bootusb">⑤ 부팅 USB</a>
+  <a href="#modes">세 갈래</a>
+  <a href="#clone">디스크 복사</a>
+  <a href="#backup">이미지 백업</a>
+  <a href="#restore">이미지 복원</a>
+  <a href="#fixboot">부팅 복구</a>
+  <a href="#bootusb">부팅 USB</a>
   <a href="#claude">Claude 연결</a>
   <a href="#usb">USB와 내부 연결</a>
   <a href="#faq">FAQ</a>
@@ -117,16 +117,21 @@
   <p>• 데이터 양에 따라 30분~수 시간 걸립니다. 도중에 컴퓨터를 끄지 마세요.</p>
 </div>
 
-<h2 id="modes">다섯 가지 모드 — 화면 위쪽에서 선택</h2>
+<h2 id="modes">세 갈래로 시작합니다 — 화면 위쪽에서 선택</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">하고 싶은 일을 먼저 고르면,
+갈래가 둘인 묶음만 아래에 선택지가 한 줄 더 나옵니다.</p>
 <div class="modes">
-  <div class="mode"><span class="ico">💽</span><b>디스크 클론</b><p>디스크 → 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
-  <div class="mode"><span class="ico">📦</span><b>이미지 백업</b><p>디스크 → 파일(.vhdx)로 보관.<br>고장 대비 보험용.</p></div>
-  <div class="mode"><span class="ico">♻️</span><b>이미지 복원</b><p>보관한 파일 → 디스크로 복구.<br>백업해 둔 시스템 되살리기.</p></div>
-  <div class="mode"><span class="ico">🛠️</span><b>부팅 복구</b><p>복사해 둔 디스크가 안 켜질 때.<br>복제 없이 검사하고 고칩니다.</p></div>
-  <div class="mode"><span class="ico">🚑</span><b>부팅 USB</b><p>윈도우가 아예 안 켜질 때 대비.<br>USB로 부팅해 이 앱을 씁니다.</p></div>
+  <div class="mode"><span class="ico">&#128191;</span><b>디스크 복사</b><p>디스크 &rarr; 디스크로 바로 복사.<br>새 SSD로 이사할 때.</p></div>
+  <div class="mode"><span class="ico">&#128230;</span><b>백업 &middot; 복원</b><p><b>이미지 백업</b> &mdash; 파일 하나로 보관.<br><b>이미지 복원</b> &mdash; 그 파일로 되살리기.</p></div>
+  <div class="mode"><span class="ico">&#128736;&#65039;</span><b>문제 해결</b><p><b>부팅 복구</b> &mdash; 복사한 디스크가 안 켜질 때.<br><b>부팅 USB</b> &mdash; 윈도우가 아예 안 켜질 때 대비.</p></div>
 </div>
+<div class="note"><b>화면 오른쪽 위에 있는 것들.</b>
+  <b>Claude에게 묻기</b>(막혔을 때 물어보는 대화창) &middot; <b>Claude 연결</b> &middot;
+  <b>&#9728; &middot; &#9790;</b>(밝은 화면 &middot; 어두운 화면 &mdash; 처음에는 윈도우 설정을 따릅니다) &middot;
+  <b>한국어 &middot; English</b>.</div>
 
-<h2 id="clone">① 디스크 클론 — 따라하기</h2>
+<h2 id="clone">디스크 복사 — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">화면 위쪽 <b>[디스크 복사]</b></p>
 <ol class="steps">
   <li><b>원본</b>(복사할 디스크, 보통 <code>시스템</code> 표시)을 왼쪽에서 선택</li>
   <li><b>대상</b>(새 디스크)을 오른쪽에서 선택 — <b style="color:var(--danger)">이 디스크가 지워집니다</b></li>
@@ -138,7 +143,8 @@
   대상이 <b>작으면</b> 가장 큰 파티션을 <b>자동으로 줄여</b> 맞춥니다(안내 문구로 알려줌).
   실제 데이터가 대상보다 많으면 시작 전에 이유를 알려주고 멈춥니다.</div>
 
-<h2 id="backup">② 이미지 백업 — 따라하기</h2>
+<h2 id="backup">이미지 백업 — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">화면 위쪽 <b>[백업 · 복원]</b> → <b>[이미지 백업]</b></p>
 <div class="tip"><b>✓ 지금 컴퓨터(C:\)를 통째로 파일 하나에 저장해 두세요 (권장)</b><br>
   디스크를 바꾸거나 고장 나도, 복원하면 쓰던 모습 그대로 살아납니다.</div>
 <ol class="steps">
@@ -152,7 +158,8 @@
   저장됩니다. 기존 파일은 바뀌지 않으며, 복원할 땐 <b>가장 최근 파일</b>을 고르면 됩니다.
   파일들은 같은 폴더에 함께 보관하세요.</div>
 
-<h2 id="restore">③ 이미지 복원 — 따라하기</h2>
+<h2 id="restore">이미지 복원 — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">화면 위쪽 <b>[백업 · 복원]</b> → <b>[이미지 복원]</b></p>
 <ol class="steps">
   <li><b>찾아보기</b>로 백업해 둔 <code>.vhdx</code> 파일 선택</li>
   <li><b>대상</b> 디스크 선택 — 지워집니다. 작은 디스크면 자동 축소 안내가 뜹니다</li>
@@ -162,11 +169,12 @@
   복원을 시작하면 <b>대상을 지우기 전에</b> 한 번 더 깊이 검사합니다(파일시스템까지).
   손상된 백업이면 대상을 건드리지 않고 멈춥니다.</div>
 
-<h2 id="fixboot">④ 부팅 복구 — 따라하기</h2>
+<h2 id="fixboot">부팅 복구 — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">화면 위쪽 <b>[문제 해결]</b> → <b>[부팅 복구]</b></p>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">클론·복원해 둔 디스크가 부팅되지 않을 때 쓰는 도구입니다. 복사를 다시 하지 않습니다.</p>
 <ol class="steps">
   <li>안 켜지던 디스크를 <b>USB 어댑터 등으로 이 컴퓨터에 연결</b></li>
-  <li><b>부팅 복구</b> 탭에서 그 디스크 선택</li>
+  <li><b>[문제 해결] → [부팅 복구]</b>에서 그 디스크 선택</li>
   <li><b>부팅 검사</b> 누르기 — 읽기만 하므로 안전합니다</li>
   <li>문제가 발견되면 나타나는 <b>부팅 복구</b> 버튼 누르기 — 고친 뒤 자동으로 다시 검사됩니다</li>
 </ol>
@@ -181,18 +189,19 @@
   그 디스크의 부팅 관련 정보를 <b>파일 하나로</b> 모아 줍니다. 디스크는 수정하지 않고 읽기만 합니다.</p>
   <p>저장한 파일을 USB로 다른 컴퓨터에 옮겨 Claude에게 보여주거나 저희에게 보내면 됩니다.
   <b>부팅이 안 되는 컴퓨터에서 특히 쓸모 있습니다</b> — 그 컴퓨터에는 인터넷도 Claude도 없지만,
-  ⑤ 부팅 USB로 부팅해 이 버튼만 누르면 필요한 정보가 전부 담깁니다.</p>
+  <b>부팅 USB</b>로 부팅해 이 버튼만 누르면 필요한 정보가 전부 담깁니다.</p>
   <p style="color:var(--muted); font-size:13.5px;">• 디스크 시리얼·볼륨 이름은 <b>기본적으로 가려서</b> 담습니다. 남에게 보여줄 파일이기 때문입니다.<br>
   • 리포트는 <b>진단 대상 디스크에는 저장할 수 없습니다</b>. USB나 다른 디스크를 고르세요.<br>
   • 고치기 <b>전과 후</b> 두 번 저장해 두면 무엇이 바뀌었는지 비교할 수 있습니다.</p>
 </div>
 
-<h2 id="bootusb">⑤ 부팅 USB — 따라하기</h2>
+<h2 id="bootusb">부팅 USB — 따라하기</h2>
+<p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">화면 위쪽 <b>[문제 해결]</b> → <b>[부팅 USB]</b></p>
 <p style="color:var(--muted); font-size:13.5px; margin:0 0 8px;">윈도우가 아예 켜지지 않는 컴퓨터를 구조하기 위한 <b>비상용 USB</b>를 미리 만들어 둡니다.
 별도 프로그램 설치 없이, 지금 윈도우에 들어 있는 재료만으로 만듭니다.</p>
 <div class="warn"><b>⚠ USB 메모리는 완전히 지워집니다.</b> 8GB 이상의 빈 USB 메모리를 준비하세요.</div>
 <ol class="steps">
-  <li>USB 메모리를 꽂고 <b>부팅 USB</b> 탭에서 그 USB 선택</li>
+  <li>USB 메모리를 꽂고 <b>[문제 해결] → [부팅 USB]</b>에서 그 USB 선택</li>
   <li>빨간 칸에 <b>USB의 모델명을 그대로 입력</b> (실수 방지 장치입니다)</li>
   <li><b>부팅 USB 만들기</b> → 몇 분 뒤 완료됩니다</li>
 </ol>
@@ -292,10 +301,10 @@
 <h2>부팅이 안 될 때</h2>
 <div class="card">
   <p><b>당황하지 마세요.</b> 대부분 부팅 설정이 살짝 어긋난 것이라 고칠 수 있습니다.
-  위의 <b>④ 부팅 복구 — 따라하기</b> 순서대로 하면 대부분 해결됩니다.</p>
+  위의 <b>부팅 복구 — 따라하기</b> 순서대로 하면 대부분 해결됩니다.</p>
   <p>• 클론/복원이 끝난 직후라면 완료 화면에도 같은 버튼이 있습니다. (완료 시 자동으로 한 번 실행됩니다.)</p>
   <p>• 옛날 방식(BIOS)으로 설치된 윈도우가 요즘 컴퓨터에서 안 켜지면 완료 화면의 <b>UEFI로 변환</b>이 필요합니다.</p>
-  <p>• 컴퓨터가 아예 안 켜져 이 앱조차 실행할 수 없다면, 미리 만들어 둔 <b>⑤ 부팅 USB</b>로 부팅해 같은 작업을 할 수 있습니다.</p>
+  <p>• 컴퓨터가 아예 안 켜져 이 앱조차 실행할 수 없다면, 미리 만들어 둔 <b>부팅 USB</b>로 부팅해 같은 작업을 할 수 있습니다.</p>
   <p>• 오래된 메인보드라면 <b>BIOS를 최신으로 업데이트</b>해 보세요. 특히 재시작은 되는데 껐다 켤 때만 안 되는 경우입니다.</p>
 </div>
 
@@ -343,7 +352,7 @@
 </div>
 
 <footer>
-  DiskMigrator-X v1.0.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · 다운로드: github.com/withoz/DiskMigrator/releases ·
+  DiskMigrator-X v1.1.0 by AixxiA.kr / <a href="http://aidesign.co.kr" style="color:var(--accent); text-decoration:none;">AiDesign.co.kr</a> · 다운로드: github.com/withoz/DiskMigrator/releases ·
   문의: <a href="mailto:withoz1111@gmail.com" style="color:var(--accent); text-decoration:none;">withoz1111@gmail.com</a><br>
   문제가 생기면 <code>C:\Users\사용자\AppData\Local\DiskMigrator-X\logs</code> 폴더의 로그 파일과 함께 문의하세요.
 </footer>
