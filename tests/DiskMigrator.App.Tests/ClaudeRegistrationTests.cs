@@ -99,6 +99,25 @@ public class ClaudeRegistrationTests : IDisposable
             ReadConfig()["mcpServers"]![ClaudeRegistration.ServerName]!["command"]!.GetValue<string>());
     }
 
+    /// <summary>
+    /// "이미 있습니다"를 <b>실패로 착각하지 않는지</b> — 실기에서 화면에 붉은 글로 나온 자리.
+    /// </summary>
+    /// <remarks>
+    /// 두 번째로 버튼을 누른 사람은 멀쩡한 상태를 두고 "등록하지 못했습니다"를 봤습니다.
+    /// 이제는 우리 이름 하나만 지우고 다시 넣습니다 — 앱을 다른 곳에 재설치했을 때 옛 등록이
+    /// 없어진 중계기를 가리킨 채 남는 것도 이때 함께 풀립니다.
+    /// </remarks>
+    [Theory]
+    [InlineData("MCP server diskmigrator-x already exists in user config", true)]
+    [InlineData("MCP server DISKMIGRATOR-X ALREADY EXISTS in user config", true)]
+    [InlineData("MCP server other-thing already exists in user config", false)]  // 남의 이름
+    [InlineData("EACCES: permission denied", false)]
+    [InlineData("", false)]
+    public void 이미_있다는_거절만_골라낸다(string message, bool expected)
+    {
+        Assert.Equal(expected, ClaudeRegistration.IsAlreadyExists(message));
+    }
+
     [Fact]
     public void 토큰은_설정_파일에_적지_않는다()
     {

@@ -159,6 +159,13 @@ public static class ClaudeRegistration
     ///
     /// <para><c>--scope user</c>로 넣습니다. 기본값은 <b>지금 폴더에서만</b> 통하는 범위라,
     /// 다른 폴더에서 Claude를 열면 등록이 없는 것처럼 보입니다.</para>
+    ///
+    /// <para><b>이미 있으면 지우고 다시 넣습니다.</b> <c>claude mcp add</c>는 같은 이름이 있으면
+    /// 거절합니다. 그것을 그대로 실패로 보고하면, 두 번째로 누른 사람은 <b>멀쩡한 상태를 두고
+    /// "등록하지 못했습니다"라는 붉은 글을</b> 보게 됩니다(실기에서 그렇게 나왔습니다).
+    /// 게다가 앱을 다른 곳에 다시 설치했다면 옛 등록은 <b>없어진 중계기를 가리킨 채</b> 남아,
+    /// "이미 있다"는 이유로 그냥 두면 연결이 조용히 끊긴 상태가 됩니다. 버튼을 누른 것이
+    /// 곧 "지금 이 앱으로 맞춰 달라"는 뜻이므로, 우리 이름 하나만 지우고 다시 넣습니다.</para>
     /// </remarks>
     public static ClaudeRegistrationResult RegisterClaudeCode(string bridgePath)
     {
@@ -168,45 +175,71 @@ public static class ClaudeRegistration
 
         try
         {
-            // "--" 뒤는 실행할 프로그램입니다. 그 앞뒤를 섞으면 인자로 먹힙니다.
-            var psi = new ProcessStartInfo(claude)
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            foreach (string a in new[]
-                     { "mcp", "add", "--scope", "user", ServerName, "--", bridgePath, "--mcp-stdio" })
-            {
-                psi.ArgumentList.Add(a);
-            }
-
-            using var process = Process.Start(psi);
-            if (process is null)
-                return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, "start failed");
-
-            // ⚠ 출력을 먼저 끝까지 읽고 기다립니다. 반대로 하면 파이프 버퍼가 차는 순간
-            //   상대가 쓰기에서 멈추고, 우리는 그 상대를 기다립니다 — 서로 막힙니다.
-            string output = process.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
-
-            if (!process.WaitForExit(30_000))
-            {
-                try { process.Kill(entireProcessTree: true); } catch { /* 이미 끝났습니다. */ }
-                return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, "timeout");
-            }
-
-            if (process.ExitCode == 0)
+            var (code, why) = RunClaude(claude, Add(bridgePath));
+            if (code == 0)
                 return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Registered);
 
-            string why = string.IsNullOrWhiteSpace(error) ? output : error;
-            return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, FirstLine(why));
+            if (!IsAlreadyExists(why))
+                return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, FirstLine(why));
+
+            // 우리 이름 하나만 지웁니다 — 다른 서버는 건드리지 않습니다.
+            var (removeCode, removeWhy) = RunClaude(claude, ["mcp", "remove", "--scope", "user", ServerName]);
+            if (removeCode != 0)
+                return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, FirstLine(removeWhy));
+
+            var (again, againWhy) = RunClaude(claude, Add(bridgePath));
+            return again == 0
+                ? new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Registered)
+                : new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, FirstLine(againWhy));
         }
         catch (Exception ex)
         {
             return new(ClaudeTarget.ClaudeCode, ClaudeRegistrationStatus.Failed, ex.Message);
         }
+    }
+
+    /// <summary>"--" 뒤는 실행할 프로그램입니다. 그 앞뒤를 섞으면 인자로 먹힙니다.</summary>
+    private static string[] Add(string bridgePath) =>
+        ["mcp", "add", "--scope", "user", ServerName, "--", bridgePath, "--mcp-stdio"];
+
+    /// <summary>
+    /// 이름이 이미 있다는 거절인지. 문구가 바뀔 수 있어 <b>두 낱말이 함께</b> 있는지만 봅니다.
+    /// </summary>
+    /// <remarks>
+    /// 못 알아보면 예전처럼 실패로 보고할 뿐이고, 잘못 알아보면 멀쩡한 다른 실패를 덮고
+    /// 우리 등록을 지웁니다 — 그래서 넓게 잡지 않습니다.
+    /// </remarks>
+    internal static bool IsAlreadyExists(string message) =>
+        message.Contains(ServerName, StringComparison.OrdinalIgnoreCase) &&
+        message.Contains("already exists", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary><c>claude</c>를 한 번 실행하고 (종료코드, 할 말)을 돌려줍니다.</summary>
+    private static (int Code, string Why) RunClaude(string claude, string[] args)
+    {
+        var psi = new ProcessStartInfo(claude)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (string a in args) psi.ArgumentList.Add(a);
+
+        using var process = Process.Start(psi);
+        if (process is null) return (-1, "start failed");
+
+        // ⚠ 출력을 먼저 끝까지 읽고 기다립니다. 반대로 하면 파이프 버퍼가 차는 순간
+        //   상대가 쓰기에서 멈추고, 우리는 그 상대를 기다립니다 — 서로 막힙니다.
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+
+        if (!process.WaitForExit(30_000))
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* 이미 끝났습니다. */ }
+            return (-1, "timeout");
+        }
+
+        return (process.ExitCode, string.IsNullOrWhiteSpace(error) ? output : error);
     }
 
     /// <summary>PATH에서 실행 파일을 찾습니다(<c>.cmd</c>·<c>.exe</c> 등 확장자 포함).</summary>
