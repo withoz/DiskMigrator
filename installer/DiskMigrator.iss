@@ -43,6 +43,24 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+
+; 앱이 켜진 채로 설치하면 실행 파일을 바꾸지 못합니다. 그러면 설치 프로그램은 교체를 다음
+; 부팅으로 미루고 마지막 화면을 "컴퓨터를 다시 시작하십시오"로 바꾸는데, 그때 거기 있던
+; [DiskMigrator-X 실행] 선택이 사라집니다 — 사용자 눈에는 그 기능이 없는 것으로 보입니다.
+;
+; ⚠ 이름은 App.xaml.cs의 RunningMutexName과 같아야 합니다. 한쪽만 바꾸면 아무 말 없이
+;   예전 상태로 돌아갑니다(설치는 되는데 마지막 화면만 조용히 달라집니다).
+AppMutex=DiskMigratorX_Running,Global\DiskMigratorX_Running
+
+; 파일을 붙잡고 있는 프로그램을 찾아 닫고, 설치가 끝나면 되살립니다.
+; 앱에서 Claude에게 물어본 적이 있으면 claude.exe가 남아 중계기를 붙잡습니다 —
+; 2026-08-13에 실제로 그 파일만 갱신되지 않았습니다.
+CloseApplications=yes
+RestartApplications=no
+
+; 무엇이 막았는지 나중에 확인할 수 있게 설치 기록을 남깁니다(%TEMP%\Setup Log*.txt).
+; 설치가 한 번 이상하게 끝나면 그 기록이 유일한 단서입니다.
+SetupLogging=yes
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
 VersionInfoProductName={#AppName}

@@ -22,6 +22,35 @@ public partial class App : Application
     public static string LogDirectory { get; } = AppIdentity.LogDirectory;
 
     /// <summary>
+    /// "이 앱이 지금 켜져 있다"는 표시 — <b>설치 프로그램이 이것을 봅니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 앱이 켜진 채로 설치하면 실행 파일을 바꾸지 못해, 설치 프로그램은 교체를 다음 부팅으로
+    /// 미루고 마지막 화면을 <b>"컴퓨터를 다시 시작하십시오"</b>로 바꿉니다. 그러면 거기 있던
+    /// <b>[DiskMigrator-X 실행] 선택이 사라집니다</b> — 사용자 눈에는 그 기능이 없는 것으로 보입니다.
+    ///
+    /// <para>이 표시가 있으면 설치 프로그램이 시작할 때 알아채고 <b>닫아 달라고 말합니다.</b>
+    /// 조용히 실패하는 대신 사람이 할 일을 알려 주는 쪽입니다. 이름을 바꾸려면
+    /// <c>installer\DiskMigrator.iss</c>의 <c>AppMutex</c>도 함께 바꿔야 합니다 —
+    /// 한쪽만 바꾸면 아무 말 없이 예전 상태로 돌아갑니다.</para>
+    ///
+    /// <para><c>Global\</c> 쪽도 함께 잡습니다. 설치 프로그램이 다른 세션(상승된 관리자)에서
+    /// 돌 수 있어, 세션 안에서만 보이는 이름 하나로는 못 볼 수 있습니다.</para>
+    /// </remarks>
+    public const string RunningMutexName = "DiskMigratorX_Running";
+
+    private Mutex? _runningMutex;
+    private Mutex? _runningMutexGlobal;
+
+    private void MarkRunning()
+    {
+        // 표시를 못 만들어도 앱은 그대로 동작해야 합니다 — 설치 편의를 위한 것이지
+        // 실행 조건이 아닙니다(이미 떠 있어도 두 번째 창을 막지 않습니다).
+        try { _runningMutex = new Mutex(false, RunningMutexName); } catch { }
+        try { _runningMutexGlobal = new Mutex(false, @"Global\" + RunningMutexName); } catch { }
+    }
+
+    /// <summary>
     /// 이번 실행의 UI 언어를 정합니다. 우선순위: 저장된 사용자 선택(LanguagePreference) >
     /// 환경변수 <c>DM_LANG</c> > OS UI 언어(한국어면 ko, 그 외 en). 창이 로드되기 전에
     /// 호출해야 문자열이 올바른 언어로 잡힙니다.
@@ -134,6 +163,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 설치 프로그램이 "켜져 있다"를 알아볼 수 있게 가장 먼저 표시해 둡니다.
+        MarkRunning();
 
         // 스플래시를 가능한 한 일찍 — 메인 창이 뜬 뒤에도 최소 노출 시간을 채우고 사라집니다.
         _splash = new SplashScreen("Resources/splash.png");
@@ -282,6 +314,11 @@ public partial class App : Application
         Log.Information("=== " + AppIdentity.ProductName + " 종료 (코드 {Code}) ===", e.ApplicationExitCode);
         Log.CloseAndFlush();
         _loggerFactory?.Dispose();
+
+        // 표시를 놓아 줍니다 — 앱을 닫았는데도 설치 프로그램이 "아직 켜져 있다"고 하면
+        // 사용자는 무엇을 더 닫아야 할지 알 수 없습니다.
+        _runningMutex?.Dispose();
+        _runningMutexGlobal?.Dispose();
 
         base.OnExit(e);
     }
