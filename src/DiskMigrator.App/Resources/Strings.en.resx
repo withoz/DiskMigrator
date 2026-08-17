@@ -382,6 +382,6 @@ Continue?</value></data>
   <data name="ClaudeNotInstalled" xml:space="preserve"><value>No Claude Code — only the asking feature is unavailable</value></data>
   <data name="ThemeLightTip" xml:space="preserve"><value>Light screen</value></data>
   <data name="ThemeDarkTip" xml:space="preserve"><value>Dark screen</value></data>
-  <data name="HelpLink" xml:space="preserve"><value>Help</value></data>
+  <data name="HelpLink" xml:space="preserve"><value>Help (F1)</value></data>
   <data name="ClaudeLoginFailedFmt" xml:space="preserve"><value>Could not open the sign-in window. Run {0} in a command window instead.</value></data>
 </root>
