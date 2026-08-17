@@ -71,6 +71,36 @@ public class InstallerHandoffTests
         Assert.Contains("CloseApplications=yes", InstallerScript(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 앱이 찾는 설명서 이름과 설치 프로그램이 넣는 이름이 같은지.
+    /// </summary>
+    /// <remarks>
+    /// 어긋나면 <b>오류 하나 없이</b> 머리말의 [도움말]이 사라지고 F1도 조용해집니다 —
+    /// 설명서가 없을 때는 링크를 숨기도록 만들었기 때문입니다. 그 조용함이 이 자리의 위험입니다.
+    /// </remarks>
+    [Fact]
+    public void 앱이_찾는_설명서를_설치_프로그램이_넣는다()
+    {
+        string iss = InstallerScript();
+        string source = File.ReadAllText(Path.Combine(AppSource(), "UserManual.cs"));
+
+        foreach (string name in new[] { "manual.html", "manual-en.html" })
+        {
+            Assert.Contains($"\"{name}\"", source, StringComparison.Ordinal);
+            Assert.Contains($"DestName: \"{name}\"", iss, StringComparison.Ordinal);
+        }
+    }
+
+    private static string AppSource()
+    {
+        var dir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "src")))
+            dir = dir.Parent;
+
+        Assert.NotNull(dir);
+        return Path.Combine(dir!.FullName, "src", "DiskMigrator.App");
+    }
+
     private static string InstallerScript()
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);

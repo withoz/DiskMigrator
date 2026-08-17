@@ -319,6 +319,28 @@ public sealed partial class MainViewModel : ObservableObject
 
     private readonly string? _bridgePath = ClaudeRegistration.FindBridge();
 
+    // --- 도움말 -------------------------------------------------------------
+
+    /// <summary>
+    /// 사용설명서가 앱 옆에 있는지. 없으면 <b>머리말의 [도움말]을 아예 안 보여 줍니다.</b>
+    /// </summary>
+    /// <remarks>
+    /// 중계기 버튼과 같은 이유입니다 — 눌러도 아무 일이 없는 글자는 앱이 고장 난 것처럼
+    /// 보이게 합니다. 한 번만 확인해 두고 그대로 씁니다.
+    /// </remarks>
+    public bool HasHelp { get; } = UserManual.Find() is not null;
+
+    /// <summary>
+    /// 사용설명서를 기본 브라우저로 엽니다. 머리말의 [도움말]과 <b>F1</b>이 부릅니다.
+    /// </summary>
+    /// <remarks>
+    /// 이 앱은 안내를 화면에 늘어놓지 않고 설명서로 보냅니다. 그러면 <b>설명서로 가는 길</b>이
+    /// 화면에 있어야 그 약속이 온전해집니다 — 없으면 사용자는 설명서가 있다는 것조차 모릅니다.
+    /// F1은 어느 화면에서나 통합니다(윈도우에서 도움말은 늘 F1이라, 배울 것이 없습니다).
+    /// </remarks>
+    [RelayCommand]
+    private void OpenHelp() => UserManual.Open();
+
     /// <summary>Claude 설정 파일의 경로 — 확인 대화상자에서 무엇을 고칠지 보여 줍니다.</summary>
     public static string ClaudeDesktopConfigPath => ClaudeRegistration.DesktopConfigPath;
 

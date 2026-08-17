@@ -119,6 +119,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>현재 언어를 굵게·진하게, 나머지는 흐리게 표시합니다.</summary>
+    /// <summary>머리말의 [도움말]. F1과 같은 일을 합니다.</summary>
+    private void Help_Click(object sender, MouseButtonEventArgs e) =>
+        (DataContext as MainViewModel)?.OpenHelpCommand.Execute(null);
+
     private void ThemeLight_Click(object sender, MouseButtonEventArgs e) => SwitchThemeIfIdle(AppTheme.Light);
 
     private void ThemeDark_Click(object sender, MouseButtonEventArgs e) => SwitchThemeIfIdle(AppTheme.Dark);

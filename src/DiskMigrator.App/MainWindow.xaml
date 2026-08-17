@@ -13,6 +13,12 @@
         Background="{StaticResource SurfaceAlt}"
         FontFamily="Segoe UI, Malgun Gothic">
 
+    <!-- 윈도우에서 도움말은 늘 F1입니다. 배울 것이 없으니 어느 화면에서나 통하게 둡니다.
+         설명서가 없으면 아무 일도 일어나지 않습니다(오류를 띄우지 않습니다). -->
+    <Window.InputBindings>
+        <KeyBinding Key="F1" Command="{Binding OpenHelpCommand}" />
+    </Window.InputBindings>
+
     <Window.Resources>
 
         <!--
@@ -514,6 +520,16 @@
                                    Background="Transparent" Padding="6,4"
                                    ToolTip="{loc:Loc ThemeDarkTip}" MouseLeftButtonUp="ThemeDark_Click" />
                     </StackPanel>
+
+                    <!-- 도움말 — 이 앱은 안내를 화면에 늘어놓지 않고 설명서로 보냅니다.
+                         그러면 설명서로 가는 길이 화면에 있어야 그 약속이 온전해집니다.
+                         설명서가 앱 옆에 없으면(개발용 빌드 등) 아예 보이지 않습니다 —
+                         눌러도 아무 일이 없는 글자는 앱이 고장 난 것처럼 보이게 합니다. -->
+                    <TextBlock Text="{loc:Loc HelpLink}" Cursor="Hand" VerticalAlignment="Center"
+                               FontSize="12.5" Background="Transparent" Padding="6,4" Margin="0,0,10,0"
+                               Foreground="{StaticResource Muted}"
+                               Visibility="{Binding HasHelp, Converter={StaticResource BoolToVisibility}}"
+                               MouseLeftButtonUp="Help_Click" />
 
                     <!-- 언어 전환: 한국어 · English. 고른 언어는 저장되고 창이 즉시 새 언어로 다시 그려집니다.
                          전환=창 재생성이므로 작업 중(클론·백업·복원·부팅 USB)에는 비활성화합니다 —
