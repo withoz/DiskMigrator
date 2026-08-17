@@ -71,6 +71,50 @@ public partial class App : Application
         Log.Information("UI 언어를 {Lang}로 전환했습니다.", lang);
     }
 
+    // --- 화면 색조 ---------------------------------------------------------
+
+    /// <summary>지금 쓰고 있는 색조. 헤더의 토글이 어느 쪽이 켜졌는지 표시하는 데 씁니다.</summary>
+    public static AppTheme CurrentTheme { get; private set; } = AppTheme.Light;
+
+    /// <summary>
+    /// 팔레트를 갈아 끼웁니다. <b>창을 만들기 전에</b> 불러야 합니다.
+    /// </summary>
+    /// <remarks>
+    /// 화면(MainWindow.xaml)은 색을 <c>StaticResource</c>로 읽습니다 — 창이 만들어지는 그
+    /// 순간의 값으로 굳는다는 뜻입니다. 그래서 색조를 바꾸면 창을 새로 그립니다(언어 전환과
+    /// 같은 길). 앱의 스타일들은 <c>DynamicResource</c>라 이 교체를 바로 따라옵니다.
+    /// </remarks>
+    private void ApplyTheme(AppTheme theme)
+    {
+        CurrentTheme = theme;
+
+        string file = theme == AppTheme.Dark ? "Themes/Dark.xaml" : "Themes/Light.xaml";
+        var palette = new ResourceDictionary { Source = new Uri(file, UriKind.Relative) };
+
+        // 팔레트는 첫 번째 자리에만 둡니다. 여러 벌이 쌓이면 나중 것이 이겨,
+        // 밝은 쪽으로 돌아왔을 때 어두운 색이 군데군데 남습니다.
+        var merged = Resources.MergedDictionaries;
+        if (merged.Count == 0) merged.Add(palette);
+        else merged[0] = palette;
+    }
+
+    /// <summary>
+    /// 화면 색조를 바꾸고 창을 다시 그립니다 — 재시작·UAC 없이. 선택은 저장돼 다음 실행에도 유지됩니다.
+    /// </summary>
+    public void SwitchTheme(AppTheme theme)
+    {
+        ThemePreference.Save(theme);
+        if (CurrentTheme == theme) return;
+
+        ApplyTheme(theme);
+
+        // 새 창을 먼저 띄운 뒤 옛 창을 닫습니다 — 마지막 창이 아니라 앱이 꺼지지 않습니다.
+        var old = MainWindow;
+        ShowMainWindow();
+        old?.Close();
+        Log.Information("화면 색조를 {Theme}로 전환했습니다.", theme);
+    }
+
     /// <summary>메인 창(뷰모델 포함)을 만들어 띄우고 초기 작업을 시작합니다.</summary>
     private void ShowMainWindow()
     {
@@ -97,6 +141,9 @@ public partial class App : Application
         _splashShownAt = DateTime.UtcNow;
 
         ApplyCulture();
+
+        // 고른 적이 없으면 Windows 설정을 따릅니다. 창이 만들어지기 전이어야 합니다.
+        ApplyTheme(ThemePreference.Resolve());
 
         Directory.CreateDirectory(LogDirectory);
 

@@ -14,9 +14,36 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         UpdateLanguageToggle();
+        UpdateThemeToggle();
         FitToScreen();
         DataContextChanged += FollowChat;
+
+        // 제목줄은 Windows가 그리므로 우리 팔레트가 닿지 않습니다. 그냥 두면 어두운 화면
+        // 위에 흰 제목줄만 남아 창이 반쯤 덜 그려진 것처럼 보입니다.
+        SourceInitialized += (_, _) => ApplyTitleBarTheme();
     }
+
+    /// <summary>제목줄을 창 색조에 맞춥니다(Windows 10 20H1 이상). 안 되는 곳에서는 조용히 넘어갑니다.</summary>
+    private void ApplyTitleBarTheme()
+    {
+        try
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero) return;
+
+            int dark = App.CurrentTheme == AppTheme.Dark ? 1 : 0;
+            DwmSetWindowAttribute(handle, DwmUseImmersiveDarkMode, ref dark, sizeof(int));
+        }
+        catch
+        {
+            // 옛 Windows·WinPE에는 이 속성이 없습니다. 제목줄만 밝게 남을 뿐 동작에는 지장이 없습니다.
+        }
+    }
+
+    private const int DwmUseImmersiveDarkMode = 20;
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
     /// <summary>
     /// 대화에 새 줄이 붙으면 화면을 아래로 따라 내립니다.
@@ -92,6 +119,39 @@ public partial class MainWindow : Window
     }
 
     /// <summary>현재 언어를 굵게·진하게, 나머지는 흐리게 표시합니다.</summary>
+    private void ThemeLight_Click(object sender, MouseButtonEventArgs e) => SwitchThemeIfIdle(AppTheme.Light);
+
+    private void ThemeDark_Click(object sender, MouseButtonEventArgs e) => SwitchThemeIfIdle(AppTheme.Dark);
+
+    /// <summary>언어 전환과 같은 이중 방어 — 작업 중엔 창을 재생성하지 않습니다.</summary>
+    /// <remarks>
+    /// 눌린 것 자체를 먼저 남깁니다. 화면이 안 바뀌었을 때 <b>안 눌린 것인지 눌렸는데 안 바뀐
+    /// 것인지</b>를 나중에 가릴 수 있어야 합니다 — 실기에서 이 둘을 구분하지 못해 한 번 헤맸습니다.
+    /// </remarks>
+    private void SwitchThemeIfIdle(AppTheme theme)
+    {
+        Serilog.Log.Information("화면 색조 토글을 눌렀습니다: {Theme}", theme);
+
+        if (DataContext is MainViewModel { CanSwitchLanguage: false })
+        {
+            Serilog.Log.Information("작업 중이라 색조를 바꾸지 않습니다.");
+            return;
+        }
+
+        (Application.Current as App)?.SwitchTheme(theme);
+    }
+
+    /// <summary>지금 켜진 쪽을 진하게, 나머지를 옅게 — 언어 토글과 같은 표시 방식.</summary>
+    private void UpdateThemeToggle()
+    {
+        bool dark = App.CurrentTheme == AppTheme.Dark;
+        var active = (Brush)FindResource("TextBrush");
+        var inactive = (Brush)FindResource("MutedFaint");
+
+        ThemeLight.Foreground = dark ? inactive : active;
+        ThemeDark.Foreground = dark ? active : inactive;
+    }
+
     private void UpdateLanguageToggle()
     {
         bool ko = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko";

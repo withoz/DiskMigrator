@@ -238,27 +238,32 @@ public sealed class DiskLayoutViewModel
     /// </remarks>
     private const double LabelMinFraction = 0.07;
 
-    // 막대 안 글자색 — 색 조각 위에는 흰 글자, 밝은 미할당 위에는 어두운 글자.
+    // 막대 안 글자색 — 색 조각 위에는 흰 글자, 미할당 위에는 바탕에 맞는 글자.
+    //
+    // ⚠ 아래 셋만 값을 직접 들고 있습니다. 조각 색(EFI·데이터 등)은 <b>종류를 뜻하므로</b>
+    //   밝은 화면과 어두운 화면에서 같아야 합니다 — 같은 파티션이 화면 색조에 따라 다른 색으로
+    //   보이면 그 색이 뜻을 잃습니다. 반면 미할당·테두리·머리글은 바탕에 따라 달라져야 하므로
+    //   팔레트에서 꺼내 씁니다(static으로 굳히면 색조를 바꿔도 그대로 남습니다).
     private static readonly Brush LightLabelBrush = Frozen("#FFFFFF");
-    private static readonly Brush DarkLabelBrush = Frozen("#6B6259");
-
-    // 머리글용 색 — App.xaml의 팔레트와 같은 값입니다.
-    private static readonly Brush AccentBrush = Frozen("#52738F");
-    private static readonly Brush DangerBrush = Frozen("#DC2626");
-    private static readonly Brush MutedBrush = Frozen("#837B72");
-
-    // 막대 테두리는 역할을 옅게 되풀이합니다 — 칩은 위쪽 한 곳뿐이라 막대만 보고 있으면
-    // 어느 쪽인지 놓칩니다. 채도를 낮춰 배지의 경고를 잡아먹지 않게 합니다.
-    private static readonly Brush AccentLineBrush = Frozen("#C3CEDA");
-    private static readonly Brush DangerLineBrush = Frozen("#FECACA");
 
     // 역할별 색 — 채도를 낮춰 화면과 톤을 맞추되, 색상(hue)은 서로 벌려 둡니다.
     // 막대에서 조각을 구분하는 것이 이 색의 유일한 일이라 예쁨보다 구별이 우선입니다.
-    private static readonly Brush UnallocatedBrush = Frozen("#E4DED5");   // 밝은 모래빛
     private static readonly Brush EfiBrush = Frozen("#C3944F");           // 황토
     private static readonly Brush ReservedBrush = Frozen("#A9A29A");      // 따뜻한 회색
     private static readonly Brush DataBrush = Frozen("#6E8FAD");          // 청색
     private static readonly Brush OtherBrush = Frozen("#74A08F");         // 청록
+
+    private static Brush DarkLabelBrush => ThemeBrush.Get("TextBrush");
+    private static Brush AccentBrush => ThemeBrush.Get("Accent");
+    private static Brush DangerBrush => ThemeBrush.Get("Danger");
+    private static Brush MutedBrush => ThemeBrush.Get("Muted");
+
+    // 막대 테두리는 역할을 옅게 되풀이합니다 — 칩은 위쪽 한 곳뿐이라 막대만 보고 있으면
+    // 어느 쪽인지 놓칩니다. 채도를 낮춰 배지의 경고를 잡아먹지 않게 합니다.
+    private static Brush AccentLineBrush => ThemeBrush.Get("LayoutAccentLine");
+    private static Brush DangerLineBrush => ThemeBrush.Get("LayoutDangerLine");
+
+    private static Brush UnallocatedBrush => ThemeBrush.Get("LayoutUnallocated");
 
     private static Brush BrushFor(PartitionInfo p)
     {

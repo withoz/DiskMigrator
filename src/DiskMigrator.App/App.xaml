@@ -4,7 +4,20 @@
              xmlns:conv="clr-namespace:DiskMigrator.App.Converters"
              xmlns:rt="clr-namespace:DiskMigrator.App.Runtime">
     <Application.Resources>
+        <ResourceDictionary>
 
+            <!--
+                팔레트는 Themes\Light.xaml · Dark.xaml 두 벌로 나뉘어 있고, 시작할 때 한쪽을
+                끼웁니다(App.ApplyTheme). 여기 아래의 스타일들은 색을 <b>DynamicResource</b>로
+                참조합니다 — StaticResource로 두면 App.xaml을 읽는 순간 값이 굳어, 나중에
+                팔레트를 갈아 끼워도 스타일은 옛 색을 그대로 쥐고 있습니다.
+
+                화면(MainWindow.xaml)은 StaticResource 그대로 둡니다. 모드를 바꿀 때 창을
+                새로 그리므로(언어 전환과 같은 길) 그 시점의 팔레트로 읽힙니다.
+            -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Light.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
@@ -16,38 +29,6 @@
         <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
 
         <!--
-            팔레트 — 채도를 낮추고 회색을 따뜻한 쪽으로 옮겨 화면 전체를 차분하게 두되,
-            위험(Danger)과 정보(Info)만 선명하게 남겼습니다. 주변이 조용할수록 이 둘이 더 튑니다.
-
-            Danger는 일부러 낮추지 않았습니다. 디스크를 통째로 지우는 도구라
-            "대상 삭제"·"차단"은 망설임 없이 빨강이어야 합니다.
-        -->
-        <SolidColorBrush x:Key="Accent" Color="#52738F" />
-        <SolidColorBrush x:Key="Danger" Color="#DC2626" />
-        <SolidColorBrush x:Key="Info" Color="#2563EB" />
-        <SolidColorBrush x:Key="Warning" Color="#B08541" />
-        <SolidColorBrush x:Key="Success" Color="#6B9478" />
-        <SolidColorBrush x:Key="Muted" Color="#837B72" />
-        <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="SurfaceAlt" Color="#FAF8F5" />
-        <SolidColorBrush x:Key="BorderBrushSoft" Color="#E7E1D9" />
-        <SolidColorBrush x:Key="TextBrush" Color="#33302B" />
-        <!-- 로고 마크용 — TextBrush(#33302B)를 흰색 쪽으로 10% 밝힌 값. 너무 새까맣지 않게. -->
-        <SolidColorBrush x:Key="LogoInk" Color="#474540" />
-        <SolidColorBrush x:Key="SelectionSoft" Color="#EEF3F7" />
-
-        <!-- 묶음 안에서 지금 고른 갈래를 표시하는 색.
-             테두리와 글자만 바꾸면 배경이 둘 다 같아 어느 쪽이 켜졌는지 잘 안 보였습니다 —
-             파랑(Accent)은 위 탭이 이미 쓰고 있어, 아래 줄은 초록 계열로 갈라 놓습니다. -->
-        <SolidColorBrush x:Key="SuccessSoft" Color="#E7F1EA" />
-        <SolidColorBrush x:Key="SuccessInk" Color="#3D6B51" />
-
-        <!-- 안 고른 갈래의 글자. Muted(#837B72)보다 옅어, 고른 쪽과 한눈에 갈립니다.
-             이 색은 하위 갈래 버튼에만 씁니다 — 다른 곳까지 흐려지면 화면 전체가 바랩니다. -->
-        <SolidColorBrush x:Key="MutedFaint" Color="#A8A8A8" />
-        <SolidColorBrush x:Key="DangerSoft" Color="#FEF2F2" />
-
-        <!--
             타입 스케일 — 이름으로만 쓰고 화면에서 숫자를 직접 적지 않습니다.
             예전에는 10·11·12·13이 3px 안에 몰려 있어 크기 차이가 위계로 읽히지 않았습니다.
         -->
@@ -56,7 +37,7 @@
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <!-- 앱 제목 -->
@@ -64,7 +45,7 @@
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="24" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <!-- 단계·결과 제목 -->
@@ -72,7 +53,7 @@
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="17" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <!-- 디스크 모델명 등 -->
@@ -80,28 +61,28 @@
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <!-- 본문·옵션 라벨 -->
         <Style x:Key="Body" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <!-- 보조 설명·범례 -->
         <Style x:Key="Caption" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource Muted}" />
         </Style>
 
         <!-- 배지·메타(S/N, 버스 종류) -->
         <Style x:Key="Micro" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource Muted}" />
         </Style>
 
         <!-- 섹션 라벨 (원본/대상, 안전/동작) -->
@@ -109,7 +90,7 @@
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource Muted}" />
         </Style>
 
         <!-- 이전 이름 유지 (아직 참조하는 곳이 있어 남겨 둡니다) -->
@@ -121,7 +102,7 @@
             장식이 아니라 "어디까지 왔는지"를 알려주는 정보입니다.
         -->
         <Style x:Key="StepNumber" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource Accent}" />
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Width" Value="18" />
             <Setter Property="Height" Value="18" />
@@ -145,10 +126,10 @@
             <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
             <Setter Property="Padding" Value="16,8" />
             <Setter Property="MinWidth" Value="90" />
-            <Setter Property="Background" Value="{StaticResource Surface}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -181,15 +162,15 @@
         </Style>
 
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource Danger}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Danger}" />
+            <Setter Property="Background" Value="{DynamicResource Danger}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource Accent}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource Accent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
             <Setter Property="Foreground" Value="White" />
         </Style>
 
@@ -209,22 +190,22 @@
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding SizeText}" Margin="8,0,0,0"
                                    Style="{StaticResource Subtitle}"
-                                   Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource Accent}" VerticalAlignment="Center" />
 
-                        <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}"
+                        <Border Background="{DynamicResource DangerSoft}" BorderBrush="{DynamicResource Danger}"
                                 BorderThickness="1" CornerRadius="3" Padding="5,0" Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding HasWarningBadges, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding WarningBadgeText}" Style="{StaticResource Micro}"
-                                       FontWeight="SemiBold" Foreground="{StaticResource Danger}" />
+                                       FontWeight="SemiBold" Foreground="{DynamicResource Danger}" />
                         </Border>
 
-                        <Border BorderBrush="{StaticResource Info}" BorderThickness="1"
+                        <Border BorderBrush="{DynamicResource Info}" BorderThickness="1"
                                 CornerRadius="3" Padding="5,0" Margin="5,0,0,0"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding HasInfoBadges, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding InfoBadgeText}" Style="{StaticResource Micro}"
-                                       FontWeight="SemiBold" Foreground="{StaticResource Info}" />
+                                       FontWeight="SemiBold" Foreground="{DynamicResource Info}" />
                         </Border>
                     </StackPanel>
 
@@ -240,7 +221,7 @@
                     <DockPanel Margin="0,3,0,0" LastChildFill="True">
                         <TextBlock DockPanel.Dock="Left" Text="{Binding DriveLetterText}"
                                    Style="{StaticResource Caption}" FontWeight="Bold"
-                                   Foreground="{StaticResource Accent}"
+                                   Foreground="{DynamicResource Accent}"
                                    MinWidth="24" Margin="0,0,7,0" />
                         <TextBlock Text="{Binding PartitionSummary}" Style="{StaticResource Caption}"
                                    TextTrimming="CharacterEllipsis" />
@@ -264,25 +245,25 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="Chip" CornerRadius="5" BorderThickness="1"
-                                Background="{StaticResource Surface}"
-                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                Background="{DynamicResource Surface}"
+                                BorderBrush="{DynamicResource BorderBrushSoft}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter x:Name="Label" VerticalAlignment="Center"
                                               TextElement.FontSize="12"
-                                              TextElement.Foreground="{StaticResource TextBrush}" />
+                                              TextElement.Foreground="{DynamicResource TextBrush}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Chip" Property="BorderBrush"
-                                        Value="{StaticResource Accent}" />
+                                        Value="{DynamicResource Accent}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Chip" Property="Background"
-                                        Value="{StaticResource SelectionSoft}" />
+                                        Value="{DynamicResource SelectionSoft}" />
                                 <Setter TargetName="Chip" Property="BorderBrush"
-                                        Value="{StaticResource Accent}" />
+                                        Value="{DynamicResource Accent}" />
                                 <Setter TargetName="Label" Property="TextElement.Foreground"
-                                        Value="{StaticResource Accent}" />
+                                        Value="{DynamicResource Accent}" />
                                 <Setter TargetName="Label" Property="TextElement.FontWeight"
                                         Value="SemiBold" />
                             </Trigger>
@@ -299,7 +280,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Border x:Name="Root" Background="Transparent"
-                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                BorderBrush="{DynamicResource BorderBrushSoft}"
                                 BorderThickness="0,0,0,1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -313,13 +294,13 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Root" Property="Background"
-                                        Value="{StaticResource SurfaceAlt}" />
+                                        Value="{DynamicResource SurfaceAlt}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Root" Property="Background"
-                                        Value="{StaticResource DangerSoft}" />
+                                        Value="{DynamicResource DangerSoft}" />
                                 <Setter TargetName="Marker" Property="Background"
-                                        Value="{StaticResource Danger}" />
+                                        Value="{DynamicResource Danger}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -328,9 +309,9 @@
         </Style>
 
         <Style x:Key="DiskListStyle" TargetType="ListBox">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{StaticResource Surface}" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
             <Setter Property="ItemTemplate" Value="{StaticResource DiskItemTemplate}" />
             <Setter Property="ItemContainerStyle" Value="{StaticResource DiskListItemStyle}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -352,5 +333,211 @@
             <Setter Property="rt:SelectionVisibility.AutoScroll" Value="True" />
         </Style>
 
+        <!--
+            ===== Windows 기본 부품을 팔레트 안으로 =====
+
+            체크상자·입력란·스크롤 막대·펼침·진행 막대는 Windows가 자기 색으로 그립니다.
+            그대로 두면 어두운 화면에 <b>흰 조각으로 남습니다</b> — 실기에서 그렇게 나왔습니다.
+            반만 어두운 화면은 안 하느니만 못하므로 이 다섯을 직접 그립니다.
+
+            생김새는 밝은 쪽 기준으로 지금과 같게 두었습니다. 색조를 넣는 작업이지
+            모양을 바꾸는 작업이 아닙니다.
+        -->
+
+        <Style TargetType="CheckBox">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <Border x:Name="Box" Width="15" Height="15" CornerRadius="3"
+                                    BorderThickness="1" VerticalAlignment="Center" Margin="0,0,7,0"
+                                    Background="{DynamicResource Surface}"
+                                    BorderBrush="{DynamicResource BorderBrushSoft}">
+                                <Path x:Name="Tick" Visibility="Collapsed"
+                                      Data="M 0,3.5 L 2.7,6.2 L 7.5,1"
+                                      Stroke="White" StrokeThickness="1.8"
+                                      StrokeEndLineCap="Round" StrokeStartLineCap="Round"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{DynamicResource Accent}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 입력란 — 모델명을 <b>직접 옮겨 적는</b> 자리가 여기입니다. 글자가 안 보이면
+             확인 절차 자체가 막히므로 글자색·커서색을 모두 팔레트에서 잡습니다. -->
+        <Style TargetType="TextBox">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Background" Value="{DynamicResource Surface}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="7,5" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 스크롤 막대 — 화살표 단추를 없애고 손잡이만 남깁니다. 목록 옆에 늘 붙어 있는
+             부품이라 밝은 채로 두면 어두운 화면에서 가장 먼저 눈에 띕니다. -->
+        <Style x:Key="ScrollThumbStyle" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="{DynamicResource ScrollThumb}" CornerRadius="4"
+                                Margin="2" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="11" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollThumbStyle}" />
+                                </Track.Thumb>
+                                <!-- 화살표 단추 자리. RepeatButton이 없으면 Track이 만들어지지
+                                     않으므로 보이지 않는 것으로 채웁니다. -->
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0"
+                                                  Background="Transparent" BorderThickness="0" MinWidth="0" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0"
+                                                  Background="Transparent" BorderThickness="0" MinWidth="0" />
+                                </Track.DecreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Height" Value="11" />
+                                <Setter Property="Width" Value="Auto" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ProgressBar">
+            <Setter Property="Background" Value="{DynamicResource NeutralSoft}" />
+            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5"
+                                ClipToBounds="True">
+                            <Grid>
+                                <Rectangle x:Name="PART_Track" />
+                                <Rectangle x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                           Fill="{TemplateBinding Foreground}" RadiusX="5" RadiusY="5" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 펼침(진단 저장 등) — 머리글 글자와 화살표가 기본 검정이라 어두운 화면에서 사라집니다. -->
+        <Style TargetType="Expander">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton x:Name="Head" Cursor="Hand"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay,
+                                                      RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                                            <Path x:Name="Arrow" Width="9" Height="9" Margin="0,0,7,0"
+                                                  VerticalAlignment="Center"
+                                                  Data="M 0,0 L 4,4 L 0,8"
+                                                  Stroke="{DynamicResource Muted}" StrokeThickness="1.6"
+                                                  StrokeEndLineCap="Round" StrokeStartLineCap="Round" />
+                                            <ContentPresenter VerticalAlignment="Center"
+                                                              TextElement.Foreground="{DynamicResource Muted}"
+                                                              TextElement.FontSize="12" />
+                                        </StackPanel>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" CenterX="2" CenterY="4" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter Content="{TemplateBinding Header}" />
+                            </ToggleButton>
+                            <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="0,8,0,0" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

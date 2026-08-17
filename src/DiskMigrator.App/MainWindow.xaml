@@ -484,6 +484,37 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- 화면 색조: ☀ · ☾. 언어 토글과 <b>같은 모양</b>으로 두어 같은 종류의 설정임을
+                         알립니다. 글자를 더하지 않으려고 이름 없이 그림 문자만 씁니다.
+                         고른 적이 없으면 Windows 설정을 따르므로 대부분은 이것을 건드릴 일이 없습니다.
+                         전환=창 재생성이라 언어와 같은 조건으로 작업 중에는 비활성화합니다. -->
+                    <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanSwitchLanguage}"
+                                Margin="0,0,14,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <!-- ⚠ Background="Transparent"와 Padding이 <b>둘 다</b> 있어야 합니다.
+                             글자만 한 그림 문자는 과녁이 13px밖에 안 되고, 배경이 없는 TextBlock은
+                             글자 획 위에서만 눌립니다 — 실기에서 눌러도 아무 일이 없었습니다.
+                             "한국어·English"는 글자가 넓어 그 문제가 드러나지 않았습니다. -->
+                        <TextBlock x:Name="ThemeLight" Text="☀" Cursor="Hand" VerticalAlignment="Center"
+                                   FontFamily="Segoe UI Symbol" FontSize="14"
+                                   Background="Transparent" Padding="6,4"
+                                   ToolTip="{loc:Loc ThemeLightTip}" MouseLeftButtonUp="ThemeLight_Click" />
+                        <TextBlock Text="·" FontSize="12.5" Margin="2,0" VerticalAlignment="Center"
+                                   Foreground="{StaticResource BorderBrushSoft}" />
+                        <TextBlock x:Name="ThemeDark" Text="☾" Cursor="Hand" VerticalAlignment="Center"
+                                   FontFamily="Segoe UI Symbol" FontSize="14"
+                                   Background="Transparent" Padding="6,4"
+                                   ToolTip="{loc:Loc ThemeDarkTip}" MouseLeftButtonUp="ThemeDark_Click" />
+                    </StackPanel>
+
                     <!-- 언어 전환: 한국어 · English. 고른 언어는 저장되고 창이 즉시 새 언어로 다시 그려집니다.
                          전환=창 재생성이므로 작업 중(클론·백업·복원·부팅 USB)에는 비활성화합니다 —
                          진행 화면이 사라지고 작업이 화면 없이 남는 사고를 막습니다. -->
@@ -505,7 +536,7 @@
                                    FontSize="12.5" MouseLeftButtonUp="LangEn_Click" />
                     </StackPanel>
 
-                    <Border Background="#FEF2F2" BorderBrush="{StaticResource Danger}" BorderThickness="1"
+                    <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}" BorderThickness="1"
                             CornerRadius="6" Padding="10,5" Margin="14,0,0,0" VerticalAlignment="Center"
                             Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
                         <TextBlock Text="{loc:Loc NotAdminBadge}"
@@ -518,7 +549,7 @@
         <!-- Claude의 제안 카드 — 계획서 §6.3의 1차 관문.
              모달이 아닙니다. 강제로 답을 요구하면 내용을 읽지 않고 누르게 됩니다.
              [적용]을 눌러야 비로소 선택이 채워지고, 그 뒤에도 모델명 입력이 남습니다. -->
-        <Border Background="#FFF7ED" BorderBrush="{StaticResource Warning}"
+        <Border Background="{StaticResource WarningSoft}" BorderBrush="{StaticResource Warning}"
                 BorderThickness="0,0,0,1" Padding="40,10"
                 Visibility="{Binding HasProposal, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
@@ -640,7 +671,7 @@
 
                 <Button Grid.Column="0" Command="{Binding SetModeCommand}" CommandParameter="Clone">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="💽" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#7FA6C8" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Text="💽" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="{StaticResource IconCopy}" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc GroupCopy}" />
                     </StackPanel>
                     <Button.Style>
@@ -658,7 +689,7 @@
 
                 <Button Grid.Column="2" Command="{Binding SetModeCommand}" CommandParameter="Backup">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#D9A65A" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Text="📦" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="{StaticResource IconImage}" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc GroupImage}" />
                     </StackPanel>
                     <Button.Style>
@@ -676,7 +707,7 @@
 
                 <Button Grid.Column="4" Command="{Binding SetModeCommand}" CommandParameter="FixBoot">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🛠️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="#B39A6B" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Text="🛠️" FontFamily="Segoe UI Emoji" FontSize="16" Foreground="{StaticResource IconTrouble}" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Text="{loc:Loc GroupTrouble}" />
                     </StackPanel>
                     <Button.Style>
@@ -1183,7 +1214,7 @@
                         가장 안전에 중요한 컨트롤이 가장 눈에 안 띄었습니다. 또 버튼이 회색일 때
                         무엇을 더 해야 하는지 알 수 없었습니다 — 이제 이유를 바로 옆에 적습니다.
                     -->
-                    <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
+                    <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource DangerBorder}" BorderThickness="1"
                             CornerRadius="10" Padding="14,10" Margin="0,6,0,0">
                         <!--
                             버튼과 안내 글을 한 줄에 세로 중앙으로 맞춥니다. 예전에는 큰 버튼이 위에,
@@ -1197,7 +1228,7 @@
 
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
-                                           Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,7"
+                                           Style="{StaticResource Caption}" Foreground="{StaticResource DangerInk}" Margin="0,0,0,7"
                                            Visibility="{Binding NeedsConfirmation,
                                                         Converter={StaticResource BoolToVisibility}}" />
 
@@ -1209,7 +1240,7 @@
 
                                 <!-- 버튼이 왜 비활성인지 -->
                                 <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"
-                                           Style="{StaticResource Micro}" Foreground="#991B1B"
+                                           Style="{StaticResource Micro}" Foreground="{StaticResource DangerInk}"
                                            Visibility="{Binding HasBlockedReason,
                                                         Converter={StaticResource BoolToVisibility}}" />
 
@@ -1343,7 +1374,7 @@
 
                 <TextBlock Text="{loc:Loc RestoreHint}" Style="{StaticResource Micro}" TextWrapping="Wrap" Margin="0,10,0,0" />
 
-                <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
+                <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource DangerBorder}" BorderThickness="1"
                         CornerRadius="10" Padding="14,10" Margin="0,14,0,0">
                     <DockPanel LastChildFill="True">
                         <Button DockPanel.Dock="Right" Content="{loc:Loc RestoreStartBtn}" Command="{Binding RestoreImageCommand}"
@@ -1351,7 +1382,7 @@
                                 Margin="14,0,0,0" VerticalAlignment="Center" />
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{Binding RestoreConfirmPrompt}" TextWrapping="Wrap"
-                                       Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,7" />
+                                       Style="{StaticResource Caption}" Foreground="{StaticResource DangerInk}" Margin="0,0,0,7" />
                             <TextBox Text="{Binding ConfirmationText, UpdateSourceTrigger=PropertyChanged}"
                                      Padding="9,7" FontSize="13" FontFamily="Consolas, D2Coding"
                                      VerticalContentAlignment="Center" Margin="0,0,0,7" />
@@ -1574,13 +1605,13 @@
                                                     VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
-                                                        <Setter Property="Background" Value="#E5E7EB" />
+                                                        <Setter Property="Background" Value="{StaticResource ChipNeutral}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsRead}" Value="True">
-                                                                <Setter Property="Background" Value="#DCFCE7" />
+                                                                <Setter Property="Background" Value="{StaticResource ChipSuccess}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsProposal}" Value="True">
-                                                                <Setter Property="Background" Value="#FEF3C7" />
+                                                                <Setter Property="Background" Value="{StaticResource ChipWarning}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -1687,7 +1718,7 @@
                 <ListBox ItemsSource="{Binding Disks}" SelectedItem="{Binding SelectedTarget}"
                          Style="{StaticResource DiskListStyle}" Height="200" />
 
-                <Border Background="{StaticResource DangerSoft}" BorderBrush="#FECACA" BorderThickness="1"
+                <Border Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource DangerBorder}" BorderThickness="1"
                         CornerRadius="10" Padding="14,10" Margin="0,14,0,0">
                     <DockPanel LastChildFill="True">
                         <Button DockPanel.Dock="Right" Content="{loc:Loc BootUsbStartBtn}" Command="{Binding BuildBootUsbCommand}"
@@ -1695,7 +1726,7 @@
                                 Margin="14,0,0,0" VerticalAlignment="Center" />
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{Binding ConfirmationPrompt}" TextWrapping="Wrap"
-                                       Style="{StaticResource Caption}" Foreground="#991B1B" Margin="0,0,0,7" />
+                                       Style="{StaticResource Caption}" Foreground="{StaticResource DangerInk}" Margin="0,0,0,7" />
                             <TextBox Text="{Binding ConfirmationText, UpdateSourceTrigger=PropertyChanged}"
                                      Padding="9,7" FontSize="13" FontFamily="Consolas, D2Coding"
                                      VerticalContentAlignment="Center" Margin="0,0,0,7" />
@@ -1732,11 +1763,11 @@
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{StaticResource DangerSoft}" />
-                            <Setter Property="BorderBrush" Value="#FECACA" />
+                            <Setter Property="BorderBrush" Value="{StaticResource DangerBorder}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding PeSuccess}" Value="True">
-                                    <Setter Property="Background" Value="#EDF7F2" />
-                                    <Setter Property="BorderBrush" Value="#CDE8DB" />
+                                    <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource SuccessBorder}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -1798,7 +1829,7 @@
                     </TextBlock>
 
                     <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Maximum="100" Height="10"
-                                 Foreground="{StaticResource Accent}" Background="#F3F4F6"
+                                 Foreground="{StaticResource Accent}" Background="{StaticResource NeutralSoft}"
                                  BorderThickness="0" Margin="0,0,0,24" />
 
                     <UniformGrid Columns="4" Margin="0,0,0,20">

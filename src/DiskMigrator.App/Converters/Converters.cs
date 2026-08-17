@@ -54,18 +54,16 @@ public sealed class StageToVisibilityConverter : IValueConverter
 /// <summary>안전 점검 항목의 심각도를 색으로 바꿉니다.</summary>
 public sealed class SeverityToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush Blocker = new(Color.FromRgb(0xDC, 0x26, 0x26));
-    private static readonly SolidColorBrush Confirm = new(Color.FromRgb(0xD9, 0x77, 0x06));
-    private static readonly SolidColorBrush Warn = new(Color.FromRgb(0xD9, 0x77, 0x06));
-    private static readonly SolidColorBrush Info = new(Color.FromRgb(0x6B, 0x72, 0x80));
-
+    // 색을 여기 적어 두면 어두운 모드에서 이 자리만 옛 색으로 남습니다 — 팔레트에서 꺼내 씁니다.
+    // 확인 필요와 경고는 같은 주황입니다: 둘 다 "멈추진 않지만 읽어야 하는 것"이라 색을 가르면
+    // 없는 위계를 만들게 됩니다.
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value switch
         {
-            SafetySeverity.Blocker => Blocker,
-            SafetySeverity.RequiresConfirmation => Confirm,
-            SafetySeverity.Warning => Warn,
-            _ => Info,
+            SafetySeverity.Blocker => ThemeBrush.Get("SeverityBlocker"),
+            SafetySeverity.RequiresConfirmation => ThemeBrush.Get("SeverityWarn"),
+            SafetySeverity.Warning => ThemeBrush.Get("SeverityWarn"),
+            _ => ThemeBrush.Get("SeverityInfo"),
         };
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
