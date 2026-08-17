@@ -95,6 +95,7 @@
   <a href="#fixboot">④ Fix Boot</a>
   <a href="#bootusb">⑤ Boot USB</a>
   <a href="#claude">Claude</a>
+  <a href="#usb">USB vs internal</a>
   <a href="#faq">FAQ</a>
   <a href="#terms">Glossary</a>
   <a href="manual.html">한국어</a>
@@ -266,6 +267,26 @@ Nothing extra to install — it is built entirely from materials already inside 
   Diagnostics end up in the conversation log, so turn on "also send" only when needed.
   The connection works <b>inside this computer only</b> (nothing outside can reach it) and closes with the app.</div>
 
+<h2 id="usb">Over USB versus mounted inside</h2>
+<div class="card">
+  <p><b>The copy itself is the same.</b> Either way the disk is moved across as it is, and with
+  <b>Verify after copy</b> turned on it is read back and compared against the source.
+  What differs is everything around it.</p>
+  <table style="margin-top:12px;">
+    <tr><th style="width:24%">What</th><th>How it differs</th></tr>
+    <tr><td>Time</td><td>USB is <b>three to four times slower</b> than an internal connection.
+      On a 1 TB disk that is a difference of hours.</td></tr>
+    <tr><td>Risk of dropping out</td><td>A knocked cable or a drive going to sleep stops the job.
+      Leave it alone while it runs.</td></tr>
+    <tr><td>Disk information</td><td>A USB adapter sometimes reports the disk's details
+      <b>differently from the disk itself</b>. The same disk can therefore look different over USB
+      than it does mounted inside. The app notices this and <b>refuses to start</b> when it is unsafe.</td></tr>
+  </table>
+  <p style="margin-top:12px;"><b>What to do.</b> Unless you are in a hurry, <b>mounting inside is better</b> —
+  faster, nothing to drop out, and the information is accurate. If you copied over USB,
+  <b>always mount the disk inside to check it</b> (see below).</p>
+</div>
+
 <h2>Booting from the copied disk</h2>
 <div class="card">
   <p>① Shut the computer down → ② mount the copied disk <b>inside the computer</b> → ③ power on. Done.</p>
@@ -289,6 +310,20 @@ Nothing extra to install — it is built entirely from materials already inside 
   <tr><td>Can I use the computer while it copies?</td><td>Yes. The <span class="term">snapshot</span> feature copies the disk exactly as it was at the starting moment. Avoiding heavy work is still a good idea.</td></tr>
   <tr><td>Why does it ask me to type the model name?</td><td>It is a <b>safeguard</b> asking whether you really checked which disk will be erased. Type the name exactly as shown in the list.</td></tr>
   <tr><td>How long does it take?</td><td>It depends on how much data is in use and how fast the disks are. Roughly 30–60 minutes per 300 GB.</td></tr>
+  <tr><td>Does converting to UEFI change my motherboard settings?</td>
+      <td>No. "BIOS" here means the <b>disk's old boot method</b>, not the motherboard.
+      Only the <b>copied disk</b> changes — your motherboard settings and the source disk are untouched.
+      It <b>cannot be undone</b>, though.</td></tr>
+  <tr><td>Does converting to UEFI break Windows activation?</td>
+      <td>No. Activation is tied mainly to the <b>motherboard</b>. Changing how a disk boots is not
+      a hardware change, so it does not affect activation. Neither does switching the boot mode to
+      UEFI or turning on Secure Boot.</td></tr>
+  <tr><td>Do I have to reactivate after a motherboard firmware (BIOS) update?</td>
+      <td>Usually not. Rarely, an update <b>clears the motherboard's serial number</b> and Windows
+      then sees a different computer. If that happens, go to
+      <b>Settings → System → Activation → Troubleshoot</b> and choose "I changed hardware on this
+      device recently" — this route is only open if you <b>linked the licence to a Microsoft account
+      beforehand</b>.</td></tr>
 </table>
 
 <h2 id="terms">Glossary</h2>
