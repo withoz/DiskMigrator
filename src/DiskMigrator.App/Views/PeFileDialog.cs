@@ -62,7 +62,12 @@ public sealed class PeFileDialog : Window
         Title = title;
         Width = 620; Height = 460; MinWidth = 480; MinHeight = 340;
         FontSize = 13;
-        Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xF8, 0xF5));
+        // ⚠ 색을 여기 적어 두면 <b>어두운 화면에서 이 창만 밝게</b> 남습니다. 그런데 글자는
+        //   앱의 팔레트를 따라 밝아지므로, 흰 바탕에 흰 글자가 되어 <b>아무것도 안 보입니다.</b>
+        //   하필 이 창은 부팅 USB(WinPE)에서 파일을 고르는 자리라, 부팅이 안 되는 컴퓨터를
+        //   살리러 온 사람 앞에서 처음 드러납니다. 팔레트에서 꺼내 씁니다.
+        Background = ThemeBrush.Get("SurfaceAlt");
+        Foreground = ThemeBrush.Get("TextBrush");
         ShowInTaskbar = false;
 
         var root = new Grid { Margin = new Thickness(12) };
@@ -95,6 +100,10 @@ public sealed class PeFileDialog : Window
             DisplayMemberBinding = new System.Windows.Data.Binding(nameof(Entry.Display)),
         });
         _list.View = gridView;
+        // ListView도 Windows가 자기 색(흰 바탕)으로 그립니다 — 창과 함께 맞춥니다.
+        _list.Background = ThemeBrush.Get("Surface");
+        _list.Foreground = ThemeBrush.Get("TextBrush");
+        _list.BorderBrush = ThemeBrush.Get("BorderBrushSoft");
         _list.MouseDoubleClick += (_, _) => ActivateSelection();
         _list.SelectionChanged += (_, _) => OnSelectionChanged();
         _list.KeyDown += (_, e) => { if (e.Key == Key.Enter) { ActivateSelection(); e.Handled = true; } };

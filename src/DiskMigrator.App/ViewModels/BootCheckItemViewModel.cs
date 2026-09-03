@@ -7,11 +7,17 @@ namespace DiskMigrator.App.ViewModels;
 /// <summary>부팅 구성 검사 결과 한 항목을 화면용으로 감쌉니다.</summary>
 public sealed class BootCheckItemViewModel
 {
-    // 테마 색과 맞춥니다 (App.xaml: Success/Danger/Warning/Muted).
-    private static readonly SolidColorBrush Pass = new(Color.FromRgb(0x05, 0x96, 0x69));
-    private static readonly SolidColorBrush Fail = new(Color.FromRgb(0xDC, 0x26, 0x26));
-    private static readonly SolidColorBrush Warn = new(Color.FromRgb(0xD9, 0x77, 0x06));
-    private static readonly SolidColorBrush Skip = new(Color.FromRgb(0x6B, 0x72, 0x80));
+    // ⚠ 예전에는 색을 여기 적어 두고 "테마 색과 맞춥니다"라고 주석만 달아 두었습니다.
+    //   맞춘 것이 아니라 <b>베껴 적은 것</b>이라, 팔레트가 어두운 쪽으로 바뀌어도 이 네 개는
+    //   그대로 남았습니다 — 특히 실패(#DC2626)는 어두운 바탕에서 가라앉아 덜 위험해 보입니다.
+    //   부팅 검사 결과에서 무엇이 실패인지가 가장 중요한데 그것이 흐려지는 자리였습니다.
+    //
+    //   static으로 담아 두지 않습니다. 색조를 바꾸면 창이 새로 그려지고 이 항목들도 다시
+    //   만들어지므로, 그때 팔레트에서 꺼내면 맞는 색이 됩니다.
+    private static Brush Pass => ThemeBrush.Get("Success");
+    private static Brush Fail => ThemeBrush.Get("SeverityBlocker");
+    private static Brush Warn => ThemeBrush.Get("SeverityWarn");
+    private static Brush Skip => ThemeBrush.Get("SeverityInfo");
 
     public BootCheckItemViewModel(BootCheckItem item)
     {
